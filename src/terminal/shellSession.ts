@@ -22,6 +22,8 @@ export interface ShellApi {
   onShellClosed(cb: (e: { tabId: string; reason: string | null }) => void): Promise<() => void>;
   metricsStart?(tabId: string, cb: (m: Metrics | null) => void): Promise<void>;
   metricsStop?(tabId: string): Promise<void>;
+  cwdStart?(tabId: string, cb: (cwd: string) => void): Promise<void>;
+  cwdStop?(tabId: string): Promise<void>;
 }
 
 export class ShellSession {

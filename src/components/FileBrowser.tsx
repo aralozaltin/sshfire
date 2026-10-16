@@ -4,7 +4,7 @@ import { breadcrumbs, joinPath, localBaseName, parentPath, planPaste, uniqueName
 import { formatMode, formatModified, formatSize } from "../files/format";
 import type { FileEntry, FilesApi } from "../files/types";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
-import { loadColumns, resizeColumn, saveColumns } from "../files/columns";
+import { DEFAULT_COLUMNS, loadColumns, resizeColumn, saveColumns } from "../files/columns";
 import { FileInfoDialog } from "./FileInfoDialog";
 import { InlineRename } from "./InlineRename";
 import { PromptDialog } from "./PromptDialog";
@@ -17,6 +17,7 @@ export interface FileBrowserProps {
   onClipboardChange: (c: ClipboardItem | null) => void;
   initialPath?: string;
   onPathChange?: (path: string) => void;
+  followPath?: string | null;
 }
 
 type MenuState = { x: number; y: number; onRow: boolean } | null;
@@ -24,7 +25,7 @@ type PromptState = { kind: "mkdir" } | null;
 
 const DRAG_MIME = "application/x-ssh-istemci-files";
 
-export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardChange, initialPath, onPathChange }: FileBrowserProps) {
+export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardChange, initialPath, onPathChange, followPath }: FileBrowserProps) {
   const t = useT();
   const f = t.files;
   const [path, setPath] = useState<string | null>(initialPath ?? null);
@@ -38,6 +39,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
+  const [follow, setFollow] = useState(true);
+  const lastFollowed = useRef<string | null>(followPath ?? null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -152,7 +155,15 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   }, [tabId, api]);
 
   useEffect(() => {
-    if (tabId) void load(initialPath ?? null);
+    // Terminal başka bir dizine geçtiğinde (yalnızca değişimde) paneli oraya götür.
+    if (!tabId || !follow || !followPath || followPath === lastFollowed.current) return;
+    lastFollowed.current = followPath;
+    if (followPath !== live.current.path) void live.current.load(followPath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followPath, follow, tabId]);
+
+  useEffect(() => {
+    if (tabId) void load((follow && followPath) || initialPath || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId]);
 
@@ -327,6 +338,20 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         <button type="button" onClick={() => path && void load(parentPath(path))} disabled={!path || path === "/"}>{f.up}</button>
         <button type="button" onClick={() => void load(path)}>{f.refresh}</button>
         <button type="button" onClick={() => setPrompt({ kind: "mkdir" })}>{f.newFolder}</button>
+        <label className="files__follow">
+          <input
+            type="checkbox"
+            checked={follow}
+            onChange={(e) => {
+              setFollow(e.target.checked);
+              if (e.target.checked && followPath) {
+                lastFollowed.current = followPath;
+                void load(followPath);
+              }
+            }}
+          />
+          {f.followTerminal}
+        </label>
         <button type="button" onClick={() => void pickAndUpload()}>{t.transfer.upload}</button>
         <button type="button" disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>
           {t.transfer.download}
@@ -379,7 +404,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
                   aria-label={t.layout.columnResize(label)}
                   className="col-resizer"
                   onMouseDown={(e) => startColumnDrag(i, e)}
-                  onDoubleClick={() => setColumns((cur) => { const next = resizeColumn(cur, i, [280, 80, 150, 100][i] - cur[i]); saveColumns(next); return next; })}
+                  onDoubleClick={() => setColumns((cur) => { const next = resizeColumn(cur, i, DEFAULT_COLUMNS[i] - cur[i]); saveColumns(next); return next; })}
                 />
               </th>
             ))}

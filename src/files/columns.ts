@@ -1,4 +1,4 @@
-export const DEFAULT_COLUMNS = [280, 80, 150, 100];
+export const DEFAULT_COLUMNS = [150, 60, 132, 84];
 export const MIN_COLUMN = 48;
 
 const KEY = "ssh-istemci.fileColumns";

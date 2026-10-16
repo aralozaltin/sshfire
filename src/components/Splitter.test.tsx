@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { Splitter } from "./Splitter";
+import { DEFAULT_SIDEBAR_WIDTH } from "../layout/sidebarWidth";
 
 function setup(width = 250) {
   const onChange = vi.fn();
@@ -37,7 +38,7 @@ test("arrow keys resize in small steps, shift in large steps", () => {
 });
 
 test("double clicking restores the default width", () => {
-  const { onChange, bar } = setup(400);
+  const { onChange, bar } = setup(300);
   fireEvent.doubleClick(bar);
-  expect(onChange).toHaveBeenLastCalledWith(250);
+  expect(onChange).toHaveBeenLastCalledWith(DEFAULT_SIDEBAR_WIDTH);
 });

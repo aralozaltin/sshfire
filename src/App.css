@@ -59,7 +59,7 @@ input, select { background: var(--surface); border: 1px solid var(--line); borde
 input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accent); outline-offset: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.app { display: grid; grid-template-columns: 250px 5px 1fr; height: 100%; }
+.app { display: grid; grid-template-columns: 430px 5px 1fr; height: 100%; }
 .app__sidebar { min-width: 0; overflow: auto; background: var(--surface); display: flex; flex-direction: column; }
 .app__footer { border-top: 1px solid var(--line); background: var(--chrome); padding: 4px 6px; }
 .theme-toggle { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: center; }
@@ -160,3 +160,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .inline-rename { display: inline-flex; flex-direction: column; width: calc(100% - 1.6em); }
 .inline-rename input { padding: 0 3px; }
 .inline-rename__error { color: var(--danger); font-size: 11px; }
+
+.files__follow { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.files__follow input { width: auto; }

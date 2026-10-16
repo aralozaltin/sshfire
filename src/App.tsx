@@ -77,6 +77,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("servers");
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
+  const [cwds, setCwds] = useState<Record<string, string>>({});
   const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
   const { transfers, dismiss } = useTransfers(api.onTransferProgress);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
@@ -206,6 +207,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               api={api}
               clipboard={clipboard}
               onClipboardChange={setClipboard}
+              followPath={activeKey ? cwds[activeKey] : undefined}
               initialPath={activeKey ? filePaths[activeKey] : undefined}
               onPathChange={(p) => activeKey && setFilePaths((cur) => ({ ...cur, [activeKey]: p }))}
             />
@@ -244,6 +246,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               onStatusChange={(st) => setStatus(t.key, st)}
               onReconnect={() => reconnect(t.key)}
               onTabId={(id) => setBackendIds((cur) => ({ ...cur, [t.key]: id }))}
+              onCwd={(cwd) => setCwds((cur) => ({ ...cur, [t.key]: cwd }))}
             />
           ))}
         </div>

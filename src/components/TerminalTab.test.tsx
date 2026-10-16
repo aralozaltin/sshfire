@@ -96,3 +96,19 @@ test("the pane does not use the class name xterm.js puts on its own root element
   expect(container.querySelector(".terminal")).toBeNull();
   expect(container.querySelector(".shell-pane")).not.toBeNull();
 });
+
+test("the shell directory is reported and watching stops on unmount", async () => {
+  const { term, api } = setup();
+  let push: (c: string) => void = () => {};
+  const cwdStart = vi.fn(async (_id: string, cb: (c: string) => void) => { push = cb; });
+  const cwdStop = vi.fn(async () => {});
+  const onCwd = vi.fn();
+  const full = { ...api, cwdStart, cwdStop } as unknown as ShellApi;
+  const { unmount } = render(<TerminalTab sessionId="s1" api={full} createTerm={() => term} onCwd={onCwd} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(cwdStart).toHaveBeenCalledWith("t1", expect.any(Function));
+  act(() => push("/var/log"));
+  expect(onCwd).toHaveBeenCalledWith("/var/log");
+  unmount();
+  await vi.waitFor(() => expect(cwdStop).toHaveBeenCalledWith("t1"));
+});

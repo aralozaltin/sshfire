@@ -59,6 +59,7 @@ export const en: Messages = {
     colSize: "Size",
     colModified: "Modified",
     colPermissions: "Permissions",
+    followTerminal: "Follow terminal",
     up: "Parent folder",
     refresh: "Refresh",
     newFolder: "New folder",

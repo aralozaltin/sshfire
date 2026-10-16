@@ -66,6 +66,12 @@ export function metricsStart(tabId: string, onMetrics: (m: Metrics | null) => vo
   channel.onmessage = onMetrics;
   return invoke<void>("metrics_start", { tabId, onMetrics: channel });
 }
+export function cwdStart(tabId: string, onCwd: (cwd: string) => void) {
+  const channel = new Channel<string>();
+  channel.onmessage = onCwd;
+  return invoke<void>("cwd_start", { tabId, onCwd: channel });
+}
+export const cwdStop = (tabId: string) => invoke<void>("cwd_stop", { tabId });
 export const metricsStop = (tabId: string) => invoke<void>("metrics_stop", { tabId });
 
 export const answerHostKey = (requestId: string, trust: boolean) =>
@@ -112,6 +118,8 @@ export const realApi = {
   onTransferProgress,
   metricsStart,
   metricsStop,
+  cwdStart,
+  cwdStop,
   answerHostKey,
   onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
   onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,

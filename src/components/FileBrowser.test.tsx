@@ -36,11 +36,11 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
   } satisfies FilesApi;
 }
 
-function setup(over: { api?: ReturnType<typeof fakeApi>; clipboard?: ClipboardItem | null; tabId?: string | null } = {}) {
+function setup(over: { api?: ReturnType<typeof fakeApi>; clipboard?: ClipboardItem | null; tabId?: string | null; followPath?: string | null } = {}) {
   const api = over.api ?? fakeApi();
   const onClipboardChange = vi.fn();
   const view = render(
-    <FileBrowser tabId={over.tabId === undefined ? "t1" : over.tabId} connectionKey="c1" api={api} clipboard={over.clipboard ?? null} onClipboardChange={onClipboardChange} />,
+    <FileBrowser tabId={over.tabId === undefined ? "t1" : over.tabId} connectionKey="c1" api={api} clipboard={over.clipboard ?? null} onClipboardChange={onClipboardChange} followPath={over.followPath} />,
   );
   return { api, onClipboardChange, ...view };
 }
@@ -274,13 +274,13 @@ test("dragging a column edge resizes that column and remembers it", async () => 
   const { container } = setup();
   await screen.findByText("rapor.txt");
   const cols = () => [...container.querySelectorAll("col")].map((c) => (c as HTMLElement).style.width);
-  expect(cols()).toEqual(["280px", "80px", "150px", "100px"]);
+  expect(cols()).toEqual(["150px", "60px", "132px", "84px"]);
   const handle = screen.getByRole("separator", { name: "Boyut sütun genişliği" });
   fireEvent.mouseDown(handle, { clientX: 400 });
   fireEvent.mouseMove(window, { clientX: 440 });
   fireEvent.mouseUp(window);
-  expect(cols()).toEqual(["280px", "120px", "150px", "100px"]);
-  expect(JSON.parse(localStorage.getItem("ssh-istemci.fileColumns")!)).toEqual([280, 120, 150, 100]);
+  expect(cols()).toEqual(["150px", "100px", "132px", "84px"]);
+  expect(JSON.parse(localStorage.getItem("ssh-istemci.fileColumns")!)).toEqual([150, 100, 132, 84]);
 });
 
 function dt(initial: Record<string, string> = {}) {
@@ -402,4 +402,50 @@ test("renaming to the same name does nothing", async () => {
   await userEvent.keyboard("{F2}{Enter}");
   expect(api.sftpRename).not.toHaveBeenCalled();
   expect(screen.queryByLabelText("Yeni ad")).not.toBeInTheDocument();
+});
+
+test("opens at the terminal's directory when it is already known", async () => {
+  const { api } = setup({ followPath: "/home/u/docs" });
+  expect(await screen.findByText("a.txt")).toBeInTheDocument();
+  expect(api.sftpList).toHaveBeenCalledWith("t1", "/home/u/docs");
+  expect(api.sftpHome).not.toHaveBeenCalled();
+});
+
+function renderFollow(api: ReturnType<typeof fakeApi>, followPath: string | null) {
+  const ui = (fp: string | null) => (
+    <FileBrowser tabId="t1" connectionKey="c1" api={api} clipboard={null} onClipboardChange={() => {}} followPath={fp} />
+  );
+  const view = render(ui(followPath));
+  return { change: (fp: string | null) => view.rerender(ui(fp)) };
+}
+
+test("when the terminal changes directory the panel follows", async () => {
+  const api = fakeApi();
+  const { change } = renderFollow(api, "/home/u");
+  await screen.findByText("rapor.txt");
+  change("/home/u/docs");
+  expect(await screen.findByText("a.txt")).toBeInTheDocument();
+  expect(screen.getByRole("checkbox", { name: "Terminali izle" })).toBeChecked();
+});
+
+test("unchecking follow stops the panel from jumping; re-checking jumps to the terminal directory", async () => {
+  const api = fakeApi();
+  const { change } = renderFollow(api, "/home/u");
+  await screen.findByText("rapor.txt");
+  await userEvent.click(screen.getByRole("checkbox", { name: "Terminali izle" }));
+  change("/home/u/docs");
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.queryByText("a.txt")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("checkbox", { name: "Terminali izle" }));
+  expect(await screen.findByText("a.txt")).toBeInTheDocument();
+});
+
+test("browsing manually is not undone while the terminal stays where it is", async () => {
+  const api = fakeApi();
+  const { change } = renderFollow(api, "/home/u");
+  await userEvent.dblClick(await screen.findByText("docs"));
+  await screen.findByText("a.txt");
+  change("/home/u");
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.getByText("a.txt")).toBeInTheDocument();
 });

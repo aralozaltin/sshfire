@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { DEFAULT_SIDEBAR_WIDTH } from "./layout/sidebarWidth";
 import type { AppApi } from "./api";
 import type { Session } from "./types";
 import type { TermLike } from "./terminal/shellSession";
@@ -160,6 +161,8 @@ function sftpApi() {
     onTransferProgress: vi.fn(async () => () => {}),
     metricsStart: vi.fn(async () => {}),
     metricsStop: vi.fn(async () => {}),
+    cwdStart: vi.fn(async (_id: string, _cb: (c: string) => void) => {}),
+    cwdStop: vi.fn(async () => {}),
   };
 }
 
@@ -197,9 +200,25 @@ test("dragging the splitter resizes the sidebar and remembers the width", async 
   const { container } = render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
   const bar = screen.getByRole("separator", { name: "Kenar çubuğu genişliği" });
-  fireEvent.mouseDown(bar, { clientX: 250 });
-  fireEvent.mouseMove(window, { clientX: 340 });
+  fireEvent.mouseDown(bar, { clientX: DEFAULT_SIDEBAR_WIDTH });
+  fireEvent.mouseMove(window, { clientX: DEFAULT_SIDEBAR_WIDTH - 60 });
   fireEvent.mouseUp(window);
-  expect((container.querySelector(".app") as HTMLElement).style.gridTemplateColumns).toBe("340px 5px 1fr");
-  expect(localStorage.getItem("ssh-istemci.sidebarWidth")).toBe("340");
+  const expected = DEFAULT_SIDEBAR_WIDTH - 60;
+  expect((container.querySelector(".app") as HTMLElement).style.gridTemplateColumns).toBe(`${expected}px 5px 1fr`);
+  expect(localStorage.getItem("ssh-istemci.sidebarWidth")).toBe(String(expected));
+});
+
+test("the files panel follows the directory the terminal reports", async () => {
+  const extra = sftpApi();
+  let pushCwd: (c: string) => void = () => {};
+  extra.cwdStart = vi.fn(async (_id: string, cb: (c: string) => void) => { pushCwd = cb; });
+  const { api } = fakeApi(extra as unknown as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(extra.cwdStart).toHaveBeenCalledWith("tab-1", expect.any(Function)));
+  act(() => pushCwd("/var/log"));
+  await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
+  await vi.waitFor(() => expect(extra.sftpList).toHaveBeenCalledWith("tab-1", "/var/log"));
+  act(() => pushCwd("/etc"));
+  await vi.waitFor(() => expect(extra.sftpList).toHaveBeenCalledWith("tab-1", "/etc"));
 });

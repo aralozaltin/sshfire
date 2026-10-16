@@ -57,6 +57,7 @@ export const tr = {
     colSize: "Boyut",
     colModified: "Değişiklik",
     colPermissions: "İzinler",
+    followTerminal: "Terminali izle",
     up: "Üst klasör",
     refresh: "Yenile",
     newFolder: "Yeni klasör",

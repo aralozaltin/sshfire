@@ -19,9 +19,10 @@ export interface TerminalTabProps {
   onStatusChange?: (status: "connecting" | "open" | "closed") => void;
   onReconnect?: () => void;
   onTabId?: (tabId: string) => void;
+  onCwd?: (cwd: string) => void;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -42,13 +43,17 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       if (!alive || session.status !== "open" || !session.tabId) return;
       onTabId?.(session.tabId);
       void api.metricsStart?.(session.tabId, setMetrics);
+      void api.cwdStart?.(session.tabId, (cwd) => onCwd?.(cwd));
     });
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => term.fit()) : null;
     if (hostRef.current) observer?.observe(hostRef.current);
     return () => {
       alive = false;
       observer?.disconnect();
-      if (session.tabId) void api.metricsStop?.(session.tabId);
+      if (session.tabId) {
+        void api.metricsStop?.(session.tabId);
+        void api.cwdStop?.(session.tabId);
+      }
       void session.close();
     };
     // sessionId yalnızca açılışta okunur; yeniden bağlanma sekmeyi yeniden oluşturur.
