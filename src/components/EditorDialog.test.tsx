@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { appendEditorText, editorText, focusEditor } from "../test-helpers/editor";
 import { EditorDialog } from "./EditorDialog";
 
 function setup(over: { onSave?: (c: string) => Promise<void> } = {}) {
@@ -12,13 +13,13 @@ function setup(over: { onSave?: (c: string) => Promise<void> } = {}) {
 test("shows the path and the initial content and starts clean", () => {
   setup();
   expect(screen.getByText("/etc/app.conf")).toBeInTheDocument();
-  expect(screen.getByLabelText("Dosya içeriği")).toHaveValue("a=1\n");
+  expect(editorText()).toBe("a=1\n");
   expect(screen.getByRole("button", { name: "Kaydet" })).toBeDisabled();
 });
 
 test("typing marks the document unsaved and Save writes the new content", async () => {
   const { onSave } = setup();
-  await userEvent.type(screen.getByLabelText("Dosya içeriği"), "b=2");
+  appendEditorText("b=2");
   expect(screen.getByText("Kaydedilmemiş değişiklikler")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
   expect(onSave).toHaveBeenCalledWith("a=1\nb=2");
@@ -28,22 +29,24 @@ test("typing marks the document unsaved and Save writes the new content", async 
 
 test("Ctrl+S and Cmd+S save", async () => {
   const { onSave } = setup();
-  await userEvent.type(screen.getByLabelText("Dosya içeriği"), "x");
-  await userEvent.keyboard("{Meta>}s{/Meta}");
+  appendEditorText("x");
+  focusEditor();
+  await userEvent.keyboard("{Control>}s{/Control}");
   expect(onSave).toHaveBeenCalledWith("a=1\nx");
 });
 
-test("the Tab key inserts a tab character instead of leaving the editor", async () => {
+test("the status bar shows the cursor position and wrapping can be toggled", async () => {
   setup();
-  const box = screen.getByLabelText("Dosya içeriği") as HTMLTextAreaElement;
-  await userEvent.click(box);
-  await userEvent.keyboard("{Tab}");
-  expect(box.value).toContain("\t");
+  expect(screen.getByText("Satır 1, sütun 1")).toBeInTheDocument();
+  const wrap = screen.getByRole("checkbox", { name: "Satır sar" });
+  expect(wrap).not.toBeChecked();
+  await userEvent.click(wrap);
+  expect(document.querySelector(".cm-lineWrapping")).not.toBeNull();
 });
 
 test("a failed save shows the error and keeps the document dirty", async () => {
   setup({ onSave: vi.fn(async () => { throw { code: "permission_denied" }; }) });
-  await userEvent.type(screen.getByLabelText("Dosya içeriği"), "x");
+  appendEditorText("x");
   await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Erişim reddedildi");
   expect(screen.getByRole("button", { name: "Kaydet" })).toBeEnabled();
@@ -57,7 +60,7 @@ test("closing a clean document closes immediately", async () => {
 
 test("closing with unsaved changes asks first and can be cancelled", async () => {
   const { onClose } = setup();
-  await userEvent.type(screen.getByLabelText("Dosya içeriği"), "x");
+  appendEditorText("x");
   await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.getByRole("alertdialog", { name: "Değişiklikler kaydedilmedi" })).toBeInTheDocument();

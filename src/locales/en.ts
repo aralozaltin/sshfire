@@ -157,6 +157,8 @@ export const en: Messages = {
     discardBody: "There are unsaved changes. Close anyway?",
     discard: "Close",
     keepEditing: "Keep editing",
+    wrap: "Wrap lines",
+    position: (line: number, column: number) => `Line ${line}, column ${column}`,
     textLabel: "File content",
   },
   passwordPrompt: {

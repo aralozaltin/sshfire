@@ -156,6 +156,8 @@ export const tr = {
     discard: "Kapat",
     keepEditing: "Düzenlemeye dön",
     textLabel: "Dosya içeriği",
+    wrap: "Satır sar",
+    position: (line: number, column: number) => `Satır ${line}, sütun ${column}`,
   },
   passwordPrompt: {
     title: "Parola gerekli",

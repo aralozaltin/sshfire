@@ -1,6 +1,7 @@
 import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FileBrowser } from "./FileBrowser";
+import { editorText, focusEditor, replaceEditorText } from "../test-helpers/editor";
 import type { ClipboardItem } from "../files/fileOps";
 import type { FileEntry, FilesApi } from "../files/types";
 import type { TransferEvent } from "../files/transfers";
@@ -458,17 +459,17 @@ test("browsing manually is not undone while the terminal stays where it is", asy
 test("double clicking a file opens it in the editor with its content", async () => {
   const { api } = setup();
   await userEvent.dblClick(await screen.findByText("rapor.txt"));
-  const box = await screen.findByLabelText("Dosya içeriği");
-  expect(box).toHaveValue("merhaba dünya\n");
+  await screen.findByLabelText("Dosya içeriği");
+  expect(editorText()).toBe("merhaba dünya\n");
   expect(api.sftpReadText).toHaveBeenCalledWith("t1", "/home/u/rapor.txt");
 });
 
 test("editing and pressing Ctrl+S writes the file back and refreshes the listing", async () => {
   const { api } = setup();
   await userEvent.dblClick(await screen.findByText("rapor.txt"));
-  const box = await screen.findByLabelText("Dosya içeriği");
-  await userEvent.clear(box);
-  await userEvent.type(box, "yeni içerik");
+  await screen.findByLabelText("Dosya içeriği");
+  replaceEditorText("yeni içerik");
+  focusEditor();
   await userEvent.keyboard("{Control>}s{/Control}");
   await vi.waitFor(() => expect(api.sftpWriteText).toHaveBeenCalledWith("t1", "/home/u/rapor.txt", "yeni içerik"));
   expect(await screen.findByText("Kaydedildi")).toBeInTheDocument();

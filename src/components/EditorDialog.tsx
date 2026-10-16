@@ -1,5 +1,6 @@
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { errorText, useT } from "../i18n";
+import { CodeEditor } from "./CodeEditor";
 
 export interface EditorDialogProps {
   path: string;
@@ -16,7 +17,8 @@ export function EditorDialog({ path, initial, onSave, onClose }: EditorDialogPro
   const [error, setError] = useState<unknown>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
-  const box = useRef<HTMLTextAreaElement>(null);
+  const [wrap, setWrap] = useState(false);
+  const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const dirty = value !== saved;
 
   async function save() {
@@ -39,21 +41,6 @@ export function EditorDialog({ path, initial, onSave, onClose }: EditorDialogPro
     else onClose();
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      void save();
-    } else if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      e.preventDefault();
-      const el = e.currentTarget;
-      const { selectionStart: from, selectionEnd: to } = el;
-      const next = `${value.slice(0, from)}\t${value.slice(to)}`;
-      setValue(next);
-      setJustSaved(false);
-      requestAnimationFrame(() => el.setSelectionRange(from + 1, from + 1));
-    }
-  }
-
   return (
     <div className="editor" role="dialog" aria-label={path}>
       <div className="editor__bar">
@@ -63,19 +50,26 @@ export function EditorDialog({ path, initial, onSave, onClose }: EditorDialogPro
         <button type="button" onClick={requestClose}>{t.editor.close}</button>
       </div>
       {error != null && <div role="alert" className="banner banner--error">{errorText(t, error)}</div>}
-      <textarea
-        ref={box}
-        aria-label={t.editor.textLabel}
-        className="editor__text"
-        spellCheck={false}
-        autoFocus
-        value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
+      <CodeEditor
+        path={path}
+        value={initial}
+        label={t.editor.textLabel}
+        wrap={wrap}
+        dark={document.documentElement.dataset.theme !== "light"}
+        onSave={() => void save()}
+        onChange={(v) => {
+          setValue(v);
           setJustSaved(false);
         }}
-        onKeyDown={onKeyDown}
+        onCursor={(line, column) => setCursor({ line, column })}
       />
+      <div className="editor__status">
+        <label>
+          <input type="checkbox" checked={wrap} onChange={(e) => setWrap(e.target.checked)} />
+          {t.editor.wrap}
+        </label>
+        <span>{t.editor.position(cursor.line, cursor.column)}</span>
+      </div>
       {confirmingClose && (
         <div className="overlay">
           <div role="alertdialog" aria-modal="true" aria-label={t.editor.discardTitle} className="hostkey-dialog">

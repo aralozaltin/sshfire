@@ -279,3 +279,8 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .tabs__tab { border-top: 3px solid transparent; }
 
 .server-list__online { flex: none; width: 9px; height: 9px; margin: 0 6px; align-self: center; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25); }
+
+.code-editor { flex: 1; min-height: 0; overflow: hidden; }
+.code-editor .cm-editor { height: 100%; outline: none; }
+.editor__status { display: flex; justify-content: space-between; gap: 12px; padding: 2px 8px; border-top: 1px solid var(--line); background: var(--chrome); color: var(--muted); }
+.editor__status label { display: inline-flex; flex-direction: row; grid-template-columns: none; gap: 6px; align-items: center; white-space: nowrap; }
