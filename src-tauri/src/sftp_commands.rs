@@ -202,3 +202,57 @@ pub fn ssh_config_hosts(app: AppHandle) -> Result<crate::ssh_config_import::SshC
     };
     Ok(crate::ssh_config_import::from_config_text(&text, &home.display().to_string(), &user))
 }
+
+const MAX_EXTERNAL_EDIT_BYTES: u64 = 50 * 1024 * 1024;
+const EXTERNAL_EDIT_MAX_AGE: Duration = Duration::from_secs(8 * 60 * 60);
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ExternalEditSync {
+    path: String,
+    ok: bool,
+}
+
+/// Uzak dosyayı geçici klasöre indirip sistemin varsayılan uygulamasıyla açar; dosya kaydedildikçe sunucuya geri yükler.
+#[tauri::command]
+pub async fn sftp_edit_external(app: AppHandle, state: State<'_, AppState>, tab_id: String, path: String) -> Result<String, AppError> {
+    use crate::external_edit::{changed_since, edit_path};
+    use tauri_plugin_opener::OpenerExt;
+    let sftp = client(&state, &tab_id).await?;
+    let bytes = sftp.read_file(&path, MAX_EXTERNAL_EDIT_BYTES).await.map_err(|e| AppError::from(&e))?;
+    let root = std::env::temp_dir().join("sshfire-edit");
+    let local = edit_path(&root, &uuid::Uuid::new_v4().to_string(), &path);
+    let io = |e: std::io::Error| AppError::with_detail("store_error", e.to_string());
+    std::fs::create_dir_all(local.parent().expect("edit path has a parent")).map_err(io)?;
+    std::fs::write(&local, &bytes).map_err(io)?;
+    let mut last = std::fs::metadata(&local).and_then(|m| m.modified()).map_err(io)?;
+    app.opener().open_path(local.to_string_lossy(), None::<&str>).map_err(|e| AppError::with_detail("store_error", e.to_string()))?;
+
+    let (watch_app, watch_local, remote) = (app.clone(), local.clone(), path.clone());
+    tokio::spawn(async move {
+        let started = Instant::now();
+        while started.elapsed() < EXTERNAL_EDIT_MAX_AGE {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let st = watch_app.state::<AppState>();
+            if !st.tabs.lock().unwrap().contains_key(&tab_id) {
+                break;
+            }
+            if !watch_local.exists() {
+                break;
+            }
+            let Some(modified) = changed_since(&watch_local, last) else { continue };
+            last = modified;
+            // Editörler dosyayı yazarken kısa süre yarım bırakabilir; bir tur bekleyip tekrar kontrol et.
+            tokio::time::sleep(Duration::from_millis(400)).await;
+            let ok = match (std::fs::read(&watch_local), client(&st, &tab_id).await) {
+                (Ok(data), Ok(c)) => c.write_file(&remote, &data).await.is_ok(),
+                _ => false,
+            };
+            let _ = watch_app.emit("external-edit-sync", ExternalEditSync { path: remote.clone(), ok });
+        }
+        if let Some(dir) = watch_local.parent() {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    });
+    Ok(local.to_string_lossy().into_owned())
+}

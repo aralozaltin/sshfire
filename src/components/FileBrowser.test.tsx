@@ -10,7 +10,7 @@ const file = (name: string, dir = "/home/u", over: Partial<FileEntry> = {}): Fil
 });
 const folder = (name: string, dir = "/home/u") => file(name, dir, { isDir: true, size: 4096, permissions: 0o755 });
 
-const hooks: { drop: (p: string[]) => void; transfer: (e: TransferEvent) => void } = { drop: () => {}, transfer: () => {} };
+const hooks: { drop: (p: string[]) => void; transfer: (e: TransferEvent) => void; sync: (e: { path: string; ok: boolean }) => void } = { drop: () => {}, transfer: () => {}, sync: () => {} };
 
 function fakeApi(listing: Record<string, FileEntry[]> = {}) {
   const lists: Record<string, FileEntry[]> = {
@@ -28,6 +28,8 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
     sftpChmod: vi.fn(async () => {}),
+    sftpEditExternal: vi.fn(async () => "/tmp/x/rapor.txt"),
+    onExternalEditSync: vi.fn(async (cb: (e: { path: string; ok: boolean }) => void) => { hooks.sync = cb; return () => {}; }),
     sftpCopy: vi.fn(async () => {}),
     sftpReadText: vi.fn(async (_t: string, _p: string) => "merhaba dünya\n"),
     sftpWriteText: vi.fn(async (_t: string, _p: string, _c: string) => {}),
@@ -546,4 +548,17 @@ test("a filter with no match says so and clears when entering a folder", async (
   await userEvent.dblClick(await screen.findByText("docs"));
   await screen.findByText("a.txt");
   expect(screen.getByRole("searchbox", { name: "Dosyaları filtrele" })).toHaveValue("");
+});
+
+test("opening in the external editor reports each upload back to the server", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Harici düzenleyicide aç" }));
+  expect(api.sftpEditExternal).toHaveBeenCalledWith("t1", "/home/u/rapor.txt");
+  expect(await screen.findByRole("status")).toHaveTextContent("kaydettikçe sunucuya yüklenir");
+  act(() => hooks.sync({ path: "/home/u/rapor.txt", ok: true }));
+  expect(await screen.findByRole("status")).toHaveTextContent("rapor.txt sunucuya yüklendi");
+  act(() => hooks.sync({ path: "/home/u/rapor.txt", ok: false }));
+  expect(await screen.findByRole("status")).toHaveTextContent("yüklenemedi");
 });

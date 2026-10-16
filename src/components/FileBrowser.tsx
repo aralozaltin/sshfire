@@ -153,6 +153,9 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         if (e.direction === "upload" && e.state === "done") void live.current.load(live.current.path);
       })
       .then((off) => (cancelled ? off() : offs.push(off)));
+    void api
+      .onExternalEditSync((e) => setNotice(e.ok ? f.editSynced(e.path.split("/").pop() ?? e.path) : f.editSyncFailed(e.path.split("/").pop() ?? e.path)))
+      .then((off) => (cancelled ? off() : offs.push(off)));
     return () => {
       cancelled = true;
       offs.forEach((off) => off());
@@ -305,6 +308,17 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     }
   }
 
+  async function editExternal(entry: FileEntry) {
+    if (!tabId) return;
+    try {
+      setNotice(null);
+      await api.sftpEditExternal(tabId, entry.path);
+      setNotice(f.editExternalStarted);
+    } catch (e) {
+      setError(e);
+    }
+  }
+
   function open(entry: FileEntry) {
     if (entry.isDir) void load(entry.path);
     else void edit(entry);
@@ -341,6 +355,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
         { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
         { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
+        { label: f.editExternal, onClick: () => selectedEntries[0] && void editExternal(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
         { label: t.remove, onClick: () => setConfirming(selectedEntries) },
         { label: f.chmod, onClick: () => selectedEntries[0] && setChmodTarget(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isSymlink },

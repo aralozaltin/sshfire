@@ -45,6 +45,9 @@ export const sftpRename = (tabId: string, from: string, to: string) => invoke<vo
 export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
   invoke<void>("sftp_remove", { tabId, path, recursive });
 export const sftpChmod = (tabId: string, path: string, mode: number) => invoke<void>("sftp_chmod", { tabId, path, mode });
+export const sftpEditExternal = (tabId: string, path: string) => invoke<string>("sftp_edit_external", { tabId, path });
+export const onExternalEditSync = (cb: (e: { path: string; ok: boolean }) => void) =>
+  listen<{ path: string; ok: boolean }>("external-edit-sync", (e) => cb(e.payload));
 export const sftpCopy = (tabId: string, from: string, to: string) => invoke<void>("sftp_copy", { tabId, from, to });
 export const sftpReadText = (tabId: string, path: string) => invoke<string>("sftp_read_text", { tabId, path });
 export const sftpWriteText = (tabId: string, path: string, content: string) =>
@@ -209,6 +212,8 @@ export const realApi = {
   sftpRename,
   sftpRemove,
   sftpChmod,
+  sftpEditExternal,
+  onExternalEditSync: async (cb: (e: { path: string; ok: boolean }) => void) => (await onExternalEditSync(cb)) as () => void,
   sftpCopy,
   sftpReadText,
   sftpWriteText,

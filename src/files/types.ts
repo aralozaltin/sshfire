@@ -25,6 +25,9 @@ export interface FilesApi {
   sftpUpload(tabId: string, items: { local: string; remote: string }[]): Promise<string[]>;
   sftpDownload(tabId: string, remotePaths: string[]): Promise<string[]>;
   pickFiles(): Promise<string[]>;
+  /** Uzak dosyayı yerel varsayılan uygulamayla açar; kaydedildikçe geri yükler. Geçici yerel yolu döndürür. */
+  sftpEditExternal(tabId: string, path: string): Promise<string>;
+  onExternalEditSync(cb: (e: { path: string; ok: boolean }) => void): Promise<() => void>;
   onFilesDropped(cb: (paths: string[]) => void): Promise<() => void>;
   onTransferProgress(cb: (e: TransferEvent) => void): Promise<() => void>;
 }
