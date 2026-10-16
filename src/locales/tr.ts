@@ -46,4 +46,5 @@ export const tr = {
     reject: "Reddet",
   },
   startupWarning: "Uyarı",
+  confirmDelete: { title: "Silme onayı", body: (name: string) => `${name} silinsin mi? Kayıtlı parolası da silinir.` },
 } as const;

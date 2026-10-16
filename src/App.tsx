@@ -36,6 +36,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const reload = useCallback(async () => setSessions(await api.listSessions()), [api]);
 
@@ -94,9 +95,10 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
     }
   }
 
-  async function remove(id: string) {
-    const s = sessions.find((x) => x.id === id);
-    if (!s || !window.confirm(`${s.name} silinsin mi?`)) return;
+  async function confirmRemove() {
+    const id = deleting;
+    setDeleting(null);
+    if (!id) return;
     await api.removeSession(id);
     await reload();
   }
@@ -115,7 +117,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
           sessions={sessions}
           onConnect={openTab}
           onEdit={(id) => setDialog({ mode: "edit", id })}
-          onDelete={remove}
+          onDelete={setDeleting}
           onAdd={() => setDialog({ mode: "add" })}
         />
       </nav>
@@ -150,6 +152,18 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
             onSave={save}
             onCancel={() => setDialog(null)}
           />
+        </div>
+      )}
+      {deleting && (
+        <div className="overlay">
+          <div role="alertdialog" aria-modal="true" aria-label={tr.confirmDelete.title} className="hostkey-dialog">
+            <h2>{tr.confirmDelete.title}</h2>
+            <p>{tr.confirmDelete.body(sessions.find((x) => x.id === deleting)?.name ?? "")}</p>
+            <div className="hostkey-dialog__actions">
+              <button type="button" autoFocus onClick={() => setDeleting(null)}>{tr.dialog.cancel}</button>
+              <button type="button" onClick={() => void confirmRemove()}>{tr.remove}</button>
+            </div>
+          </div>
         </div>
       )}
       {hostKey && (

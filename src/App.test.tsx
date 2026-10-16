@@ -86,3 +86,24 @@ test("closing a tab removes it", async () => {
   await userEvent.click(await screen.findByRole("button", { name: "Test 3.81 kapat" }));
   expect(screen.queryByRole("tab")).not.toBeInTheDocument();
 });
+
+test("deleting asks for confirmation inside the app and removes on confirm", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Test 3.81 sil" }));
+  expect(api.removeSession).not.toHaveBeenCalled();
+  expect(screen.getByRole("alertdialog", { name: "Silme onayı" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Sil" }));
+  expect(api.removeSession).toHaveBeenCalledWith("1");
+});
+
+test("cancelling the delete confirmation keeps the server", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Test 3.81 sil" }));
+  await userEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
+  expect(api.removeSession).not.toHaveBeenCalled();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+});
