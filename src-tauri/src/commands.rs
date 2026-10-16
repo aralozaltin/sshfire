@@ -118,7 +118,12 @@ pub async fn connect(
             .await
             .map_err(|e| AppError::from(&e))?,
     );
+    let ptys_before = conn.list_ptys().await.ok();
     let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
+    let tty = match ptys_before {
+        Some(before) => conn.detect_shell_pty(&before).await,
+        None => None,
+    };
 
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
@@ -143,7 +148,7 @@ pub async fn connect(
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason });
         }
     });
-    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, throttle, task });
+    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, cwd_task: None, throttle, task });
     Ok(tab_id)
 }
 
@@ -184,6 +189,9 @@ pub fn shell_close(state: State<'_, AppState>, tab_id: String) {
         if let Some(m) = tab.metrics_task {
             m.abort();
         }
+        if let Some(c) = tab.cwd_task {
+            c.abort();
+        }
     }
 }
 
@@ -220,6 +228,39 @@ pub fn metrics_stop(state: State<'_, AppState>, tab_id: String) {
     if let Some(tab) = state.tabs.lock().unwrap().get_mut(&tab_id) {
         if let Some(m) = tab.metrics_task.take() {
             m.abort();
+        }
+    }
+}
+
+#[tauri::command]
+pub fn cwd_start(state: State<'_, AppState>, tab_id: String, on_cwd: Channel<String>) -> Result<(), AppError> {
+    let mut tabs = state.tabs.lock().unwrap();
+    let tab = tabs.get_mut(&tab_id).ok_or_else(|| AppError::code("tab_not_found"))?;
+    let Some(tty) = tab.tty else { return Ok(()) };
+    if let Some(old) = tab.cwd_task.take() {
+        old.abort();
+    }
+    let conn = tab.conn.clone();
+    tab.cwd_task = Some(tauri::async_runtime::spawn(async move {
+        let mut last: Option<String> = None;
+        loop {
+            let now = conn.shell_cwd(tty).await.ok().flatten();
+            if let Some(changed) = crate::cwd_task::cwd_changed(&mut last, now) {
+                if on_cwd.send(changed).is_err() {
+                    return;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(1500)).await;
+        }
+    }));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn cwd_stop(state: State<'_, AppState>, tab_id: String) {
+    if let Some(tab) = state.tabs.lock().unwrap().get_mut(&tab_id) {
+        if let Some(c) = tab.cwd_task.take() {
+            c.abort();
         }
     }
 }

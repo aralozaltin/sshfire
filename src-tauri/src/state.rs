@@ -19,6 +19,8 @@ pub struct Tab {
     pub sftp: Arc<tokio::sync::OnceCell<Arc<SftpClient>>>,
     pub writer: ShellWriter,
     pub metrics_task: Option<tauri::async_runtime::JoinHandle<()>>,
+    pub tty: Option<u32>,
+    pub cwd_task: Option<tauri::async_runtime::JoinHandle<()>>,
     pub throttle: Arc<Throttle>,
     pub task: tauri::async_runtime::JoinHandle<()>,
 }

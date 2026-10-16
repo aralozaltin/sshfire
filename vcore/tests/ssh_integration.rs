@@ -332,3 +332,36 @@ async fn shared_connection_serves_a_shell_and_exec_at_the_same_time() {
     assert_eq!(conn.exec("echo side").await.unwrap(), "side\n");
     read_until(&mut shell, "shell-7").await;
 }
+
+#[tokio::test]
+async fn finds_the_new_pty_and_follows_cd() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    let before = conn.list_ptys().await.unwrap();
+    let shell = conn.open_shell(80, 24).await.unwrap();
+    let pty = conn.detect_shell_pty(&before).await.expect("the new pty should be detected");
+    assert!(!before.contains(&pty));
+    shell.write(b"cd /tmp\n").await.unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let cwd = conn.shell_cwd(pty).await.unwrap();
+        if cwd.as_deref() == Some("/tmp") { break; }
+        assert!(std::time::Instant::now() < deadline, "cwd never became /tmp, last: {cwd:?}");
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    }
+    shell.write(b"cd /etc && mkdir -p ../tmp/'a b' && cd /tmp/'a b'\n").await.unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let cwd = conn.shell_cwd(pty).await.unwrap();
+        if cwd.as_deref() == Some("/tmp/a b") { break; }
+        assert!(std::time::Instant::now() < deadline, "cwd never became '/tmp/a b', last: {cwd:?}");
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    }
+}
+
+#[tokio::test]
+async fn a_pty_that_does_not_exist_has_no_cwd() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    assert_eq!(conn.shell_cwd(9999).await.unwrap(), None);
+}

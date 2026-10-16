@@ -1,5 +1,6 @@
 mod app_error;
 mod commands;
+mod cwd_task;
 mod sftp_commands;
 mod metrics_task;
 mod state;
@@ -71,6 +72,8 @@ pub fn run() {
             commands::shell_close,
             commands::metrics_start,
             commands::metrics_stop,
+            commands::cwd_start,
+            commands::cwd_stop,
             sftp_commands::sftp_home,
             sftp_commands::sftp_list,
             sftp_commands::sftp_stat,

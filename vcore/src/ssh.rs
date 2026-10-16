@@ -234,6 +234,34 @@ impl SshConnection {
         }
     }
 
+    pub async fn list_ptys(&self) -> Result<Vec<u32>, SshError> {
+        Ok(crate::cwd::parse_pts_list(&self.exec("ls /dev/pts").await?))
+    }
+
+    /// Kabuk açıldıktan sonra yeni ortaya çıkan pty'yi bulur; birden fazla aday varsa (aynı anda başka
+    /// biri pty açtıysa) hangisinin bizim olduğu bilinemez ve `None` döner.
+    pub async fn detect_shell_pty(&self, before: &[u32]) -> Option<u32> {
+        for _ in 0..8 {
+            if let Ok(after) = self.list_ptys().await {
+                let fresh = crate::cwd::new_ptys(before, &after);
+                match fresh.as_slice() {
+                    [one] => return Some(*one),
+                    [] => {}
+                    _ => return None,
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+        None
+    }
+
+    /// Verilen pty'nin kabuğunun çalışma dizini; kabuk bulunamazsa `None`.
+    pub async fn shell_cwd(&self, pty: u32) -> Result<Option<String>, SshError> {
+        let out = self.exec(&crate::cwd::cwd_command(pty)).await?;
+        let cwd = out.trim_end_matches(['\n', '\r']);
+        Ok(if cwd.is_empty() { None } else { Some(cwd.to_string()) })
+    }
+
     pub(crate) async fn open_sftp_channel(&self) -> Result<russh::Channel<client::Msg>, SshError> {
         let other = |e: russh::Error| SshError::Other(e.to_string());
         let channel = self.handle.channel_open_session().await.map_err(other)?;
