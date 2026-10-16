@@ -7,6 +7,7 @@ export interface TermLike {
   size(): { cols: number; rows: number };
   fit(): void;
   focus(): void;
+  setTheme?(dark: boolean): void;
   dispose(): void;
 }
 

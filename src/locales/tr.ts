@@ -45,6 +45,7 @@ export const tr = {
     trust: "Güven ve bağlan",
     reject: "Reddet",
   },
+  theme: { label: "Tema", system: "Sistem", light: "Açık", dark: "Koyu" },
   startupWarning: "Uyarı",
   confirmDelete: { title: "Silme onayı", body: (name: string) => `${name} silinsin mi? Kayıtlı parolası da silinir.` },
 } as const;

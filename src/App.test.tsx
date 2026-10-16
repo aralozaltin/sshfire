@@ -107,3 +107,12 @@ test("cancelling the delete confirmation keeps the server", async () => {
   expect(api.removeSession).not.toHaveBeenCalled();
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
 });
+
+test("choosing the dark theme sets data-theme and remembers it", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.selectOptions(screen.getByLabelText("Tema"), "dark");
+  expect(document.documentElement.dataset.theme).toBe("dark");
+  expect(localStorage.getItem("ssh-istemci.theme")).toBe("dark");
+});

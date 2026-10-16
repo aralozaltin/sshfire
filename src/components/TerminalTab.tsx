@@ -7,11 +7,12 @@ export interface TerminalTabProps {
   api: ShellApi;
   createTerm: (el: HTMLElement) => TermLike;
   visible?: boolean;
+  dark?: boolean;
   onStatusChange?: (status: "connecting" | "open" | "closed") => void;
   onReconnect?: () => void;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, onStatusChange, onReconnect }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect }: TerminalTabProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -35,6 +36,10 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, onStat
     // sessionId yalnızca açılışta okunur; yeniden bağlanma sekmeyi yeniden oluşturur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    termRef.current?.setTheme?.(dark);
+  }, [dark]);
 
   useEffect(() => {
     if (visible) {

@@ -6,6 +6,8 @@ import { Tabs, type TabInfo } from "./components/Tabs";
 import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
 import { createXterm } from "./terminal/xterm";
+import { ThemeToggle } from "./components/ThemeToggle";
+import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
 import type { TermLike } from "./terminal/shellSession";
 import type { NewSession, Session } from "./types";
 import { tr } from "./locales/tr";
@@ -37,6 +39,28 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
+  const [systemDark, setSystemDark] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
+  const resolvedTheme = resolveTheme(themeMode, systemDark);
+
+  useEffect(() => {
+    applyTheme(resolvedTheme);
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  function changeTheme(mode: ThemeMode) {
+    setThemeMode(mode);
+    saveThemeMode(mode);
+  }
 
   const reload = useCallback(async () => setSessions(await api.listSessions()), [api]);
 
@@ -120,6 +144,9 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
           onDelete={setDeleting}
           onAdd={() => setDialog({ mode: "add" })}
         />
+        <div className="app__footer">
+          <ThemeToggle mode={themeMode} onChange={changeTheme} />
+        </div>
       </nav>
       <main className="app__main">
         {warning && <div role="alert" className="banner banner--warn"><strong>{tr.startupWarning}:</strong> {warning}</div>}
@@ -138,6 +165,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
               api={api}
               createTerm={createTerm}
               visible={t.key === activeKey}
+              dark={resolvedTheme === "dark"}
               onStatusChange={(st) => setStatus(t.key, st)}
               onReconnect={() => reconnect(t.key)}
             />
