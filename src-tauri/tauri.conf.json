@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ssh-istemci",
+  "productName": "SSHFire",
   "version": "0.1.0",
   "identifier": "com.local.sshistemci",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ssh-istemci",
+        "title": "SSHFire",
         "width": 800,
         "height": 600
       }

@@ -94,7 +94,7 @@ export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_lis
 
 /** Kayıt yerini sorar; iptal edilirse `null`, aksi halde yazılan dosyanın yolu. */
 export async function exportSessions(): Promise<string | null> {
-  const path = await saveDialog({ defaultPath: "ssh-istemci-sunucular.json", filters: [{ name: "JSON", extensions: ["json"] }] });
+  const path = await saveDialog({ defaultPath: "sshfire-sunucular.json", filters: [{ name: "JSON", extensions: ["json"] }] });
   if (!path) return null;
   await invoke<void>("sessions_export", { path });
   return path;

@@ -1,6 +1,6 @@
-# ssh-istemci (çalışma adı)
+# SSHFire
 
-Kayıtlı sunuculara çift tıkla bağlanan, hızlı bir masaüstü SSH terminali. Tauri 2 + React + xterm.js, çekirdek Rust (`russh`).
+SSHFire: kayıtlı sunuculara çift tıkla bağlanan, hızlı bir masaüstü SSH terminali. Tauri 2 + React + xterm.js, çekirdek Rust (`russh`).
 Şifreler işletim sisteminin anahtar deposunda (macOS Keychain, Windows Credential Manager, Linux Secret Service).
 
 
