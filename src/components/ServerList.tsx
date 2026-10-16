@@ -106,6 +106,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
                     }
                   }}
                 >
+                  {s.color && <span data-testid={`color-dot-${s.id}`} className="server-list__dot" style={{ backgroundColor: s.color }} />}
                   <span className="server-list__name">{s.name}</span>{" "}
                   <span className="server-list__host">{s.user}@{s.host}{s.port !== 22 ? `:${s.port}` : ""}</span>
                 </button>

@@ -22,6 +22,7 @@ export interface NewSession {
   tunnels?: TunnelSpec[];
   jump?: string | null;
   startup?: string | null;
+  color?: string | null;
 }
 
 export interface Session extends NewSession {

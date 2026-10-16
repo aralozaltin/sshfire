@@ -38,7 +38,7 @@ async fn env() -> Env {
     let secrets = MemorySecrets::default();
     secrets.set("s1", &Secret::new("test-pass-123")).unwrap();
     let session = Session {
-        id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: PORT, user: "tester".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: None, startup: None,
+        id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: PORT, user: "tester".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: None, startup: None, color: None,
     };
     let hosts = Arc::new(Mutex::new(KnownHosts::open(&dir.path().join("k.json")).unwrap()));
     let conn = SshConnection::connect(&session, &secrets, hosts, Arc::new(Trust)).await.unwrap();

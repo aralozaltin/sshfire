@@ -29,6 +29,9 @@ pub struct Session {
     /// Bağlantı kurulunca kabuğa otomatik gönderilen komut.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub startup: Option<String>,
+    /// Listede ve sekmede gösterilen renk etiketi (`#rrggbb`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -45,6 +48,8 @@ pub struct NewSession {
     pub jump: Option<String>,
     #[serde(default)]
     pub startup: Option<String>,
+    #[serde(default)]
+    pub color: Option<String>,
 }
 
 #[derive(Debug)]
@@ -104,6 +109,13 @@ pub struct SessionStore {
     sessions: Vec<Session>,
 }
 
+fn validate_color(color: &Option<String>) -> Result<(), StoreError> {
+    match color {
+        Some(c) if !(c.len() == 7 && c.starts_with('#') && c[1..].chars().all(|x| x.is_ascii_hexdigit())) => Err(StoreError::Invalid("color must look like #rrggbb".into())),
+        _ => Ok(()),
+    }
+}
+
 fn validate(name: &str, host: &str, port: u16, user: &str, tunnels: &[crate::tunnel::TunnelSpec]) -> Result<(), StoreError> {
     if name.trim().is_empty() {
         return Err(StoreError::Invalid("name is empty".into()));
@@ -161,6 +173,7 @@ impl SessionStore {
         let mut fresh: Vec<Session> = Vec::new();
         for s in incoming {
             validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+        validate_color(&s.color)?;
             let existing = self.sessions.iter().find(|x| x.host == s.host && x.port == s.port && x.user == s.user);
             if let Some(found) = existing {
                 remap.insert(s.id.clone(), found.id.clone());
@@ -223,6 +236,7 @@ impl SessionStore {
 
     pub fn add(&mut self, s: NewSession) -> Result<Session, StoreError> {
         validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+        validate_color(&s.color)?;
         self.check_jump(None, &s.jump)?;
         let session = Session {
             id: uuid::Uuid::new_v4().to_string(),
@@ -235,6 +249,7 @@ impl SessionStore {
             tunnels: s.tunnels,
             jump: s.jump,
             startup: s.startup.filter(|c| !c.trim().is_empty()),
+            color: s.color,
         };
         self.sessions.push(session.clone());
         self.save()?;
@@ -243,6 +258,7 @@ impl SessionStore {
 
     pub fn update(&mut self, s: Session) -> Result<(), StoreError> {
         validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+        validate_color(&s.color)?;
         self.check_jump(Some(&s.id), &s.jump)?;
         let slot = self
             .sessions
@@ -292,7 +308,7 @@ mod tests {
             auth: Auth::Password,
             tunnels: vec![],
             jump: None,
-            startup: None,
+            startup: None, color: None,
         }
     }
 
@@ -491,7 +507,7 @@ mod tests {
     fn import_drops_jump_references_that_point_outside_the_file() {
         let dir = tempdir().unwrap();
         let mut target = SessionStore::open(&dir.path().join("dst.json")).unwrap();
-        let orphan = Session { id: "x".into(), name: "Yetim".into(), host: "h".into(), port: 22, user: "u".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: Some("yok".into()), startup: None };
+        let orphan = Session { id: "x".into(), name: "Yetim".into(), host: "h".into(), port: 22, user: "u".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: Some("yok".into()), startup: None, color: None };
         let report = target.import(vec![orphan]).unwrap();
         assert_eq!(report.added, 1);
         assert_eq!(target.list()[0].jump, None);
@@ -511,6 +527,20 @@ mod tests {
         let reopened = SessionStore::open(&file).unwrap();
         assert_eq!(reopened.list()[0].startup.as_deref(), Some("cd /var/log && ls"));
         assert_eq!(reopened.list()[1].startup, None);
+    }
+
+    #[test]
+    fn a_color_label_is_kept_and_a_malformed_one_is_rejected() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("s.json");
+        let mut store = SessionStore::open(&file).unwrap();
+        let mut n = new("a", "h");
+        n.color = Some("#ef4444".into());
+        store.add(n).unwrap();
+        assert_eq!(SessionStore::open(&file).unwrap().list()[0].color.as_deref(), Some("#ef4444"));
+        let mut bad = new("b", "h2");
+        bad.color = Some("red; background:url(x)".into());
+        assert!(matches!(store.add(bad), Err(StoreError::Invalid(_))));
     }
 
     #[test]

@@ -41,3 +41,9 @@ test("right clicking a tab reports which tab and where", () => {
   fireEvent.contextMenu(screen.getByRole("tab", { name: /Prod API/ }), { clientX: 40, clientY: 12 });
   expect(onContextMenu).toHaveBeenCalledWith("b", 40, 12);
 });
+
+test("a tab with a color label gets a stripe in that color", () => {
+  render(<Tabs tabs={[{ id: "a", title: "Prod", status: "open", color: "#ef4444" }, { id: "b", title: "Dev", status: "open" }]} activeId="a" onSelect={() => {}} onClose={() => {}} />);
+  expect(screen.getByRole("tab", { name: /Prod/ })).toHaveStyle({ borderTopColor: "#ef4444" });
+  expect(screen.getByRole("tab", { name: /Dev/ }).style.borderTopColor).toBe("");
+});

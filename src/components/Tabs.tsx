@@ -4,6 +4,7 @@ export interface TabInfo {
   id: string;
   title: string;
   status: "connecting" | "open" | "closed";
+  color?: string | null;
 }
 
 export interface TabsProps {
@@ -26,6 +27,7 @@ export function Tabs({ tabs, activeId, onSelect, onClose, onContextMenu }: TabsP
             role="tab"
             aria-selected={tab.id === activeId}
             className="tabs__tab"
+            style={tab.color ? { borderTopColor: tab.color } : undefined}
             onClick={() => onSelect(tab.id)}
             onContextMenu={(e) => {
               if (!onContextMenu) return;

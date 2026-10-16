@@ -267,3 +267,13 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .permissions__octal input { width: 64px; font-family: monospace; }
 
 .files__filter { flex: 1; min-width: 70px; max-width: 160px; margin-left: auto; }
+
+.color-picker { border: 0; padding: 0; margin: 4px 0; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.color-picker legend { float: left; margin-right: 8px; padding: 0; }
+.color-picker label { cursor: pointer; display: inline-flex; }
+.color-picker input { position: absolute; opacity: 0; pointer-events: none; }
+.color-picker__swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, 0.5); }
+.color-picker input:checked + .color-picker__swatch { border-color: var(--accent, #3b82f6); }
+.color-picker input:focus-visible + .color-picker__swatch { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }
+.server-list__dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.tabs__tab { border-top: 3px solid transparent; }

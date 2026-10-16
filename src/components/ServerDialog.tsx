@@ -9,6 +9,15 @@ export interface ServerDialogProps {
   onCancel: () => void;
 }
 
+const COLORS = [
+  ["#ef4444", "colorRed"],
+  ["#f97316", "colorOrange"],
+  ["#eab308", "colorYellow"],
+  ["#22c55e", "colorGreen"],
+  ["#3b82f6", "colorBlue"],
+  ["#a855f7", "colorPurple"],
+] as const;
+
 export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerDialogProps) {
   const t = useT();
   const d = t.dialog;
@@ -19,6 +28,7 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
   const [folder, setFolder] = useState(initial?.folder ?? "");
   const [authType, setAuthType] = useState<Auth["type"]>(initial?.auth.type ?? "password");
   const [keyPath, setKeyPath] = useState(initial?.auth.type === "key_file" ? initial.auth.path : "");
+  const [color, setColor] = useState(initial?.color ?? "");
   const [startup, setStartup] = useState(initial?.startup ?? "");
   const [jump, setJump] = useState(initial?.jump ?? "");
   const [password, setPassword] = useState("");
@@ -47,6 +57,7 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
       auth,
       ...(initial?.tunnels ? { tunnels: initial.tunnels } : {}),
       ...(jump ? { jump } : initial?.jump ? { jump: null } : {}),
+      ...(color ? { color } : initial?.color ? { color: null } : {}),
       ...(startup.trim() ? { startup: startup.trim() } : initial?.startup ? { startup: null } : {}),
     };
     const pw = authType === "password" && password ? password : undefined;
@@ -89,6 +100,15 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
         {d.startup}
         <input value={startup} onChange={(e) => setStartup(e.target.value)} placeholder="cd /var/log" />
       </label>
+      <fieldset className="color-picker">
+        <legend>{d.color}</legend>
+        {[["", d.colorNone], ...COLORS.map(([hex, key]) => [hex, d[key]])].map(([hex, label]) => (
+          <label key={hex || "none"} title={label}>
+            <input type="radio" name="color" aria-label={label} checked={color === hex} onChange={() => setColor(hex)} />
+            <span className="color-picker__swatch" style={hex ? { backgroundColor: hex } : undefined} />
+          </label>
+        ))}
+      </fieldset>
       {authType === "password" ? (
         <label>
           {d.password}

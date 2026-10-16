@@ -113,3 +113,9 @@ test("there is no actions menu when no extra handlers are given", () => {
   render(<ServerList sessions={sessions} {...props} />);
   expect(screen.queryByRole("button", { name: "Diğer işlemler" })).not.toBeInTheDocument();
 });
+
+test("a server with a color label shows a dot in that color", () => {
+  render(<ServerList sessions={[{ ...s("1", "Prod", "10.0.0.1"), color: "#ef4444" }, s("2", "Dev", "10.0.0.2")]} {...props} />);
+  expect(screen.getByTestId("color-dot-1")).toHaveStyle({ backgroundColor: "#ef4444" });
+  expect(screen.queryByTestId("color-dot-2")).not.toBeInTheDocument();
+});

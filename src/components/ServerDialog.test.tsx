@@ -165,3 +165,16 @@ test("the SSH agent and prompted authentication can be chosen and need no passwo
   await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
   expect(onSave.mock.calls[0][0].auth).toEqual({ type: "interactive" });
 });
+
+test("a color label can be picked and cleared again", async () => {
+  const onSave = vi.fn();
+  render(<ServerDialog initial={existing} onSave={onSave} onCancel={() => {}} />);
+  await userEvent.click(screen.getByRole("radio", { name: "Kırmızı" }));
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave).toHaveBeenLastCalledWith({ ...existing, color: "#ef4444" }, undefined);
+  onSave.mockClear();
+  render(<ServerDialog initial={{ ...existing, color: "#ef4444" }} onSave={onSave} onCancel={() => {}} />);
+  await userEvent.click(screen.getAllByRole("radio", { name: "Renksiz" })[1]);
+  await userEvent.click(screen.getAllByRole("button", { name: "Kaydet" })[1]);
+  expect(onSave).toHaveBeenLastCalledWith({ ...existing, color: null }, undefined);
+});

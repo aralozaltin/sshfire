@@ -45,7 +45,7 @@ fn key(name: &str) -> String {
 }
 
 fn session(auth: Auth) -> Session {
-    Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth, tunnels: vec![], jump: None, startup: None }
+    Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth, tunnels: vec![], jump: None, startup: None, color: None }
 }
 
 async fn connect(auth: Auth, secrets: &MemorySecrets, prompt: Arc<Prompt>) -> Result<SshConnection, SshError> {

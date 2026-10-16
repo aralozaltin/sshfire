@@ -24,7 +24,7 @@ fn server_up() -> bool {
 async fn try_connect() -> Result<SshConnection, SshError> {
     let dir = tempfile::tempdir().unwrap();
     let hosts = Arc::new(Mutex::new(KnownHosts::open(&dir.path().join("k.json")).unwrap()));
-    let session = Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth: Auth::Agent, tunnels: vec![], jump: None, startup: None };
+    let session = Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth: Auth::Agent, tunnels: vec![], jump: None, startup: None, color: None };
     SshConnection::connect(&session, &MemorySecrets::default(), hosts, Arc::new(Trust)).await
 }
 

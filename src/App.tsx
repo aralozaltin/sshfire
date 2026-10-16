@@ -559,7 +559,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           </div>
         )}
         <Tabs
-          tabs={tabs.map((t) => ({ id: t.key, title: t.title, status: t.status }))}
+          tabs={tabs.map((t) => ({ id: t.key, title: t.title, status: t.status, color: sessions.find((x) => x.id === t.sessionId)?.color }))}
           activeId={activeKey}
           onSelect={setActiveKey}
           onClose={closeTab}
