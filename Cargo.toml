@@ -1,0 +1,3 @@
+[workspace]
+members = ["vcore", "src-tauri"]
+resolver = "3"
