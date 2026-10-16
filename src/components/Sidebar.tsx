@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useT } from "../i18n";
 
-export type SidebarTab = "servers" | "files" | "tunnels";
+export type SidebarTab = "servers" | "files" | "tunnels" | "macros";
 
 export interface SidebarProps {
   active: SidebarTab;
@@ -9,9 +9,10 @@ export interface SidebarProps {
   servers: ReactNode;
   files: ReactNode;
   tunnels?: ReactNode;
+  macros?: ReactNode;
 }
 
-export function Sidebar({ active, onChange, servers, files, tunnels }: SidebarProps) {
+export function Sidebar({ active, onChange, servers, files, tunnels, macros }: SidebarProps) {
   const t = useT();
   const tab = (id: SidebarTab, label: string) => (
     <button type="button" role="tab" aria-selected={active === id} className="sidebar__tab" onClick={() => onChange(id)}>
@@ -24,8 +25,9 @@ export function Sidebar({ active, onChange, servers, files, tunnels }: SidebarPr
         {tab("servers", t.servers)}
         {tab("files", t.files.tableLabel)}
         {tunnels !== undefined && tab("tunnels", t.tunnels.tab)}
+        {macros !== undefined && tab("macros", t.macros.tab)}
       </div>
-      <div className="sidebar__panel">{active === "servers" ? servers : active === "files" ? files : tunnels}</div>
+      <div className="sidebar__panel">{active === "servers" ? servers : active === "files" ? files : active === "tunnels" ? tunnels : macros}</div>
     </div>
   );
 }

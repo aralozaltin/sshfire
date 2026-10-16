@@ -358,3 +358,57 @@ test("starting and stopping a saved tunnel goes through the backend with the con
   await userEvent.click(await screen.findByRole("button", { name: "Durdur" }));
   expect(api.tunnelStop).toHaveBeenCalledWith("tab-1", "r1");
 });
+
+function typingTerms() {
+  const terms: { type: (t: string) => void }[] = [];
+  const createTerm = () => {
+    let cb: (t: string) => void = () => {};
+    terms.push({ type: (t) => cb(t) });
+    return { ...fakeTerm(), onData: (c: (t: string) => void) => { cb = c; } };
+  };
+  return { terms, createTerm };
+}
+
+test("a macro created in the macros tab runs in the active terminal with Enter at the end", async () => {
+  const { terms, createTerm } = typingTerms();
+  void terms;
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={createTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalled());
+  await userEvent.click(await screen.findByRole("tab", { name: "Makrolar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Yeni makro" }));
+  await userEvent.type(screen.getByLabelText("Ad"), "Uptime");
+  await userEvent.type(screen.getByLabelText(/Komutlar/), "uptime");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(JSON.parse(localStorage.getItem("ssh-istemci.macros")!)).toEqual([expect.objectContaining({ name: "Uptime", text: "uptime" })]);
+  await userEvent.click(screen.getByRole("button", { name: "Çalıştır" }));
+  await vi.waitFor(() => expect(api.shellWrite).toHaveBeenCalled());
+  const [id, bytes] = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls[0];
+  expect(id).toBe("tab-1");
+  expect(new TextDecoder().decode(bytes)).toBe("uptime\r");
+});
+
+test("recording captures what is typed in the terminal and saves it as a macro", async () => {
+  const { terms, createTerm } = typingTerms();
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={createTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalled());
+  await userEvent.click(await screen.findByRole("tab", { name: "Makrolar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Kaydı başlat" }));
+  expect(screen.getByText(/Kayıt sürüyor/)).toBeInTheDocument();
+  act(() => terms[0].type("ls -la\r"));
+  act(() => terms[0].type("pwd\r"));
+  await userEvent.click(screen.getByRole("button", { name: "Kaydı durdur" }));
+  expect(await screen.findByText("Kaydedilen makro")).toBeInTheDocument();
+  expect(screen.getByText("ls -la ⏎pwd ⏎")).toBeInTheDocument();
+});
+
+test("macros are not available to run without a connection", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("tab", { name: "Makrolar" }));
+  expect(screen.getByText("Makroyu çalıştırmak için bir sunucuya bağlan.")).toBeInTheDocument();
+});

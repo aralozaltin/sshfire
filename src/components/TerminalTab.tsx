@@ -45,7 +45,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     });
     sessionRef.current = session;
     const unregister = hub && tabKey ? hub.register(tabKey, (text) => session.send(text)) : undefined;
-    if (hub && tabKey) session.userInput = (text) => hub.broadcast(tabKey, text);
+    if (hub && tabKey) session.userInput = (text) => hub.userTyped(tabKey, text);
     let alive = true;
     void session.open(sessionId).then(() => {
       if (!alive || session.status !== "open" || !session.tabId) return;

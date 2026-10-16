@@ -200,3 +200,11 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .findbar { display: flex; gap: 4px; padding: 3px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
 .findbar input { flex: 1; }
+
+.macros__list { list-style: none; margin: 0; padding: 0; }
+.macros__list li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-bottom: 1px solid var(--chrome-dark); }
+.macros__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.macros__text span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: Menlo, Consolas, monospace; font-size: 11px; }
+.macros__form { display: grid; gap: 4px; padding: 6px; border-top: 1px solid var(--line); }
+.macros__form label { display: grid; gap: 2px; }
+.macros__form textarea { width: 100%; font: 12px/1.4 Menlo, Consolas, monospace; background: var(--surface); color: var(--fg); border: 1px solid var(--line); }

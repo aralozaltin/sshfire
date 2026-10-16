@@ -13,6 +13,8 @@ import { FileBrowser } from "./components/FileBrowser";
 import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { TransferPanel } from "./components/TransferPanel";
 import { TunnelPanel } from "./components/TunnelPanel";
+import { MacroPanel } from "./components/MacroPanel";
+import { loadMacros, newMacro, saveMacros, textToInput, type Macro } from "./macros/macros";
 import { MultiExecBar } from "./components/MultiExecBar";
 import { MultiExecHub } from "./terminal/multiExec";
 import { useTransfers } from "./files/transfers";
@@ -87,6 +89,9 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const hub = useRef(new MultiExecHub()).current;
   const [multiOn, setMultiOn] = useState(false);
   const [multiKeys, setMultiKeys] = useState<string[]>([]);
+  const [macros, setMacros] = useState<Macro[]>(loadMacros);
+  const [recording, setRecording] = useState(false);
+  const recorded = useRef("");
   const [running, setRunning] = useState<RunningTunnel[]>([]);
   const [cwds, setCwds] = useState<Record<string, string>>({});
   const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
@@ -271,6 +276,33 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     return () => clearInterval(timer);
   }, [api, activeBackendId, sidebarTab]);
 
+  useEffect(() => {
+    if (!recording) return;
+    recorded.current = "";
+    return hub.onInput((key, text) => {
+      if (key === activeKey) recorded.current += text;
+    });
+    // Kayıt başladığı andaki etkin sekmeyi izler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recording, hub]);
+
+  function updateMacros(next: Macro[]) {
+    setMacros(next);
+    saveMacros(next);
+  }
+
+  function stopRecording() {
+    setRecording(false);
+    const text = recorded.current;
+    recorded.current = "";
+    if (text.trim()) updateMacros([...macros, newMacro(t.macros.recordedName, text)]);
+  }
+
+  function saveMacro(m: { id?: string; name: string; text: string }) {
+    if (m.id) updateMacros(macros.map((x) => (x.id === m.id ? { ...x, name: m.name, text: m.text } : x)));
+    else updateMacros([...macros, newMacro(m.name, m.text)]);
+  }
+
   async function startTunnel(spec: TunnelSpec) {
     if (!activeBackendId) return;
     try {
@@ -326,6 +358,18 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               onStart={(spec) => void startTunnel(spec)}
               onStop={(id) => void stopTunnel(id)}
               onChange={(specs) => void saveTunnels(specs)}
+            />
+          }
+          macros={
+            <MacroPanel
+              macros={macros}
+              canRun={activeKey !== null && activeTab?.status === "open"}
+              recording={recording}
+              onRun={(m) => activeKey && hub.send(activeKey, textToInput(m.text))}
+              onSave={saveMacro}
+              onDelete={(id) => updateMacros(macros.filter((x) => x.id !== id))}
+              onStartRecording={() => setRecording(true)}
+              onStopRecording={stopRecording}
             />
           }
           files={
