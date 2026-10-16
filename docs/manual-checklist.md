@@ -79,3 +79,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Yerel terminal: kabuk açılıyor, renkler/boyut doğru; Dosyalar/Tüneller bu sekmede kullanılamıyor
 - [ ] Dosyaya çift tık metin düzenleyiciyi açıyor, Ctrl/⌘+S kaydediyor, ikili dosya reddediliyor, kaydedilmemişken kapatınca soruyor
 - [ ] Terminalde ⌘/Ctrl +/−/0 yazı boyutu, ⌘/Ctrl+Shift+F arama, sağ tık kopyala/yapıştır (seçim varsa kopyalar)
+- [ ] Terminalde bir `https://…` adresine ⌘ (Mac) / Ctrl (Windows) basılıyken tıklayınca varsayılan tarayıcıda açılıyor; `file://` gibi adresler açılmıyor

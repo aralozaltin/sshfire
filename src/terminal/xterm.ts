@@ -2,6 +2,9 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { SearchAddon } from "@xterm/addon-search";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { isSafeUrl } from "./links";
 import "@xterm/xterm/css/xterm.css";
 import type { TermLike } from "./shellSession";
 import { classifyKey } from "./shortcuts";
@@ -23,6 +26,12 @@ export function createXterm(el: HTMLElement): TermLike {
   const search = new SearchAddon();
   term.loadAddon(fit);
   term.loadAddon(search);
+  term.loadAddon(
+    new WebLinksAddon((event, uri) => {
+      // Yanlışlıkla tıklamayı önlemek için ⌘ (Mac) / Ctrl ile aç.
+      if ((event.metaKey || event.ctrlKey) && isSafeUrl(uri)) void openUrl(uri);
+    }),
+  );
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
   let findRequested: () => void = () => {};
 
