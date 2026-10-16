@@ -100,19 +100,21 @@ pub fn sessions_list(state: State<'_, AppState>) -> Vec<Session> {
 
 #[tauri::command]
 pub fn session_add(state: State<'_, AppState>, session: NewSession, password: Option<String>) -> Result<Session, AppError> {
+    let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
     let added = state.store.lock().unwrap().add(session).map_err(|e| AppError::from(&e))?;
     if let Some(pw) = password.filter(|p| !p.is_empty()) {
-        state.secrets.set(&added.id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
+        secrets.set(&added.id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
     }
     Ok(added)
 }
 
 #[tauri::command]
 pub fn session_update(state: State<'_, AppState>, session: Session, password: Option<String>) -> Result<(), AppError> {
+    let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
     let id = session.id.clone();
     state.store.lock().unwrap().update(session).map_err(|e| AppError::from(&e))?;
     if let Some(pw) = password.filter(|p| !p.is_empty()) {
-        state.secrets.set(&id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
+        secrets.set(&id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
     }
     Ok(())
 }
@@ -120,7 +122,7 @@ pub fn session_update(state: State<'_, AppState>, session: Session, password: Op
 #[tauri::command]
 pub fn session_remove(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
     state.store.lock().unwrap().remove(&id).map_err(|e| AppError::from(&e))?;
-    let _ = state.secrets.delete(&id);
+    let _ = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone()).delete(&id);
     Ok(())
 }
 
@@ -141,17 +143,17 @@ pub async fn connect(
         .map(|c| c.into_iter().cloned().collect())
         .ok_or_else(|| AppError::code("session_not_found"))?;
     let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
-    let secrets = OverlaySecrets::new(state.secrets.clone());
+    let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
     let mut previous: Option<Arc<SshConnection>> = None;
     for hop in &chain {
-        if matches!(hop.auth, vcore::sessions::Auth::Password) && !matches!(secrets.get(&hop.id), Ok(Some(_))) {
+        // Keychain'e parola başına yalnızca bir kez dokunulur; sonrası bellekten gelir.
+        if matches!(hop.auth, vcore::sessions::Auth::Password) && !matches!(secrets.load_once(&hop.id), Ok(true)) {
             match ask_password(&app, &state, hop).await {
                 Some(reply) => {
                     let secret = Secret::new(reply.password);
+                    secrets.remember_in_memory(&hop.id, &secret);
                     if reply.remember {
                         state.secrets.set(&hop.id, &secret).map_err(|e| AppError::from(&e))?;
-                    } else {
-                        secrets.remember_for_this_connection(&hop.id, &secret);
                     }
                 }
                 None => return Err(AppError::code("password_cancelled")),
@@ -161,6 +163,9 @@ pub async fn connect(
             None => SshConnection::connect(hop, &secrets, state.hosts.clone(), prompt.clone()).await,
             Some(jump) => SshConnection::connect_via(jump, hop, &secrets, state.hosts.clone(), prompt.clone()).await,
         };
+        if matches!(connected, Err(vcore::ssh::SshError::AuthFailed)) {
+            secrets.forget(&hop.id);
+        }
         previous = Some(Arc::new(connected.map_err(|e| AppError::from(&e))?));
     }
     let conn = previous.ok_or_else(|| AppError::code("session_not_found"))?;

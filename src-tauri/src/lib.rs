@@ -43,6 +43,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
     Ok(AppState {
         store: Mutex::new(store),
         secrets: Arc::new(KeyringSecrets::new(KEYCHAIN_SERVICE)),
+        secret_cache: Arc::new(vcore::secrets::MemorySecrets::default()),
         hosts: Arc::new(Mutex::new(hosts)),
         tabs: Mutex::new(HashMap::new()),
         local_tabs: Mutex::new(HashMap::new()),

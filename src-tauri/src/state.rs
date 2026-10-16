@@ -38,6 +38,7 @@ pub struct LocalTab {
 }
 
 pub struct AppState {
+    pub secret_cache: Arc<vcore::secrets::MemorySecrets>,
     pub local_tabs: Mutex<HashMap<String, LocalTab>>,
     pub store: Mutex<SessionStore>,
     pub secrets: Arc<dyn SecretStore>,
