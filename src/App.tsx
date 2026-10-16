@@ -24,7 +24,7 @@ import { useTransfers } from "./files/transfers";
 import type { ClipboardItem } from "./files/fileOps";
 import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
 import type { TermLike } from "./terminal/shellSession";
-import type { NewSession, RunningTunnel, Session, TunnelSpec } from "./types";
+import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, type TunnelSpec } from "./types";
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
 import { Splitter } from "./components/Splitter";
@@ -164,9 +164,17 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     setActiveKey(key);
   }
 
+  function openLocal() {
+    const key = nextKey();
+    setTabs((cur) => [...cur, { key, sessionId: LOCAL_SESSION_ID, title: t.localTerminal.title, status: "connecting" }]);
+    setActiveKey(key);
+  }
+
   function duplicateTab(key: string) {
     const src = tabs.find((x) => x.key === key);
-    if (src) openTab(src.sessionId);
+    if (!src) return;
+    if (src.sessionId === LOCAL_SESSION_ID) openLocal();
+    else openTab(src.sessionId);
   }
 
   function closeOthers(key: string) {
@@ -458,6 +466,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           onContextMenu={(key, x, y) => setTabMenu({ key, x, y })}
         />
         <div className="toolbar">
+          <button type="button" className="toolbar__local" onClick={openLocal}>{t.localTerminal.button}</button>
           <LayoutSwitch tabCount={tabs.length} layout={layout} onChange={setLayout} />
         <MultiExecBar
           tabs={tabs.map((x) => ({ id: x.key, title: x.title }))}
@@ -473,6 +482,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               key={t.key}
               tabKey={t.key}
               hub={hub}
+              local={t.sessionId === LOCAL_SESSION_ID}
               sessionId={t.sessionId}
               api={api}
               createTerm={createTerm}

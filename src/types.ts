@@ -25,3 +25,6 @@ export interface NewSession {
 export interface Session extends NewSession {
   id: string;
 }
+
+/** Yerel terminal sekmesi için sahte oturum kimliği (kayıtlı bir sunucuya karşılık gelmez). */
+export const LOCAL_SESSION_ID = "__local__";

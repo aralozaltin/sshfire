@@ -131,3 +131,17 @@ test("a find request from the terminal opens the search bar and searches the ter
   expect(clearFind).toHaveBeenCalled();
   expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
 });
+
+test("a local terminal does not start metrics, directory watching or report a backend id for files", async () => {
+  const { term, api } = setup();
+  const metricsStart = vi.fn(async () => {});
+  const cwdStart = vi.fn(async () => {});
+  const onTabId = vi.fn();
+  const full = { ...api, metricsStart, cwdStart } as unknown as ShellApi;
+  render(<TerminalTab sessionId="__local__" local api={full} createTerm={() => term} onTabId={onTabId} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(metricsStart).not.toHaveBeenCalled();
+  expect(cwdStart).not.toHaveBeenCalled();
+  expect(onTabId).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText("İşlemci")).not.toBeInTheDocument();
+});

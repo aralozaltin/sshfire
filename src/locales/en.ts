@@ -194,6 +194,7 @@ export const en: Messages = {
     exported: (path: string) => `Server list saved: ${path}`,
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
+  localTerminal: { button: "Local terminal", title: "Local" },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",
@@ -221,6 +222,7 @@ export const en: Messages = {
     portInUse: "This port is already in use.",
     invalidTunnel: (detail: string) => `Invalid tunnel: ${detail}`,
     tunnelOther: (detail: string) => `Tunnel error: ${detail}`,
+    localShell: (detail: string) => `Local shell error: ${detail}`,
     unknownCode: (code: string, detail: string) => `Error (${code})${detail ? `: ${detail}` : ""}`,
     unknown: "Unknown error.",
   },

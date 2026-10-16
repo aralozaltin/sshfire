@@ -222,3 +222,5 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .app__terminals.layout-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; }
 .layout-cols .shell-pane, .layout-rows .shell-pane, .layout-grid .shell-pane { position: relative; inset: auto; min-height: 0; min-width: 0; }
 .layout-cols .shell-pane--active, .layout-rows .shell-pane--active, .layout-grid .shell-pane--active { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+
+.toolbar__local { margin: 0 4px 0 6px; }

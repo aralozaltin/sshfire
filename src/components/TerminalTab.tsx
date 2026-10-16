@@ -26,9 +26,10 @@ export interface TerminalTabProps {
   tabKey?: string;
   active?: boolean;
   onFocusPane?: () => void;
+  local?: boolean;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -51,6 +52,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     let alive = true;
     void session.open(sessionId).then(() => {
       if (!alive || session.status !== "open" || !session.tabId) return;
+      if (local) return;
       onTabId?.(session.tabId);
       void api.metricsStart?.(session.tabId, setMetrics);
       void api.cwdStart?.(session.tabId, (cwd) => onCwd?.(cwd));
@@ -61,7 +63,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       alive = false;
       unregister?.();
       observer?.disconnect();
-      if (session.tabId) {
+      if (session.tabId && !local) {
         void api.metricsStop?.(session.tabId);
         void api.cwdStop?.(session.tabId);
       }
@@ -102,7 +104,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
           {status === "connecting" ? t.terminal.connecting : t.terminal.connected}
         </span>
       )}
-      {api.metricsStart && status !== "closed" && <MetricsBar metrics={metrics} />}
+      {api.metricsStart && !local && status !== "closed" && <MetricsBar metrics={metrics} />}
       {status === "closed" && (
         <div role="status" className="terminal__banner">
           {s?.error ? <strong>{errorText(t, s.error)}</strong> : <strong>{t.terminal.disconnected}</strong>}

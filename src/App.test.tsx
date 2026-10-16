@@ -500,3 +500,15 @@ test("the tab menu duplicates a connection, renames a tab and closes the others"
   await vi.waitFor(() => expect(screen.getAllByRole("tab", { name: /Üretim|Test 3.81/ })).toHaveLength(1));
   expect(screen.getByRole("tab", { name: /Üretim/ })).toBeInTheDocument();
 });
+
+test("the local terminal button opens a local tab and keeps files, metrics and tunnels out of it", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Yerel terminal" }));
+  expect(await screen.findByRole("tab", { name: /Yerel/ })).toBeInTheDocument();
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledWith("__local__", 80, 24, expect.any(Function)));
+  expect(api.metricsStart).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
+  expect(screen.getByText(/Bir sunucuya bağlan/)).toBeInTheDocument();
+});

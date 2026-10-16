@@ -85,6 +85,7 @@ export function errorText(t: Messages, e: unknown): string {
     case "not_text": return t.errors.notText;
     case "password_cancelled": return t.errors.passwordCancelled;
     case "port_in_use": return t.errors.portInUse;
+    case "local_shell": return t.errors.localShell(d);
     case "invalid_tunnel": return t.errors.invalidTunnel(d);
     case "tunnel_other": return t.errors.tunnelOther(d);
     case "sftp_other": return t.errors.sftpOther(d);

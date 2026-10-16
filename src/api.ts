@@ -5,7 +5,7 @@ import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialo
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { Metrics } from "./metrics/types";
-import type { NewSession, RunningTunnel, Session, TunnelSpec } from "./types";
+import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, type TunnelSpec } from "./types";
 
 export const listSessions = () => invoke<Session[]>("sessions_list");
 export interface StartupWarning {
@@ -25,6 +25,7 @@ export const removeSession = (id: string) => invoke<void>("session_remove", { id
 export function connect(sessionId: string, cols: number, rows: number, onData: (bytes: Uint8Array) => void) {
   const channel = new Channel<ArrayBuffer>();
   channel.onmessage = (buf) => onData(new Uint8Array(buf));
+  if (sessionId === LOCAL_SESSION_ID) return invoke<string>("local_connect", { cols, rows, onData: channel });
   return invoke<string>("connect", { sessionId, cols, rows, onData: channel });
 }
 

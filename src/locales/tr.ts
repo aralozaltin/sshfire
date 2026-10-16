@@ -192,6 +192,7 @@ export const tr = {
     exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
+  localTerminal: { button: "Yerel terminal", title: "Yerel" },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",
@@ -219,6 +220,7 @@ export const tr = {
     portInUse: "Bu port zaten kullanımda.",
     invalidTunnel: (detail: string) => `Geçersiz tünel: ${detail}`,
     tunnelOther: (detail: string) => `Tünel hatası: ${detail}`,
+    localShell: (detail: string) => `Yerel kabuk hatası: ${detail}`,
     unknownCode: (code: string, detail: string) => `Hata (${code})${detail ? `: ${detail}` : ""}`,
     unknown: "Bilinmeyen hata.",
   },
