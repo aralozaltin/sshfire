@@ -126,6 +126,13 @@ export const en: Messages = {
     keepEditing: "Keep editing",
     textLabel: "File content",
   },
+  passwordPrompt: {
+    title: "Password required",
+    body: (user: string, host: string) => `Enter the password for ${user}@${host}.`,
+    label: "Password",
+    remember: "Remember the password (save to the key store)",
+    connect: "Connect",
+  },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",
@@ -149,6 +156,7 @@ export const en: Messages = {
     sftpOther: (detail: string) => `File operation failed: ${detail}`,
     fileTooLarge: "The file is too large to edit (2 MB at most).",
     notText: "This file is not text and cannot be opened in the editor.",
+    passwordCancelled: "No password was entered.",
     unknownCode: (code: string, detail: string) => `Error (${code})${detail ? `: ${detail}` : ""}`,
     unknown: "Unknown error.",
   },

@@ -15,6 +15,7 @@ function fakeTerm(): TermLike {
 function fakeApi(over: Partial<AppApi> = {}) {
   let sessions = [existing];
   let hostKeyCb: (e: { requestId: string; host: string; port: number; fingerprint: string }) => void = () => {};
+  let passwordCb: (e: { requestId: string; host: string; user: string }) => void = () => {};
   const api = {
     listSessions: vi.fn(async () => sessions),
     startupWarning: vi.fn(async () => [] as { code: string; backup: string }[]),
@@ -27,12 +28,14 @@ function fakeApi(over: Partial<AppApi> = {}) {
     shellAck: vi.fn(async () => {}),
     shellClose: vi.fn(async () => {}),
     answerHostKey: vi.fn(async () => {}),
+    answerPassword: vi.fn(async () => {}),
+    onPasswordPrompt: vi.fn(async (cb) => { passwordCb = cb; return () => {}; }),
     onHostKeyPrompt: vi.fn(async (cb) => { hostKeyCb = cb; return () => {}; }),
     onShellClosed: vi.fn(async () => () => {}),
     ...sftpApi(),
     ...over,
   } as unknown as AppApi;
-  return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)) };
+  return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)), promptPassword: (e: Parameters<typeof passwordCb>[0]) => act(() => passwordCb(e)) };
 }
 
 test("renders the servers navigation with saved sessions", async () => {
@@ -262,4 +265,26 @@ test("without MultiExec typing stays in its own terminal", async () => {
   terms[0].type("ls\r");
   const ids = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls.map(([id]) => id);
   expect(new Set(ids).size).toBe(1);
+});
+
+test("a password prompt from the backend shows a dialog and sends the answer", async () => {
+  const { api, promptPassword } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  promptPassword({ requestId: "p1", host: "192.168.3.81", user: "root" });
+  expect(await screen.findByText("root@192.168.3.81 için parola gir.")).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText("Parola"), "gizli");
+  await userEvent.click(screen.getByRole("checkbox", { name: /Parolayı hatırla/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Bağlan" }));
+  expect(api.answerPassword).toHaveBeenCalledWith("p1", "gizli", true);
+  expect(screen.queryByLabelText("Parola")).not.toBeInTheDocument();
+});
+
+test("cancelling the password prompt answers with no password", async () => {
+  const { api, promptPassword } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  promptPassword({ requestId: "p2", host: "h", user: "u" });
+  await userEvent.click(await screen.findByRole("button", { name: "Vazgeç" }));
+  expect(api.answerPassword).toHaveBeenCalledWith("p2", null, false);
 });

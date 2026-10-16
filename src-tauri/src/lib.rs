@@ -3,6 +3,7 @@ mod commands;
 mod cwd_task;
 mod sftp_commands;
 mod metrics_task;
+mod overlay_secrets;
 mod state;
 mod stream;
 mod transfers;
@@ -43,6 +44,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         hosts: Arc::new(Mutex::new(hosts)),
         tabs: Mutex::new(HashMap::new()),
         pending_prompts: Arc::new(Mutex::new(HashMap::new())),
+        pending_passwords: Arc::new(Mutex::new(HashMap::new())),
         startup_warnings: warnings,
         transfers: Arc::new(transfers::Registry::default()),
     })
@@ -66,6 +68,7 @@ pub fn run() {
             commands::session_remove,
             commands::connect,
             commands::hostkey_answer,
+            commands::password_answer,
             commands::shell_write,
             commands::shell_resize,
             commands::shell_ack,

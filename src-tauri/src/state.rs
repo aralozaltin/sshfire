@@ -14,6 +14,11 @@ pub struct StartupWarning {
     pub backup: String,
 }
 
+pub struct PasswordReply {
+    pub password: String,
+    pub remember: bool,
+}
+
 pub struct Tab {
     pub conn: Arc<SshConnection>,
     pub sftp: Arc<tokio::sync::OnceCell<Arc<SftpClient>>>,
@@ -31,6 +36,7 @@ pub struct AppState {
     pub hosts: Arc<Mutex<KnownHosts>>,
     pub tabs: Mutex<HashMap<String, Tab>>,
     pub pending_prompts: Arc<Mutex<HashMap<String, oneshot::Sender<bool>>>>,
+    pub pending_passwords: Arc<Mutex<HashMap<String, oneshot::Sender<Option<PasswordReply>>>>>,
     pub startup_warnings: Vec<StartupWarning>,
     pub transfers: Arc<crate::transfers::Registry>,
 }

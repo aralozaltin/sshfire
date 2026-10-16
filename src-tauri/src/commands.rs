@@ -1,5 +1,6 @@
 use crate::app_error::AppError;
-use crate::state::{AppState, StartupWarning, Tab};
+use crate::overlay_secrets::OverlaySecrets;
+use crate::state::{AppState, PasswordReply, StartupWarning, Tab};
 use crate::stream::{HIGH_WATER, LOW_WATER, Throttle};
 use async_trait::async_trait;
 use serde::Serialize;
@@ -8,7 +9,7 @@ use std::time::Duration;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, State};
 use vcore::known_hosts::HostKeyStatus;
-use vcore::secrets::Secret;
+use vcore::secrets::{Secret, SecretStore};
 use vcore::sessions::{NewSession, Session};
 use vcore::ssh::{HostKeyDecision, HostKeyPrompt, ShellEvent, SshConnection};
 
@@ -48,6 +49,35 @@ impl HostKeyPrompt for TauriPrompt {
             Ok(Ok(true)) => HostKeyDecision::Trust,
             _ => HostKeyDecision::Reject,
         }
+    }
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PasswordPromptEvent {
+    request_id: String,
+    host: String,
+    user: String,
+}
+
+async fn ask_password(app: &AppHandle, state: &AppState, session: &Session) -> Option<PasswordReply> {
+    let request_id = uuid::Uuid::new_v4().to_string();
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    state.pending_passwords.lock().unwrap().insert(request_id.clone(), tx);
+    let event = PasswordPromptEvent { request_id: request_id.clone(), host: session.host.clone(), user: session.user.clone() };
+    if app.emit("password-prompt", event).is_err() {
+        state.pending_passwords.lock().unwrap().remove(&request_id);
+        return None;
+    }
+    let answer = tokio::time::timeout(Duration::from_secs(300), rx).await;
+    state.pending_passwords.lock().unwrap().remove(&request_id);
+    answer.ok().and_then(|r| r.ok()).flatten()
+}
+
+#[tauri::command]
+pub fn password_answer(state: State<'_, AppState>, request_id: String, password: Option<String>, remember: bool) {
+    if let Some(tx) = state.pending_passwords.lock().unwrap().remove(&request_id) {
+        let _ = tx.send(password.filter(|p| !p.is_empty()).map(|password| PasswordReply { password, remember }));
     }
 }
 
@@ -113,8 +143,22 @@ pub async fn connect(
         .cloned()
         .ok_or_else(|| AppError::code("session_not_found"))?;
     let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
+    let secrets = OverlaySecrets::new(state.secrets.clone());
+    if matches!(session.auth, vcore::sessions::Auth::Password) && !matches!(secrets.get(&session.id), Ok(Some(_))) {
+        match ask_password(&app, &state, &session).await {
+            Some(reply) => {
+                let secret = Secret::new(reply.password);
+                if reply.remember {
+                    state.secrets.set(&session.id, &secret).map_err(|e| AppError::from(&e))?;
+                } else {
+                    secrets.remember_for_this_connection(&session.id, &secret);
+                }
+            }
+            None => return Err(AppError::code("password_cancelled")),
+        }
+    }
     let conn = Arc::new(
-        SshConnection::connect(&session, state.secrets.as_ref(), state.hosts.clone(), prompt)
+        SshConnection::connect(&session, &secrets, state.hosts.clone(), prompt)
             .await
             .map_err(|e| AppError::from(&e))?,
     );

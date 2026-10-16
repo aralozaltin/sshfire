@@ -77,6 +77,17 @@ export function cwdStart(tabId: string, onCwd: (cwd: string) => void) {
 export const cwdStop = (tabId: string) => invoke<void>("cwd_stop", { tabId });
 export const metricsStop = (tabId: string) => invoke<void>("metrics_stop", { tabId });
 
+export const answerPassword = (requestId: string, password: string | null, remember: boolean) =>
+  invoke<void>("password_answer", { requestId, password, remember });
+
+export interface PasswordPromptEvent {
+  requestId: string;
+  host: string;
+  user: string;
+}
+export const onPasswordPrompt = (cb: (e: PasswordPromptEvent) => void) =>
+  listen<PasswordPromptEvent>("password-prompt", (e) => cb(e.payload));
+
 export const answerHostKey = (requestId: string, trust: boolean) =>
   invoke<void>("hostkey_answer", { requestId, trust });
 
@@ -125,6 +136,8 @@ export const realApi = {
   metricsStop,
   cwdStart,
   cwdStop,
+  answerPassword,
+  onPasswordPrompt: async (cb: (e: PasswordPromptEvent) => void) => (await onPasswordPrompt(cb)) as () => void,
   answerHostKey,
   onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
   onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,

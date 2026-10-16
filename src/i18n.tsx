@@ -83,6 +83,7 @@ export function errorText(t: Messages, e: unknown): string {
     case "cancelled": return t.errors.cancelled;
     case "file_too_large": return t.errors.fileTooLarge;
     case "not_text": return t.errors.notText;
+    case "password_cancelled": return t.errors.passwordCancelled;
     case "sftp_other": return t.errors.sftpOther(d);
     default: return t.errors.unknownCode(e.code, d);
   }

@@ -5,6 +5,7 @@ import { ServerDialog } from "./components/ServerDialog";
 import { Tabs, type TabInfo } from "./components/Tabs";
 import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
+import { PasswordDialog, type PasswordRequest } from "./components/PasswordDialog";
 import { createXterm } from "./terminal/xterm";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { FileBrowser } from "./components/FileBrowser";
@@ -72,6 +73,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
+  const [passwordRequest, setPasswordRequest] = useState<PasswordRequest | null>(null);
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -127,15 +129,14 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   useEffect(() => {
     void reload();
     void api.startupWarning().then((w) => setWarnings(w ?? []));
-    let off: (() => void) | undefined;
+    const offs: (() => void)[] = [];
     let cancelled = false;
-    void api.onHostKeyPrompt((e) => setHostKey(e)).then((fn) => {
-      if (cancelled) fn();
-      else off = fn;
-    });
+    const keep = (fn: () => void) => (cancelled ? fn() : offs.push(fn));
+    void api.onHostKeyPrompt((e) => setHostKey(e)).then(keep);
+    void api.onPasswordPrompt((e) => setPasswordRequest(e)).then(keep);
     return () => {
       cancelled = true;
-      off?.();
+      offs.forEach((off) => off());
     };
   }, [api, reload]);
 
@@ -185,6 +186,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     if (!id) return;
     await api.removeSession(id);
     await reload();
+  }
+
+  function answerPassword(requestId: string, password: string | null, remember: boolean) {
+    void api.answerPassword(requestId, password, remember);
+    setPasswordRequest(null);
   }
 
   function answer(requestId: string, trust: boolean) {
@@ -294,6 +300,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               <button type="button" onClick={() => void confirmRemove()}>{t.remove}</button>
             </div>
           </div>
+        </div>
+      )}
+      {passwordRequest && (
+        <div className="overlay">
+          <PasswordDialog request={passwordRequest} onAnswer={answerPassword} />
         </div>
       )}
       {hostKey && (

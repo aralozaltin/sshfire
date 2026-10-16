@@ -176,3 +176,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .editor__path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .editor__state { color: var(--muted); }
 .editor__text { flex: 1; width: 100%; resize: none; border: 0; padding: 8px; font: 13px/1.45 Menlo, "SF Mono", Consolas, monospace; background: var(--surface); color: var(--fg); tab-size: 4; outline: none; }
+
+.password-remember { flex-direction: row !important; align-items: center; gap: 6px; }
+.password-remember input { width: auto; }

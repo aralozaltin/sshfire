@@ -124,6 +124,13 @@ export const tr = {
     keepEditing: "Düzenlemeye dön",
     textLabel: "Dosya içeriği",
   },
+  passwordPrompt: {
+    title: "Parola gerekli",
+    body: (user: string, host: string) => `${user}@${host} için parola gir.`,
+    label: "Parola",
+    remember: "Parolayı hatırla (anahtar deposuna kaydet)",
+    connect: "Bağlan",
+  },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",
@@ -147,6 +154,7 @@ export const tr = {
     sftpOther: (detail: string) => `Dosya işlemi başarısız: ${detail}`,
     fileTooLarge: "Dosya düzenlemek için çok büyük (en fazla 2 MB).",
     notText: "Bu dosya metin değil, düzenleyicide açılamaz.",
+    passwordCancelled: "Parola girilmedi.",
     unknownCode: (code: string, detail: string) => `Hata (${code})${detail ? `: ${detail}` : ""}`,
     unknown: "Bilinmeyen hata.",
   },
