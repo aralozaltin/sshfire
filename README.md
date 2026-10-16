@@ -35,6 +35,17 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 
 macOS, Windows and Linux. Release builds for all three are produced by GitHub Actions.
 
+## Install
+
+Download the installer for your platform from the [latest release](https://github.com/aralozaltin/sshfire/releases/latest).
+
+SSHFire is not signed with an Apple Developer ID or a Windows code-signing certificate yet, so the first launch shows a warning:
+
+- **macOS:** open *System Settings → Privacy & Security* and choose *Open Anyway*, or run `xattr -dr com.apple.quarantine /Applications/SSHFire.app` once.
+- **Windows:** in the SmartScreen dialog choose *More info → Run anyway*.
+
+After the first launch SSHFire updates itself: it checks for new releases on startup (switch this off or check manually in *Settings*). Updates are downloaded over HTTPS and verified against a built-in public key before they are installed.
+
 ## Getting started
 
 Requirements: Node.js, Rust (`rustup`) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
@@ -64,4 +75,4 @@ The SSH, SFTP, tunnel and authentication integration tests run against a throwaw
 
 ## License
 
-Not chosen yet.
+[MIT](LICENSE)
