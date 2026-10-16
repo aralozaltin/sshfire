@@ -169,3 +169,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .multiexec__tab { display: inline-flex; align-items: center; gap: 4px; }
 .multiexec__tab input { width: auto; }
 .multiexec__hint { color: var(--muted); }
+
+.overlay--editor { padding: 24px; }
+.editor { display: flex; flex-direction: column; width: min(1000px, 96vw); height: min(720px, 90vh); background: var(--surface); border: 1px solid #666; box-shadow: 2px 2px 10px rgba(0,0,0,.4); }
+.editor__bar { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.editor__path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.editor__state { color: var(--muted); }
+.editor__text { flex: 1; width: 100%; resize: none; border: 0; padding: 8px; font: 13px/1.45 Menlo, "SF Mono", Consolas, monospace; background: var(--surface); color: var(--fg); tab-size: 4; outline: none; }

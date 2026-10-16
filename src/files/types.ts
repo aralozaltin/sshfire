@@ -19,6 +19,8 @@ export interface FilesApi {
   sftpRename(tabId: string, from: string, to: string): Promise<void>;
   sftpRemove(tabId: string, path: string, recursive: boolean): Promise<void>;
   sftpCopy(tabId: string, from: string, to: string): Promise<void>;
+  sftpReadText(tabId: string, path: string): Promise<string>;
+  sftpWriteText(tabId: string, path: string, content: string): Promise<void>;
   sftpUpload(tabId: string, items: { local: string; remote: string }[]): Promise<string[]>;
   sftpDownload(tabId: string, remotePaths: string[]): Promise<string[]>;
   pickFiles(): Promise<string[]>;

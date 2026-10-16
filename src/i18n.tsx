@@ -81,6 +81,8 @@ export function errorText(t: Messages, e: unknown): string {
     case "permission_denied": return t.errors.permissionDenied;
     case "already_exists": return t.errors.alreadyExists;
     case "cancelled": return t.errors.cancelled;
+    case "file_too_large": return t.errors.fileTooLarge;
+    case "not_text": return t.errors.notText;
     case "sftp_other": return t.errors.sftpOther(d);
     default: return t.errors.unknownCode(e.code, d);
   }

@@ -28,6 +28,8 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
     sftpCopy: vi.fn(async () => {}),
+    sftpReadText: vi.fn(async (_t: string, _p: string) => "merhaba dünya\n"),
+    sftpWriteText: vi.fn(async (_t: string, _p: string, _c: string) => {}),
     sftpUpload: vi.fn(async () => ["x"]),
     sftpDownload: vi.fn(async () => ["y"]),
     pickFiles: vi.fn(async () => [] as string[]),
@@ -448,4 +450,45 @@ test("browsing manually is not undone while the terminal stays where it is", asy
   change("/home/u");
   await new Promise((r) => setTimeout(r, 50));
   expect(screen.getByText("a.txt")).toBeInTheDocument();
+});
+
+test("double clicking a file opens it in the editor with its content", async () => {
+  const { api } = setup();
+  await userEvent.dblClick(await screen.findByText("rapor.txt"));
+  const box = await screen.findByLabelText("Dosya içeriği");
+  expect(box).toHaveValue("merhaba dünya\n");
+  expect(api.sftpReadText).toHaveBeenCalledWith("t1", "/home/u/rapor.txt");
+});
+
+test("editing and pressing Ctrl+S writes the file back and refreshes the listing", async () => {
+  const { api } = setup();
+  await userEvent.dblClick(await screen.findByText("rapor.txt"));
+  const box = await screen.findByLabelText("Dosya içeriği");
+  await userEvent.clear(box);
+  await userEvent.type(box, "yeni içerik");
+  await userEvent.keyboard("{Control>}s{/Control}");
+  await vi.waitFor(() => expect(api.sftpWriteText).toHaveBeenCalledWith("t1", "/home/u/rapor.txt", "yeni içerik"));
+  expect(await screen.findByText("Kaydedildi")).toBeInTheDocument();
+  expect(api.sftpList.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+test("a file that is not text shows the explanation instead of the editor", async () => {
+  const api = fakeApi();
+  api.sftpReadText = vi.fn(async () => { throw { code: "not_text" }; });
+  setup({ api });
+  await userEvent.dblClick(await screen.findByText("rapor.txt"));
+  expect(await screen.findByRole("alert")).toHaveTextContent("metin değil");
+  expect(screen.queryByLabelText("Dosya içeriği")).not.toBeInTheDocument();
+});
+
+test("the context menu and Enter both open the editor for a file", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Düzenle" }));
+  await screen.findByLabelText("Dosya içeriği");
+  await userEvent.click(screen.getByRole("button", { name: "Kapat" }));
+  await userEvent.click(row("notlar.md"));
+  await userEvent.keyboard("{Enter}");
+  await vi.waitFor(() => expect(api.sftpReadText).toHaveBeenCalledWith("t1", "/home/u/notlar.md"));
 });

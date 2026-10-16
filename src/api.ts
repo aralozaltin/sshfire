@@ -41,6 +41,9 @@ export const sftpRename = (tabId: string, from: string, to: string) => invoke<vo
 export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
   invoke<void>("sftp_remove", { tabId, path, recursive });
 export const sftpCopy = (tabId: string, from: string, to: string) => invoke<void>("sftp_copy", { tabId, from, to });
+export const sftpReadText = (tabId: string, path: string) => invoke<string>("sftp_read_text", { tabId, path });
+export const sftpWriteText = (tabId: string, path: string, content: string) =>
+  invoke<void>("sftp_write_text", { tabId, path, content });
 export const sftpUpload = (tabId: string, items: { local: string; remote: string }[]) =>
   invoke<string[]>("sftp_upload", { tabId, items });
 export const sftpDownload = (tabId: string, remotePaths: string[]) =>
@@ -110,6 +113,8 @@ export const realApi = {
   sftpRename,
   sftpRemove,
   sftpCopy,
+  sftpReadText,
+  sftpWriteText,
   sftpUpload,
   sftpDownload,
   transferCancel,

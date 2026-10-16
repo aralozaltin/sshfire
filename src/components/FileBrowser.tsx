@@ -5,6 +5,7 @@ import { formatMode, formatModified, formatSize } from "../files/format";
 import type { FileEntry, FilesApi } from "../files/types";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
 import { DEFAULT_COLUMNS, loadColumns, resizeColumn, saveColumns } from "../files/columns";
+import { EditorDialog } from "./EditorDialog";
 import { FileInfoDialog } from "./FileInfoDialog";
 import { InlineRename } from "./InlineRename";
 import { PromptDialog } from "./PromptDialog";
@@ -41,6 +42,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [info, setInfo] = useState<FileEntry | null>(null);
   const [follow, setFollow] = useState(true);
   const lastFollowed = useRef<string | null>(followPath ?? null);
+  const [editing, setEditing] = useState<{ entry: FileEntry; content: string } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -288,8 +290,18 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     });
   }
 
+  async function edit(entry: FileEntry) {
+    if (!tabId) return;
+    try {
+      setEditing({ entry, content: await api.sftpReadText(tabId, entry.path) });
+    } catch (e) {
+      setError(e);
+    }
+  }
+
   function open(entry: FileEntry) {
     if (entry.isDir) void load(entry.path);
+    else void edit(entry);
   }
 
   function onKeyDown(e: KeyboardEvent) {
@@ -322,6 +334,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.cut, onClick: () => copySelection("cut") },
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
         { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
+        { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
         { label: t.remove, onClick: () => setConfirming(selectedEntries) },
         { label: f.info, onClick: () => selectedEntries[0] && setInfo(selectedEntries[0]), disabled: selectedEntries.length !== 1 },
@@ -470,6 +483,19 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
               <button type="button" onClick={() => void confirmDelete()}>{t.remove}</button>
             </div>
           </div>
+        </div>
+      )}
+      {editing && (
+        <div className="overlay overlay--editor">
+          <EditorDialog
+            path={editing.entry.path}
+            initial={editing.content}
+            onSave={async (content) => {
+              if (tabId) await api.sftpWriteText(tabId, editing.entry.path, content);
+              void load(path);
+            }}
+            onClose={() => setEditing(null)}
+          />
         </div>
       )}
       {info && (

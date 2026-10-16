@@ -153,6 +153,8 @@ function sftpApi() {
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
     sftpCopy: vi.fn(async () => {}),
+    sftpReadText: vi.fn(async () => ""),
+    sftpWriteText: vi.fn(async () => {}),
     sftpUpload: vi.fn(async () => []),
     sftpDownload: vi.fn(async () => []),
     transferCancel: vi.fn(async () => true),
