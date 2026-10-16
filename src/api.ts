@@ -43,3 +43,21 @@ export const onHostKeyPrompt = (cb: (e: HostKeyPromptEvent) => void) =>
   listen<HostKeyPromptEvent>("hostkey-prompt", (e) => cb(e.payload));
 export const onShellClosed = (cb: (e: ShellClosedEvent) => void) =>
   listen<ShellClosedEvent>("shell-closed", (e) => cb(e.payload));
+
+export const realApi = {
+  listSessions,
+  startupWarning,
+  addSession,
+  updateSession,
+  removeSession,
+  connect,
+  shellWrite,
+  shellResize,
+  shellAck,
+  shellClose,
+  answerHostKey,
+  onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
+  onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,
+};
+
+export type AppApi = typeof realApi;

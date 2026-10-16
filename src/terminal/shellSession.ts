@@ -1,0 +1,96 @@
+export type ShellStatus = "connecting" | "open" | "closed";
+
+export interface TermLike {
+  write(data: Uint8Array, done: () => void): void;
+  onData(cb: (text: string) => void): void;
+  onResize(cb: (cols: number, rows: number) => void): void;
+  size(): { cols: number; rows: number };
+  fit(): void;
+  focus(): void;
+  dispose(): void;
+}
+
+export interface ShellApi {
+  connect(sessionId: string, cols: number, rows: number, onData: (bytes: Uint8Array) => void): Promise<string>;
+  shellWrite(tabId: string, data: Uint8Array): Promise<void>;
+  shellResize(tabId: string, cols: number, rows: number): Promise<void>;
+  shellAck(tabId: string, bytes: number): Promise<void>;
+  shellClose(tabId: string): Promise<void>;
+  onShellClosed(cb: (e: { tabId: string; reason: string | null }) => void): Promise<() => void>;
+}
+
+export class ShellSession {
+  status: ShellStatus = "connecting";
+  closeReason: string | null = null;
+  error: string | null = null;
+  tabId: string | null = null;
+  private pendingAck = 0;
+  private unlisten: (() => void) | null = null;
+  private encoder = new TextEncoder();
+  private disposed = false;
+
+  constructor(
+    private api: ShellApi,
+    private term: TermLike,
+    private onChange: () => void = () => {},
+  ) {
+    term.onData((text) => this.send(text));
+    term.onResize((cols, rows) => this.resize(cols, rows));
+  }
+
+  async open(sessionId: string): Promise<void> {
+    this.term.fit();
+    const { cols, rows } = this.term.size();
+    try {
+      this.tabId = await this.api.connect(sessionId, cols, rows, (bytes) => this.handleData(bytes));
+    } catch (e) {
+      this.error = typeof e === "string" ? e : e instanceof Error ? e.message : "Bağlantı kurulamadı.";
+      this.setStatus("closed");
+      return;
+    }
+    if (this.disposed) {
+      await this.api.shellClose(this.tabId);
+      this.setStatus("closed");
+      return;
+    }
+    this.unlisten = await this.api.onShellClosed((ev) => {
+      if (ev.tabId !== this.tabId) return;
+      this.closeReason = ev.reason;
+      this.setStatus("closed");
+    });
+    if (this.pendingAck > 0) {
+      void this.api.shellAck(this.tabId, this.pendingAck);
+      this.pendingAck = 0;
+    }
+    if (this.status === "connecting") this.setStatus("open");
+  }
+
+  handleData(bytes: Uint8Array): void {
+    this.term.write(bytes, () => {
+      if (this.tabId) void this.api.shellAck(this.tabId, bytes.length);
+      else this.pendingAck += bytes.length;
+    });
+  }
+
+  send(text: string): void {
+    if (!this.tabId || this.status !== "open") return;
+    void this.api.shellWrite(this.tabId, this.encoder.encode(text));
+  }
+
+  resize(cols: number, rows: number): void {
+    if (!this.tabId || this.status !== "open") return;
+    void this.api.shellResize(this.tabId, cols, rows);
+  }
+
+  async close(): Promise<void> {
+    this.disposed = true;
+    this.unlisten?.();
+    if (this.tabId) await this.api.shellClose(this.tabId);
+    this.term.dispose();
+  }
+
+  private setStatus(status: ShellStatus) {
+    this.status = status;
+    this.onChange();
+  }
+}

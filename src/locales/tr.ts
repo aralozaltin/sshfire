@@ -31,4 +31,19 @@ export const tr = {
     errUser: "Kullanıcı boş olamaz",
     errKeyPath: "Anahtar dosyası yolu boş olamaz",
   },
+  tabs: { label: "Açık bağlantılar", close: "kapat", empty: "Soldan bir sunucu seç" },
+  terminal: {
+    connecting: "Bağlanıyor…",
+    connected: "Bağlandı",
+    disconnected: "Bağlantı kesildi",
+    reconnect: "Yeniden bağlan",
+    failed: "Bağlantı kurulamadı",
+  },
+  hostKey: {
+    title: "Yeni sunucu anahtarı",
+    body: "Bu sunucuya ilk kez bağlanıyorsun. Parmak izinin doğru sunucuya ait olduğunu doğrula.",
+    trust: "Güven ve bağlan",
+    reject: "Reddet",
+  },
+  startupWarning: "Uyarı",
 } as const;
