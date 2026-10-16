@@ -11,9 +11,10 @@ export interface TabsProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
+  onContextMenu?: (id: string, x: number, y: number) => void;
 }
 
-export function Tabs({ tabs, activeId, onSelect, onClose }: TabsProps) {
+export function Tabs({ tabs, activeId, onSelect, onClose, onContextMenu }: TabsProps) {
   const t = useT();
   if (tabs.length === 0) return <p className="tabs__empty">{t.tabs.empty}</p>;
   return (
@@ -26,6 +27,11 @@ export function Tabs({ tabs, activeId, onSelect, onClose }: TabsProps) {
             aria-selected={tab.id === activeId}
             className="tabs__tab"
             onClick={() => onSelect(tab.id)}
+            onContextMenu={(e) => {
+              if (!onContextMenu) return;
+              e.preventDefault();
+              onContextMenu(tab.id, e.clientX, e.clientY);
+            }}
           >
             {tab.title}
           </button>

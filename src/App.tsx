@@ -14,6 +14,8 @@ import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { TransferPanel } from "./components/TransferPanel";
 import { TunnelPanel } from "./components/TunnelPanel";
 import { MacroPanel } from "./components/MacroPanel";
+import { ContextMenu } from "./components/ContextMenu";
+import { PromptDialog } from "./components/PromptDialog";
 import { loadMacros, newMacro, saveMacros, textToInput, type Macro } from "./macros/macros";
 import { MultiExecBar } from "./components/MultiExecBar";
 import { LayoutSwitch, type TerminalLayout } from "./components/LayoutSwitch";
@@ -89,6 +91,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
   const hub = useRef(new MultiExecHub()).current;
+  const [tabMenu, setTabMenu] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [layout, setLayout] = useState<TerminalLayout>("single");
   const [multiOn, setMultiOn] = useState(false);
   const [multiKeys, setMultiKeys] = useState<string[]>([]);
@@ -158,6 +162,21 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     const key = nextKey();
     setTabs((t) => [...t, { key, sessionId, title: s.name, status: "connecting" }]);
     setActiveKey(key);
+  }
+
+  function duplicateTab(key: string) {
+    const src = tabs.find((x) => x.key === key);
+    if (src) openTab(src.sessionId);
+  }
+
+  function closeOthers(key: string) {
+    setTabs((t) => t.filter((x) => x.key === key));
+    setActiveKey(key);
+  }
+
+  function renameTab(key: string, title: string) {
+    setTabs((t) => t.map((x) => (x.key === key ? { ...x, title } : x)));
+    setRenamingTab(null);
   }
 
   function closeTab(key: string) {
@@ -436,6 +455,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           activeId={activeKey}
           onSelect={setActiveKey}
           onClose={closeTab}
+          onContextMenu={(key, x, y) => setTabMenu({ key, x, y })}
         />
         <div className="toolbar">
           <LayoutSwitch tabCount={tabs.length} layout={layout} onChange={setLayout} />
@@ -489,6 +509,30 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               <button type="button" onClick={() => void confirmRemove()}>{t.remove}</button>
             </div>
           </div>
+        </div>
+      )}
+      {tabMenu && (
+        <ContextMenu
+          x={tabMenu.x}
+          y={tabMenu.y}
+          onClose={() => setTabMenu(null)}
+          items={[
+            { label: t.tabMenu.duplicate, onClick: () => duplicateTab(tabMenu.key) },
+            { label: t.tabMenu.rename, onClick: () => setRenamingTab(tabMenu.key) },
+            { label: t.tabMenu.closeOthers, onClick: () => closeOthers(tabMenu.key), disabled: tabs.length < 2 },
+            { label: t.tabMenu.close, onClick: () => closeTab(tabMenu.key) },
+          ]}
+        />
+      )}
+      {renamingTab && (
+        <div className="overlay">
+          <PromptDialog
+            title={t.tabMenu.renameTitle}
+            label={t.tabMenu.nameLabel}
+            initial={tabs.find((x) => x.key === renamingTab)?.title ?? ""}
+            onSubmit={(name) => renameTab(renamingTab, name)}
+            onCancel={() => setRenamingTab(null)}
+          />
         </div>
       )}
       {importCandidates && (

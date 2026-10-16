@@ -476,3 +476,27 @@ test("clicking a tiled pane makes it the active one and the active pane is marke
   expect(panes[other]).toHaveClass("shell-pane--active");
   expect(panes[activeBefore]).not.toHaveClass("shell-pane--active");
 });
+
+test("the tab menu duplicates a connection, renames a tab and closes the others", async () => {
+  let n = 0;
+  const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  const tab = await screen.findByRole("tab", { name: /Test 3.81/ });
+  fireEvent.contextMenu(tab);
+  await userEvent.click(screen.getByRole("menuitem", { name: "Çoğalt" }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
+  expect(screen.getAllByRole("tab", { name: /Test 3.81/ })).toHaveLength(2);
+
+  fireEvent.contextMenu(screen.getAllByRole("tab", { name: /Test 3.81/ })[0]);
+  await userEvent.click(screen.getByRole("menuitem", { name: "Yeniden adlandır" }));
+  const box = screen.getByLabelText("Sekme adı");
+  await userEvent.clear(box);
+  await userEvent.type(box, "Üretim{Enter}");
+  expect(await screen.findByRole("tab", { name: /Üretim/ })).toBeInTheDocument();
+
+  fireEvent.contextMenu(screen.getByRole("tab", { name: /Üretim/ }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Diğerlerini kapat" }));
+  await vi.waitFor(() => expect(screen.getAllByRole("tab", { name: /Üretim|Test 3.81/ })).toHaveLength(1));
+  expect(screen.getByRole("tab", { name: /Üretim/ })).toBeInTheDocument();
+});

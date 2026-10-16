@@ -191,6 +191,7 @@ export const tr = {
     imported: (added: number, skipped: number) => `${added} sunucu eklendi, ${skipped} tanesi zaten vardı.`,
     exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
   },
+  tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

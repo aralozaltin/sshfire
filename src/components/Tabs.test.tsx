@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Tabs } from "./Tabs";
 
@@ -33,4 +33,11 @@ test("the close button closes without selecting", async () => {
 test("shows the empty hint when there are no tabs", () => {
   render(<Tabs tabs={[]} activeId={null} onSelect={() => {}} onClose={() => {}} />);
   expect(screen.getByText("Soldan bir sunucu seç")).toBeInTheDocument();
+});
+
+test("right clicking a tab reports which tab and where", () => {
+  const onContextMenu = vi.fn();
+  render(<Tabs tabs={tabs} activeId="a" onSelect={() => {}} onClose={() => {}} onContextMenu={onContextMenu} />);
+  fireEvent.contextMenu(screen.getByRole("tab", { name: /Prod API/ }), { clientX: 40, clientY: 12 });
+  expect(onContextMenu).toHaveBeenCalledWith("b", 40, 12);
 });

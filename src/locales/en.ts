@@ -193,6 +193,7 @@ export const en: Messages = {
     imported: (added: number, skipped: number) => `${added} server${added === 1 ? "" : "s"} added, ${skipped} already existed.`,
     exported: (path: string) => `Server list saved: ${path}`,
   },
+  tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",
