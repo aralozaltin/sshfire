@@ -69,7 +69,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const s = sessionRef.current;
   const status = s?.status ?? "connecting";
   return (
-    <div className="terminal" hidden={!visible}>
+    <div className="shell-pane" hidden={!visible}>
       <div ref={hostRef} data-testid="terminal-host" className="terminal__host" />
       {status !== "closed" && (
         <span className="sr-only" data-status={status}>

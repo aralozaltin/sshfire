@@ -91,8 +91,8 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .tabs__close:hover { color: var(--danger); background: none; }
 .tabs__empty { color: var(--muted); padding: 12px; margin: 0; }
 
-.terminal { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--term-bg); }
-.terminal[hidden] { display: none; }
+.shell-pane { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--term-bg); }
+.shell-pane[hidden] { display: none; }
 .terminal__host { flex: 1; min-height: 0; padding: 2px; }
 .terminal__banner { padding: 4px 10px; background: var(--warn-bg); color: var(--warn-fg); border-top: 1px solid var(--warn-line); display: flex; gap: 8px; align-items: center; }
 .banner { padding: 4px 10px; border-bottom: 1px solid var(--line); }

@@ -88,3 +88,11 @@ test("without metrics support the bar is not shown", async () => {
   await screen.findByText(/.*/, { selector: "[data-status='open']" });
   expect(screen.queryByLabelText("İşlemci")).not.toBeInTheDocument();
 });
+
+test("the pane does not use the class name xterm.js puts on its own root element", async () => {
+  const { term, api } = setup();
+  const { container } = render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(container.querySelector(".terminal")).toBeNull();
+  expect(container.querySelector(".shell-pane")).not.toBeNull();
+});
