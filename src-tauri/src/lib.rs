@@ -6,6 +6,7 @@ mod ssh_config_import;
 mod local_pty;
 mod metrics_task;
 mod overlay_secrets;
+mod session_log;
 mod state;
 mod stream;
 mod transfers;
@@ -80,6 +81,8 @@ pub fn run() {
             commands::sessions_import,
             commands::connect,
             commands::local_connect,
+            commands::log_start,
+            commands::log_stop,
             commands::hostkey_answer,
             commands::password_answer,
             commands::auth_answer,

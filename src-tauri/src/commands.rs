@@ -254,15 +254,17 @@ pub async fn connect(
 
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
+    let log = Arc::new(crate::session_log::LogSink::default());
     let writer = shell.writer();
     let task = tauri::async_runtime::spawn({
-        let (app, tab_id, throttle, conn) = (app.clone(), tab_id.clone(), throttle.clone(), conn.clone());
+        let (app, tab_id, throttle, conn, log) = (app.clone(), tab_id.clone(), throttle.clone(), conn.clone(), log.clone());
         async move {
             let _keep_alive = conn;
             let reason = loop {
                 throttle.wait_ready().await;
                 match shell.read().await {
                     Some(ShellEvent::Data(bytes)) => {
+                        log.write(&bytes);
                         throttle.on_sent(bytes.len());
                         if on_data.send(InvokeResponseBody::Raw(bytes)).is_err() {
                             return;
@@ -275,7 +277,7 @@ pub async fn connect(
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason });
         }
     });
-    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, tunnels: Default::default(), cwd_task: None, throttle, task });
+    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { log, conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, tunnels: Default::default(), cwd_task: None, throttle, task });
     Ok(tab_id)
 }
 
@@ -286,14 +288,16 @@ pub async fn local_connect(app: AppHandle, state: State<'_, AppState>, cols: u16
     );
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
+    let log = Arc::new(crate::session_log::LogSink::default());
     let task = tauri::async_runtime::spawn({
-        let (app, tab_id, throttle, pty) = (app.clone(), tab_id.clone(), throttle.clone(), pty.clone());
+        let (app, tab_id, throttle, pty, log) = (app.clone(), tab_id.clone(), throttle.clone(), pty.clone(), log.clone());
         async move {
             loop {
                 throttle.wait_ready().await;
                 let chunk = pty.output.lock().await.recv().await;
                 match chunk {
                     Some(bytes) => {
+                        log.write(&bytes);
                         throttle.on_sent(bytes.len());
                         if on_data.send(InvokeResponseBody::Raw(bytes)).is_err() {
                             return;
@@ -305,7 +309,7 @@ pub async fn local_connect(app: AppHandle, state: State<'_, AppState>, cols: u16
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason: None });
         }
     });
-    state.local_tabs.lock().unwrap().insert(tab_id.clone(), LocalTab { pty, throttle, task });
+    state.local_tabs.lock().unwrap().insert(tab_id.clone(), LocalTab { log, pty, throttle, task });
     Ok(tab_id)
 }
 
@@ -507,4 +511,24 @@ pub fn sessions_import(state: State<'_, AppState>, path: String) -> Result<Impor
     let sessions = vcore::sessions::parse_export(&text).map_err(|e| AppError::from(&e))?;
     let report = state.store.lock().unwrap().import(sessions).map_err(|e| AppError::from(&e))?;
     Ok(ImportSummary { added: report.added, skipped: report.skipped })
+}
+
+fn log_for(state: &AppState, tab_id: &str) -> Option<Arc<crate::session_log::LogSink>> {
+    if let Some(t) = state.local_tabs.lock().unwrap().get(tab_id) {
+        return Some(t.log.clone());
+    }
+    state.tabs.lock().unwrap().get(tab_id).map(|t| t.log.clone())
+}
+
+#[tauri::command]
+pub fn log_start(state: State<'_, AppState>, tab_id: String, path: String) -> Result<(), AppError> {
+    let log = log_for(&state, &tab_id).ok_or_else(|| AppError::code("tab_not_found"))?;
+    log.start(std::path::Path::new(&path)).map_err(|e| AppError::with_detail("store_error", e.to_string()))
+}
+
+#[tauri::command]
+pub fn log_stop(state: State<'_, AppState>, tab_id: String) {
+    if let Some(log) = log_for(&state, &tab_id) {
+        log.stop();
+    }
 }

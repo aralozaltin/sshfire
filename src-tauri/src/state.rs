@@ -20,6 +20,7 @@ pub struct PasswordReply {
 }
 
 pub struct Tab {
+    pub log: Arc<crate::session_log::LogSink>,
     pub conn: Arc<SshConnection>,
     pub sftp: Arc<tokio::sync::OnceCell<Arc<SftpClient>>>,
     pub writer: ShellWriter,
@@ -32,6 +33,7 @@ pub struct Tab {
 }
 
 pub struct LocalTab {
+    pub log: Arc<crate::session_log::LogSink>,
     pub pty: Arc<crate::local_pty::LocalPty>,
     pub throttle: Arc<Throttle>,
     pub task: tauri::async_runtime::JoinHandle<()>,
