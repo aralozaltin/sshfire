@@ -1,6 +1,7 @@
 use serde::Serialize;
 use vcore::secrets::SecretError;
 use vcore::sessions::StoreError;
+use vcore::sftp::SftpError;
 use vcore::ssh::SshError;
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -53,6 +54,18 @@ impl From<&SecretError> for AppError {
     }
 }
 
+impl From<&SftpError> for AppError {
+    fn from(e: &SftpError) -> AppError {
+        match e {
+            SftpError::NotFound => AppError::code("file_not_found"),
+            SftpError::PermissionDenied => AppError::code("permission_denied"),
+            SftpError::Exists => AppError::code("already_exists"),
+            SftpError::Cancelled => AppError::code("cancelled"),
+            SftpError::Other(m) => AppError::with_detail("sftp_other", m.clone()),
+        }
+    }
+}
+
 impl From<&StoreError> for AppError {
     fn from(e: &StoreError) -> AppError {
         match e {
@@ -97,6 +110,16 @@ mod tests {
         assert_eq!((e.code, e.detail.as_deref()), ("invalid_session", Some("host is empty")));
         let e = AppError::from(&StoreError::Corrupt { backup: "/x.bak".into() });
         assert_eq!(e.code, "store_error");
+    }
+
+    #[test]
+    fn sftp_errors_map_to_stable_codes() {
+        assert_eq!(AppError::from(&SftpError::NotFound).code, "file_not_found");
+        assert_eq!(AppError::from(&SftpError::PermissionDenied).code, "permission_denied");
+        assert_eq!(AppError::from(&SftpError::Exists).code, "already_exists");
+        assert_eq!(AppError::from(&SftpError::Cancelled).code, "cancelled");
+        let e = AppError::from(&SftpError::Other("boom".into()));
+        assert_eq!((e.code, e.detail.as_deref()), ("sftp_other", Some("boom")));
     }
 
     #[test]

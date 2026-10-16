@@ -1,8 +1,10 @@
 mod app_error;
 mod commands;
+mod sftp_commands;
 mod metrics_task;
 mod state;
 mod stream;
+mod transfers;
 
 use state::{AppState, StartupWarning};
 use std::collections::HashMap;
@@ -41,12 +43,14 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         tabs: Mutex::new(HashMap::new()),
         pending_prompts: Arc::new(Mutex::new(HashMap::new())),
         startup_warnings: warnings,
+        transfers: Arc::new(transfers::Registry::default()),
     })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -67,6 +71,16 @@ pub fn run() {
             commands::shell_close,
             commands::metrics_start,
             commands::metrics_stop,
+            sftp_commands::sftp_home,
+            sftp_commands::sftp_list,
+            sftp_commands::sftp_stat,
+            sftp_commands::sftp_mkdir,
+            sftp_commands::sftp_rename,
+            sftp_commands::sftp_remove,
+            sftp_commands::sftp_copy,
+            sftp_commands::sftp_upload,
+            sftp_commands::sftp_download,
+            sftp_commands::transfer_cancel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
