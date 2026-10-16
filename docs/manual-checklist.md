@@ -31,3 +31,23 @@ Otomatik testlerin tam kapsayamadığı yerler. Test sunucusunu başlat: `vcore/
 - [ ] Yukarıdaki arayüz maddelerinin hepsi
 - [ ] Parola Windows Credential Manager'da görünüyor ("ssh-istemci" adıyla) ve oturum dosyasında yok
 - [ ] `cargo test --workspace` (Docker testleri sunucu kapalıysa atlanır)
+
+## Aşama 2: dosyalar, metrikler, tema, dil (elle)
+
+Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşağıdakiler arayüzde gözle doğrulanmalı.
+
+- [ ] Bağlanınca sol panelde **Dosyalar** sekmesi ev klasörünü listeliyor; klasöre çift tık girer, yol çubuğu ve "Üst klasör" çalışır
+- [ ] Sekme değiştirip dönünce klasör hatırlanıyor; başka sunucu sekmesine geçince onun dosyaları görünüyor
+- [ ] Tıkla / Ctrl(⌘)+tıkla / Shift+tıkla seçim; ok tuşları, Enter, F2, Delete, Ctrl(⌘)+C/X/V
+- [ ] Kopyala → aynı klasöre yapıştır: `ad (kopya).uzantı`; Kes → başka klasöre yapıştır: taşınıyor
+- [ ] Tuhaf adlı dosya (`a b'c"; echo x.txt`) kopyalama, yeniden adlandırma, silme güvenli
+- [ ] Silme önce uygulama içi onay soruyor; klasör içeriğiyle birlikte siliniyor
+- [ ] Bilgi penceresi: yol, boyut, `rwx (0644)`, sahip/grup, tarih
+- [ ] Yükle düğmesi dosya seçici açıyor; Finder/Explorer'dan sürükle-bırak (dosya ve klasör) yüklüyor
+- [ ] İndir → Downloads klasörüne iniyor, aynı ad varsa `ad (2)`; ilerleme çubuğu ve iptal çalışıyor
+- [ ] İptal edilen yükleme/indirmede yarım dosya kalmıyor
+- [ ] Terminalin altında canlı metrik çubuğu (CPU, bellek, disk, yük, açık kalma, ağ); değerler `htop` ile uyumlu; yüksek kullanımda renk değişiyor
+- [ ] Linux olmayan sunucuda metrik çubuğu "—" gösteriyor, bağlantı bozulmuyor
+- [ ] Tema: Sistem/Açık/Koyu; sistem ayarı değişince "Sistem" modu anında uyuyor; terminal renkleri de değişiyor
+- [ ] Dil: Türkçe/English; İngilizcede çevrilmemiş metin kalmamış; hata mesajları seçilen dilde
+- [ ] Windows: yukarıdakilerin hepsi, ayrıca sürükle-bırak ve yol ayracı (`C:\...`) doğru

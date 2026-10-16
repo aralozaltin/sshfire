@@ -1,8 +1,16 @@
 # ssh-istemci (çalışma adı)
 
-Kayıtlı sunuculara tek tıkla bağlanan, hızlı bir masaüstü SSH terminali. Tauri 2 + React + xterm.js, çekirdek Rust (`russh`).
+Kayıtlı sunuculara çift tıkla bağlanan, hızlı bir masaüstü SSH terminali. Tauri 2 + React + xterm.js, çekirdek Rust (`russh`).
 Şifreler işletim sisteminin anahtar deposunda (macOS Keychain, Windows Credential Manager, Linux Secret Service).
 
+
+## Özellikler
+
+- Kayıtlı sunucu listesi (klasörler, arama), parolalar işletim sistemi anahtar deposunda
+- Sekmeli terminal (xterm.js), host key doğrulama, parola ya da anahtar dosyasıyla giriş
+- SFTP dosya paneli: gezme, kopyala/kes/yapıştır, yeniden adlandır, sil, bilgi, yükle/indir, sürükle-bırak
+- Terminal altında canlı sunucu metrikleri (CPU, bellek, disk, yük, ağ)
+- Açık / koyu tema, Türkçe / English
 
 ## Çalıştırma
 
