@@ -15,9 +15,22 @@ pub enum HostKeyDecision {
     Reject,
 }
 
+/// Klavye etkileşimli doğrulamada sunucunun sorduğu tek bir soru.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthPromptItem {
+    pub text: String,
+    /// `true` ise yazılan görünür olabilir (örn. kullanıcı adı); `false` ise gizlenmelidir (parola, kod).
+    pub echo: bool,
+}
+
 #[async_trait]
 pub trait HostKeyPrompt: Send + Sync {
     async fn decide(&self, host: &str, port: u16, fingerprint: &str, status: &HostKeyStatus) -> HostKeyDecision;
+
+    /// Klavye etkileşimli doğrulama soruları; `None` kullanıcının vazgeçtiği anlamına gelir.
+    async fn interactive(&self, _name: &str, _instructions: &str, _prompts: &[AuthPromptItem]) -> Option<Vec<String>> {
+        None
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -28,6 +41,10 @@ pub enum SshError {
     Unreachable(String),
     Secret(SecretError),
     Key(String),
+    PassphraseRequired,
+    WrongPassphrase,
+    AgentUnavailable(String),
+    AuthCancelled,
     Other(String),
 }
 
@@ -42,6 +59,10 @@ impl std::fmt::Display for SshError {
             SshError::Unreachable(m) => write!(f, "unreachable: {m}"),
             SshError::Secret(_) => write!(f, "key store error"),
             SshError::Key(m) => write!(f, "key file error: {m}"),
+            SshError::PassphraseRequired => write!(f, "the key is encrypted and needs a passphrase"),
+            SshError::WrongPassphrase => write!(f, "the key passphrase is wrong"),
+            SshError::AgentUnavailable(m) => write!(f, "ssh agent unavailable: {m}"),
+            SshError::AuthCancelled => write!(f, "authentication was cancelled"),
             SshError::Other(m) => write!(f, "{m}"),
         }
     }
@@ -76,6 +97,30 @@ impl ShellWriter {
 
     async fn send(&self, cmd: Cmd) -> Result<(), SshError> {
         self.cmds.send(cmd).await.map_err(|_| SshError::Other("shell is closed".into()))
+    }
+}
+
+/// Anahtar dosyasının parola (passphrase) ile korunup korunmadığını söyler.
+pub fn key_needs_passphrase(path: &str) -> Result<bool, SshError> {
+    match russh::keys::load_secret_key(path, None) {
+        Ok(_) => Ok(false),
+        Err(russh::keys::Error::KeyIsEncrypted) => Ok(true),
+        Err(e) => Err(SshError::Key(e.to_string())),
+    }
+}
+
+fn load_key(path: &str, passphrase: Option<&str>) -> Result<russh::keys::PrivateKey, SshError> {
+    match russh::keys::load_secret_key(path, passphrase) {
+        Ok(key) => Ok(key),
+        Err(russh::keys::Error::KeyIsEncrypted) => Err(SshError::PassphraseRequired),
+        Err(e) => {
+            // Parola verildi ama anahtar açılmadıysa ve dosya gerçekten şifreliyse parola yanlıştır.
+            if passphrase.is_some() && key_needs_passphrase(path) == Ok(true) {
+                Err(SshError::WrongPassphrase)
+            } else {
+                Err(SshError::Key(e.to_string()))
+            }
+        }
     }
 }
 
@@ -160,6 +205,7 @@ impl SshConnection {
         hosts: Arc<Mutex<KnownHosts>>,
         prompt: Arc<dyn HostKeyPrompt>,
     ) -> Result<SshConnection, SshError> {
+        let auth_prompt = prompt.clone();
         let failure = Arc::new(Mutex::new(None));
         let handler = Handler {
             host: session.host.clone(),
@@ -181,39 +227,95 @@ impl SshConnection {
                 return Err(recorded.unwrap_or_else(|| SshError::Unreachable(e.to_string())));
             }
         };
-        Self::authenticate(&mut handle, session, secrets).await?;
+        Self::authenticate(&mut handle, session, secrets, &*auth_prompt).await?;
         Ok(SshConnection { handle, _jump: None })
     }
 
-    async fn authenticate(handle: &mut client::Handle<Handler>, session: &Session, secrets: &dyn SecretStore) -> Result<(), SshError> {
-        let authenticated = match &session.auth {
-            crate::sessions::Auth::Password => {
+    async fn authenticate(
+        handle: &mut client::Handle<Handler>,
+        session: &Session,
+        secrets: &dyn SecretStore,
+        prompt: &dyn HostKeyPrompt,
+    ) -> Result<(), SshError> {
+        use crate::sessions::Auth;
+        let other = |e: russh::Error| SshError::Other(e.to_string());
+        let user = session.user.clone();
+        let result = match &session.auth {
+            Auth::Password => {
                 let secret = secrets
                     .get(&session.id)
                     .map_err(SshError::Secret)?
                     .ok_or_else(|| SshError::Secret(SecretError::Other("no password stored".into())))?;
-                handle
-                    .authenticate_password(session.user.clone(), secret.expose())
-                    .await
-                    .map_err(|e| SshError::Other(e.to_string()))?
+                handle.authenticate_password(user.clone(), secret.expose()).await.map_err(other)?
             }
-            crate::sessions::Auth::KeyFile { path } => {
-                let key = russh::keys::load_secret_key(path, None).map_err(|e| SshError::Key(e.to_string()))?;
-                let hash = handle
-                    .best_supported_rsa_hash()
-                    .await
-                    .map_err(|e| SshError::Other(e.to_string()))?
-                    .flatten();
+            Auth::KeyFile { path } => {
+                let passphrase = secrets.get(&crate::secrets::passphrase_account(&session.id)).map_err(SshError::Secret)?;
+                let key = load_key(path, passphrase.as_ref().map(|p| p.expose()))?;
+                let hash = handle.best_supported_rsa_hash().await.map_err(other)?.flatten();
                 handle
-                    .authenticate_publickey(session.user.clone(), PrivateKeyWithHashAlg::new(Arc::new(key), hash))
+                    .authenticate_publickey(user.clone(), PrivateKeyWithHashAlg::new(Arc::new(key), hash))
                     .await
-                    .map_err(|e| SshError::Other(e.to_string()))?
+                    .map_err(other)?
             }
+            Auth::Agent => return Self::authenticate_with_agent(handle, &user).await,
+            Auth::Interactive => return Self::keyboard_interactive(handle, &user, prompt).await,
         };
-        if !authenticated.success() {
-            return Err(SshError::AuthFailed);
+        match result {
+            russh::client::AuthResult::Success => Ok(()),
+            // İki aşamalı doğrulama: ilk adım kabul edildi, sunucu ikinci adım olarak soru-cevap istiyor.
+            russh::client::AuthResult::Failure { remaining_methods, partial_success: true }
+                if remaining_methods.contains(&russh::MethodKind::KeyboardInteractive) =>
+            {
+                Self::keyboard_interactive(handle, &user, prompt).await
+            }
+            russh::client::AuthResult::Failure { .. } => Err(SshError::AuthFailed),
         }
-        Ok(())
+    }
+
+    async fn keyboard_interactive(handle: &mut client::Handle<Handler>, user: &str, prompt: &dyn HostKeyPrompt) -> Result<(), SshError> {
+        use russh::client::KeyboardInteractiveAuthResponse as R;
+        let other = |e: russh::Error| SshError::Other(e.to_string());
+        let mut response = handle.authenticate_keyboard_interactive_start(user.to_string(), None).await.map_err(other)?;
+        for _ in 0..8 {
+            match response {
+                R::Success => return Ok(()),
+                R::Failure { .. } => return Err(SshError::AuthFailed),
+                R::InfoRequest { name, instructions, prompts } => {
+                    let answers = if prompts.is_empty() {
+                        Vec::new()
+                    } else {
+                        let items: Vec<AuthPromptItem> = prompts.iter().map(|p| AuthPromptItem { text: p.prompt.clone(), echo: p.echo }).collect();
+                        match prompt.interactive(&name, &instructions, &items).await {
+                            Some(a) => a,
+                            None => return Err(SshError::AuthCancelled),
+                        }
+                    };
+                    response = handle.authenticate_keyboard_interactive_respond(answers).await.map_err(other)?;
+                }
+            }
+        }
+        Err(SshError::AuthFailed)
+    }
+
+    async fn authenticate_with_agent(handle: &mut client::Handle<Handler>, user: &str) -> Result<(), SshError> {
+        use russh::keys::agent::{client::AgentClient, AgentIdentity};
+        let unavailable = |e: russh::keys::Error| SshError::AgentUnavailable(e.to_string());
+        #[cfg(unix)]
+        let mut agent = AgentClient::connect_env().await.map_err(unavailable)?;
+        #[cfg(windows)]
+        let mut agent = AgentClient::connect_named_pipe(r"\\.\pipe\openssh-ssh-agent").await.map_err(unavailable)?;
+        let identities = agent.request_identities().await.map_err(unavailable)?;
+        let hash = handle.best_supported_rsa_hash().await.map_err(|e| SshError::Other(e.to_string()))?.flatten();
+        for identity in identities {
+            if let AgentIdentity::PublicKey { key, .. } = identity {
+                if let Ok(result) = handle.authenticate_publickey_with(user.to_string(), key, hash, &mut agent).await {
+                    if result.success() {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        Err(SshError::AuthFailed)
     }
 
     /// `jump` bağlantısı üzerinden (direct-tcpip) hedefe ikinci bir SSH oturumu kurar.
@@ -229,6 +331,7 @@ impl SshConnection {
             .channel_open_direct_tcpip(session.host.clone(), u32::from(session.port), "127.0.0.1", 0)
             .await
             .map_err(|e| SshError::Unreachable(e.to_string()))?;
+        let auth_prompt = prompt.clone();
         let failure = Arc::new(Mutex::new(None));
         let handler = Handler { host: session.host.clone(), port: session.port, hosts, prompt, failure: failure.clone() };
         let config = Arc::new(client::Config {
@@ -243,7 +346,7 @@ impl SshConnection {
                 return Err(recorded.unwrap_or_else(|| SshError::Unreachable(e.to_string())));
             }
         };
-        Self::authenticate(&mut handle, session, secrets).await?;
+        Self::authenticate(&mut handle, session, secrets, &*auth_prompt).await?;
         Ok(SshConnection { handle, _jump: Some(jump.clone()) })
     }
 

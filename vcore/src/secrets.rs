@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+/// Anahtar dosyası parolasının (passphrase) kasadaki hesap adı: sunucu kimliğinden türetilir.
+pub fn passphrase_account(session_id: &str) -> String {
+    format!("{session_id}:passphrase")
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Secret(String);
 

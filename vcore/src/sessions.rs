@@ -6,6 +6,10 @@ use std::path::{Path, PathBuf};
 pub enum Auth {
     Password,
     KeyFile { path: String },
+    /// Çalışan `ssh-agent` (macOS/Linux) ya da Windows OpenSSH ajanındaki anahtarlar.
+    Agent,
+    /// Klavye etkileşimli doğrulama: sunucu soruları sorar (iki aşamalı doğrulama kodu dahil).
+    Interactive,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
