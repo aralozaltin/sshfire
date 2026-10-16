@@ -22,6 +22,9 @@ pub struct Session {
     /// Bu sunucuya hangi kayıtlı sunucu üzerinden (atlama/bastion) bağlanılacağı.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump: Option<String>,
+    /// Bağlantı kurulunca kabuğa otomatik gönderilen komut.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub startup: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -36,6 +39,8 @@ pub struct NewSession {
     pub tunnels: Vec<crate::tunnel::TunnelSpec>,
     #[serde(default)]
     pub jump: Option<String>,
+    #[serde(default)]
+    pub startup: Option<String>,
 }
 
 #[derive(Debug)]
@@ -225,6 +230,7 @@ impl SessionStore {
             auth: s.auth,
             tunnels: s.tunnels,
             jump: s.jump,
+            startup: s.startup.filter(|c| !c.trim().is_empty()),
         };
         self.sessions.push(session.clone());
         self.save()?;
@@ -282,6 +288,7 @@ mod tests {
             auth: Auth::Password,
             tunnels: vec![],
             jump: None,
+            startup: None,
         }
     }
 
@@ -480,10 +487,26 @@ mod tests {
     fn import_drops_jump_references_that_point_outside_the_file() {
         let dir = tempdir().unwrap();
         let mut target = SessionStore::open(&dir.path().join("dst.json")).unwrap();
-        let orphan = Session { id: "x".into(), name: "Yetim".into(), host: "h".into(), port: 22, user: "u".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: Some("yok".into()) };
+        let orphan = Session { id: "x".into(), name: "Yetim".into(), host: "h".into(), port: 22, user: "u".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: Some("yok".into()), startup: None };
         let report = target.import(vec![orphan]).unwrap();
         assert_eq!(report.added, 1);
         assert_eq!(target.list()[0].jump, None);
+    }
+
+    #[test]
+    fn a_startup_command_is_kept_and_blank_ones_are_dropped() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("s.json");
+        let mut store = SessionStore::open(&file).unwrap();
+        let mut n = new("a", "h");
+        n.startup = Some("cd /var/log && ls".into());
+        store.add(n).unwrap();
+        let mut blank = new("b", "h2");
+        blank.startup = Some("   ".into());
+        store.add(blank).unwrap();
+        let reopened = SessionStore::open(&file).unwrap();
+        assert_eq!(reopened.list()[0].startup.as_deref(), Some("cd /var/log && ls"));
+        assert_eq!(reopened.list()[1].startup, None);
     }
 
     #[test]

@@ -20,6 +20,7 @@ export interface NewSession {
   auth: Auth;
   tunnels?: TunnelSpec[];
   jump?: string | null;
+  startup?: string | null;
 }
 
 export interface Session extends NewSession {

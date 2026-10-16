@@ -30,7 +30,7 @@ async fn connected() -> (tempfile::TempDir, Arc<SshConnection>) {
     let dir = tempfile::tempdir().unwrap();
     let secrets = MemorySecrets::default();
     secrets.set("s1", &Secret::new("test-pass-123")).unwrap();
-    let session = Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: None };
+    let session = Session { id: "s1".into(), name: "t".into(), host: "127.0.0.1".into(), port: 2222, user: "tester".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: None, startup: None };
     let hosts = Arc::new(Mutex::new(KnownHosts::open(&dir.path().join("k.json")).unwrap()));
     let conn = SshConnection::connect(&session, &secrets, hosts, Arc::new(Trust)).await.unwrap();
     (dir, Arc::new(conn))

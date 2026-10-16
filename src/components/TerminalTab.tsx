@@ -27,9 +27,10 @@ export interface TerminalTabProps {
   active?: boolean;
   onFocusPane?: () => void;
   local?: boolean;
+  startupCommand?: string | null;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -52,6 +53,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     let alive = true;
     void session.open(sessionId).then(() => {
       if (!alive || session.status !== "open" || !session.tabId) return;
+      if (startupCommand) session.send(`${startupCommand}\r`);
       if (local) return;
       onTabId?.(session.tabId);
       void api.metricsStart?.(session.tabId, setMetrics);

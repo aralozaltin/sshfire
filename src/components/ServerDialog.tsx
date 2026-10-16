@@ -19,6 +19,7 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
   const [folder, setFolder] = useState(initial?.folder ?? "");
   const [authType, setAuthType] = useState<Auth["type"]>(initial?.auth.type ?? "password");
   const [keyPath, setKeyPath] = useState(initial?.auth.type === "key_file" ? initial.auth.path : "");
+  const [startup, setStartup] = useState(initial?.startup ?? "");
   const [jump, setJump] = useState(initial?.jump ?? "");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -45,6 +46,7 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
       auth,
       ...(initial?.tunnels ? { tunnels: initial.tunnels } : {}),
       ...(jump ? { jump } : initial?.jump ? { jump: null } : {}),
+      ...(startup.trim() ? { startup: startup.trim() } : initial?.startup ? { startup: null } : {}),
     };
     const pw = authType === "password" && password ? password : undefined;
     onSave(initial ? { ...base, id: initial.id } : base, pw);
@@ -79,6 +81,10 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
         </select>
+      </label>
+      <label>
+        {d.startup}
+        <input value={startup} onChange={(e) => setStartup(e.target.value)} placeholder="cd /var/log" />
       </label>
       {authType === "password" ? (
         <label>

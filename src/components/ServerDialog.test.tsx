@@ -118,3 +118,33 @@ test("editing a server keeps its saved tunnels", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
   expect(onSave.mock.calls[0][0].tunnels).toEqual([{ kind: "dynamic", listen_port: 1080 }]);
 });
+
+test("a command to run on connect can be saved, and clearing it on edit sends null", async () => {
+  const onSave = vi.fn();
+  const { unmount } = render(<ServerDialog onSave={onSave} onCancel={() => {}} />);
+  await userEvent.type(screen.getByLabelText("Ad"), "x");
+  await userEvent.type(screen.getByLabelText("Adres"), "h");
+  await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  await userEvent.type(screen.getByLabelText("Bağlanınca çalıştır"), "cd /var/log");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].startup).toBe("cd /var/log");
+  unmount();
+
+  const onSave2 = vi.fn();
+  render(<ServerDialog initial={{ ...existing, startup: "ls" }} onSave={onSave2} onCancel={() => {}} />);
+  const box = screen.getByLabelText("Bağlanınca çalıştır");
+  expect(box).toHaveValue("ls");
+  await userEvent.clear(box);
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave2.mock.calls[0][0].startup).toBeNull();
+});
+
+test("without a startup command the saved object does not mention one", async () => {
+  const onSave = vi.fn();
+  render(<ServerDialog onSave={onSave} onCancel={() => {}} />);
+  await userEvent.type(screen.getByLabelText("Ad"), "x");
+  await userEvent.type(screen.getByLabelText("Adres"), "h");
+  await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect("startup" in onSave.mock.calls[0][0]).toBe(false);
+});

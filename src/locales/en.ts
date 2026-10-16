@@ -34,6 +34,7 @@ export const en: Messages = {
     errKeyPath: "Key file path cannot be empty",
     jump: "Jump host",
     jumpNone: "None (connect directly)",
+    startup: "Run on connect",
   },
   tabs: { label: "Open connections", close: "close", empty: "Pick a server on the left" },
   terminal: {

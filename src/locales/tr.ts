@@ -32,6 +32,7 @@ export const tr = {
     errKeyPath: "Anahtar dosyası yolu boş olamaz",
     jump: "Atlama sunucusu",
     jumpNone: "Yok (doğrudan bağlan)",
+    startup: "Bağlanınca çalıştır",
   },
   tabs: { label: "Açık bağlantılar", close: "kapat", empty: "Soldan bir sunucu seç" },
   terminal: {

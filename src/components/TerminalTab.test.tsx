@@ -145,3 +145,20 @@ test("a local terminal does not start metrics, directory watching or report a ba
   expect(onTabId).not.toHaveBeenCalled();
   expect(screen.queryByLabelText("İşlemci")).not.toBeInTheDocument();
 });
+
+test("the startup command is typed into the shell once the connection is open", async () => {
+  const { term, api } = setup();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} startupCommand="cd /var/log && ls" />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  await vi.waitFor(() => expect(api.shellWrite).toHaveBeenCalled());
+  const [, bytes] = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls[0];
+  expect(new TextDecoder().decode(bytes)).toBe("cd /var/log && ls\r");
+});
+
+test("no startup command means nothing is typed", async () => {
+  const { term, api } = setup();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  await new Promise((r) => setTimeout(r, 30));
+  expect(api.shellWrite).not.toHaveBeenCalled();
+});

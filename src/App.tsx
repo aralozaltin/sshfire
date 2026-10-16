@@ -483,6 +483,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               tabKey={t.key}
               hub={hub}
               local={t.sessionId === LOCAL_SESSION_ID}
+              startupCommand={sessions.find((x) => x.id === t.sessionId)?.startup}
               sessionId={t.sessionId}
               api={api}
               createTerm={createTerm}
