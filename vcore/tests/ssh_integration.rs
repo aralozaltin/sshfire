@@ -249,3 +249,35 @@ async fn writer_handle_writes_while_another_task_reads() {
     let out = reader.await.unwrap();
     assert!(out.contains("writer-ok"));
 }
+
+#[tokio::test]
+async fn hundred_megabytes_of_output_streams_through_the_bounded_channel() {
+    if !server_up() { return; }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    let conn = SshConnection::connect(&session(Auth::Password), &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust))
+        .await
+        .unwrap();
+    let mut shell = conn.open_shell(80, 24).await.unwrap();
+    const TOTAL: usize = 100 * 1000 * 1000;
+    shell.write(b"stty -echo; head -c 100000000 /dev/zero | tr '\\000' 'a'; echo; echo FLOOD-$((1+1))DONE\n").await.unwrap();
+    let started = std::time::Instant::now();
+    let mut received = 0usize;
+    let mut tail = String::new();
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(120);
+    while !tail.contains("FLOOD-2DONE") {
+        let ev = tokio::time::timeout_at(deadline, shell.read()).await.expect("flood stalled");
+        match ev {
+            Some(ShellEvent::Data(d)) => {
+                received += d.iter().filter(|b| **b == b'a').count();
+                tail.push_str(&String::from_utf8_lossy(&d[d.len().saturating_sub(64)..]));
+                if tail.len() > 256 { tail = tail[tail.len() - 128..].to_string(); }
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+    // Komutun yankısındaki birkaç 'a' harfi de sayılır; tüm 100 MB eksiksiz gelmeli.
+    assert!((TOTAL..TOTAL + 100).contains(&received), "received {received}");
+    eprintln!("flood: {} MB in {:?}", TOTAL / 1_000_000, started.elapsed());
+}
