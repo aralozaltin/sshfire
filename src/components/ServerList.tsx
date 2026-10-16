@@ -8,6 +8,7 @@ export interface ServerListProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
+  onImport?: () => void;
 }
 
 function matches(s: Session, q: string): boolean {
@@ -15,7 +16,7 @@ function matches(s: Session, q: string): boolean {
   return [s.name, s.host, s.folder ?? ""].some((v) => v.toLowerCase().includes(q));
 }
 
-export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: ServerListProps) {
+export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImport }: ServerListProps) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
         <h2>{t.emptyTitle}</h2>
         <p>{t.emptyHint}</p>
         <button type="button" onClick={onAdd}>{t.add}</button>
+        {onImport && <button type="button" onClick={onImport}>{t.importConfig.button}</button>}
       </div>
     );
   }
@@ -52,6 +54,11 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
         />
         <button type="button" onClick={onAdd}>{t.add}</button>
       </div>
+      {onImport && (
+        <div className="server-list__import">
+          <button type="button" onClick={onImport}>{t.importConfig.button}</button>
+        </div>
+      )}
       {groups.length === 0 && <p className="server-list__none">{t.noResults}</p>}
       {groups.map(([folder, items]) => (
         <section key={folder} role="group" aria-label={folder} className="server-list__group">

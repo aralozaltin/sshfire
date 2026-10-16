@@ -131,6 +131,15 @@ export const tr = {
     remember: "Parolayı hatırla (anahtar deposuna kaydet)",
     connect: "Bağlan",
   },
+  importConfig: {
+    button: "SSH config'den al",
+    title: "~/.ssh/config'den içe aktar",
+    empty: "~/.ssh/config içinde içe aktarılacak sunucu bulunamadı.",
+    exists: "zaten var",
+    selectAll: "Tümünü seç",
+    importButton: (n: number) => (n === 0 ? "İçe aktar" : `${n} sunucuyu içe aktar`),
+    folder: "ssh config",
+  },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

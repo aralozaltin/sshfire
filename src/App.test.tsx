@@ -33,6 +33,7 @@ function fakeApi(over: Partial<AppApi> = {}) {
     onHostKeyPrompt: vi.fn(async (cb) => { hostKeyCb = cb; return () => {}; }),
     onShellClosed: vi.fn(async () => () => {}),
     ...sftpApi(),
+    sshConfigHosts: vi.fn(async () => ({ hosts: [], defaultUser: "u" })),
     ...over,
   } as unknown as AppApi;
   return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)), promptPassword: (e: Parameters<typeof passwordCb>[0]) => act(() => passwordCb(e)) };
@@ -287,4 +288,33 @@ test("cancelling the password prompt answers with no password", async () => {
   promptPassword({ requestId: "p2", host: "h", user: "u" });
   await userEvent.click(await screen.findByRole("button", { name: "Vazgeç" }));
   expect(api.answerPassword).toHaveBeenCalledWith("p2", null, false);
+});
+
+test("importing from ssh config adds the chosen hosts with key files and a folder", async () => {
+  const extra = {
+    sshConfigHosts: vi.fn(async () => ({
+      defaultUser: "aral",
+      hosts: [
+        { alias: "prod", hostName: "10.0.0.5", user: "deploy", port: 2222, identityFile: "/Users/aral/.ssh/prod", proxyJump: null },
+        { alias: "web", hostName: "web.example.com", user: null, port: null, identityFile: null, proxyJump: null },
+        { alias: "Test 3.81", hostName: "192.168.3.81", user: "root", port: 22, identityFile: null, proxyJump: null },
+      ],
+    })),
+  };
+  const { api } = fakeApi(extra as unknown as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "SSH config'den al" }));
+  expect(await screen.findByText("deploy@10.0.0.5:2222")).toBeInTheDocument();
+  expect(screen.getByText("zaten var")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "2 sunucuyu içe aktar" }));
+  await vi.waitFor(() => expect(api.addSession).toHaveBeenCalledTimes(2));
+  expect(api.addSession).toHaveBeenCalledWith(
+    { name: "prod", host: "10.0.0.5", port: 2222, user: "deploy", folder: "ssh config", auth: { type: "key_file", path: "/Users/aral/.ssh/prod" } },
+    undefined,
+  );
+  expect(api.addSession).toHaveBeenCalledWith(
+    { name: "web", host: "web.example.com", port: 22, user: "aral", folder: "ssh config", auth: { type: "password" } },
+    undefined,
+  );
 });

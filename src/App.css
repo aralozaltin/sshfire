@@ -179,3 +179,12 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .password-remember { flex-direction: row !important; align-items: center; gap: 6px; }
 .password-remember input { width: auto; }
+
+.server-list__import { padding: 0 4px 4px; }
+.import-dialog { width: min(520px, 94vw); }
+.import-dialog__list { list-style: none; margin: 0 10px; padding: 0; max-height: 280px; overflow: auto; border: 1px solid var(--line); background: var(--surface); }
+.import-dialog__list li { display: flex; align-items: center; gap: 10px; padding: 2px 6px; }
+.import-dialog__list label { display: inline-flex; align-items: center; gap: 6px; flex-direction: row; }
+.import-dialog__list input, .import-dialog__all input { width: auto; }
+.import-dialog__addr { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.import-dialog__all { flex-direction: row !important; align-items: center; gap: 6px; }

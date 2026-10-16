@@ -6,6 +6,7 @@ import { Tabs, type TabInfo } from "./components/Tabs";
 import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
 import { PasswordDialog, type PasswordRequest } from "./components/PasswordDialog";
+import { ImportDialog, type ImportCandidate } from "./components/ImportDialog";
 import { createXterm } from "./terminal/xterm";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { FileBrowser } from "./components/FileBrowser";
@@ -73,6 +74,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
+  const [importCandidates, setImportCandidates] = useState<ImportCandidate[] | null>(null);
   const [passwordRequest, setPasswordRequest] = useState<PasswordRequest | null>(null);
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +190,50 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     await reload();
   }
 
+  async function openImport() {
+    try {
+      const { hosts, defaultUser } = await api.sshConfigHosts();
+      setImportCandidates(
+        hosts.map((h) => {
+          const user = h.user ?? defaultUser;
+          const port = h.port ?? 22;
+          return {
+            alias: h.alias,
+            host: h.hostName,
+            user,
+            port,
+            identityFile: h.identityFile,
+            exists: sessions.some((s) => s.host === h.hostName && s.port === port && s.user === user),
+          };
+        }),
+      );
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
+  async function runImport(chosen: ImportCandidate[]) {
+    setImportCandidates(null);
+    try {
+      for (const c of chosen) {
+        await api.addSession(
+          {
+            name: c.alias,
+            host: c.host,
+            port: c.port,
+            user: c.user,
+            folder: t.importConfig.folder,
+            auth: c.identityFile ? { type: "key_file", path: c.identityFile } : { type: "password" },
+          },
+          undefined,
+        );
+      }
+      await reload();
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
   function answerPassword(requestId: string, password: string | null, remember: boolean) {
     void api.answerPassword(requestId, password, remember);
     setPasswordRequest(null);
@@ -216,6 +262,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 onEdit={(id) => setDialog({ mode: "edit", id })}
                 onDelete={setDeleting}
                 onAdd={() => setDialog({ mode: "add" })}
+                onImport={() => void openImport()}
               />
             </nav>
           }
@@ -300,6 +347,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               <button type="button" onClick={() => void confirmRemove()}>{t.remove}</button>
             </div>
           </div>
+        </div>
+      )}
+      {importCandidates && (
+        <div className="overlay">
+          <ImportDialog candidates={importCandidates} onImport={(c) => void runImport(c)} onCancel={() => setImportCandidates(null)} />
         </div>
       )}
       {passwordRequest && (

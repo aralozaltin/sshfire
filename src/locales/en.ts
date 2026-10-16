@@ -133,6 +133,15 @@ export const en: Messages = {
     remember: "Remember the password (save to the key store)",
     connect: "Connect",
   },
+  importConfig: {
+    button: "Import ssh config",
+    title: "Import from ~/.ssh/config",
+    empty: "No importable servers were found in ~/.ssh/config.",
+    exists: "already added",
+    selectAll: "Select all",
+    importButton: (n: number) => (n === 0 ? "Import" : `Import ${n} server${n === 1 ? "" : "s"}`),
+    folder: "ssh config",
+  },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

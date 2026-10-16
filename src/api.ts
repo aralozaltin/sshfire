@@ -77,6 +77,16 @@ export function cwdStart(tabId: string, onCwd: (cwd: string) => void) {
 export const cwdStop = (tabId: string) => invoke<void>("cwd_stop", { tabId });
 export const metricsStop = (tabId: string) => invoke<void>("metrics_stop", { tabId });
 
+export interface SshConfigHost {
+  alias: string;
+  hostName: string;
+  user: string | null;
+  port: number | null;
+  identityFile: string | null;
+  proxyJump: string | null;
+}
+export const sshConfigHosts = () => invoke<{ hosts: SshConfigHost[]; defaultUser: string }>("ssh_config_hosts");
+
 export const answerPassword = (requestId: string, password: string | null, remember: boolean) =>
   invoke<void>("password_answer", { requestId, password, remember });
 
@@ -136,6 +146,7 @@ export const realApi = {
   metricsStop,
   cwdStart,
   cwdStop,
+  sshConfigHosts,
   answerPassword,
   onPasswordPrompt: async (cb: (e: PasswordPromptEvent) => void) => (await onPasswordPrompt(cb)) as () => void,
   answerHostKey,
