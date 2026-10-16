@@ -127,6 +127,7 @@ export const tr = {
   transfer: {
     upload: "Yükle",
     download: "İndir",
+    downloadTo: "Şuraya indir…",
     cancel: "İptal et",
     uploading: "Yükleniyor",
     downloading: "İndiriliyor",

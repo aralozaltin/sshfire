@@ -110,10 +110,21 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     document.body.classList.add("is-resizing");
   }
 
-  async function uploadPaths(paths: string[]) {
-    const { path: dir, entries: current } = live.current;
+  async function uploadPaths(paths: string[], into?: string | null) {
+    const { path: here, entries: current } = live.current;
+    const dir = into || here;
     if (!tabId || !dir || paths.length === 0) return;
-    const taken = new Set(current.map((e) => e.name));
+    try {
+      const existing = dir === here ? current : await api.sftpList(tabId, dir);
+      await uploadItems(dir, existing, paths);
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  async function uploadItems(dir: string, existing: FileEntry[], paths: string[]) {
+    if (!tabId) return;
+    const taken = new Set(existing.map((e) => e.name));
     const items = paths.map((local) => {
       const name = uniqueName(localBaseName(local), taken, f.copySuffix);
       taken.add(name);
@@ -134,10 +145,14 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     }
   }
 
-  async function downloadSelection(items: FileEntry[]) {
+  async function downloadSelection(items: FileEntry[], chooseFolder = false) {
     if (!tabId || items.length === 0) return;
     try {
-      await api.sftpDownload(tabId, items.map((i) => i.path));
+      const dir = chooseFolder ? await api.pickFolder() : undefined;
+      if (chooseFolder && !dir) return;
+      const paths = items.map((i) => i.path);
+      if (dir) await api.sftpDownload(tabId, paths, dir);
+      else await api.sftpDownload(tabId, paths);
     } catch (e) {
       setError(e);
     }
@@ -147,7 +162,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     if (!tabId) return;
     let cancelled = false;
     const offs: (() => void)[] = [];
-    void api.onFilesDropped((paths) => void uploadPaths(paths)).then((off) => (cancelled ? off() : offs.push(off)));
+    void api.onFilesDropped((paths, into) => void uploadPaths(paths, into)).then((off) => (cancelled ? off() : offs.push(off)));
     void api
       .onTransferProgress((e) => {
         if (e.direction === "upload" && e.state === "done") void live.current.load(live.current.path);
@@ -354,6 +369,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.cut, onClick: () => copySelection("cut") },
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
         { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
+        { label: t.transfer.downloadTo, onClick: () => void downloadSelection(selectedEntries, true) },
         { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.editExternal, onClick: () => selectedEntries[0] && void editExternal(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
@@ -409,6 +425,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
               key={c.path}
               type="button"
               className={dropTarget === c.path ? "is-drop-target" : undefined}
+              data-drop-dir={c.path}
               onClick={() => void load(c.path)}
               onDragOver={(ev) => overTarget(c.path, ev)}
               onDragLeave={() => setDropTarget(null)}
@@ -466,6 +483,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
               onDragOver={entry.isDir ? (ev) => overTarget(entry.path, ev) : undefined}
               onDragLeave={entry.isDir ? () => setDropTarget(null) : undefined}
               onDrop={entry.isDir ? (ev) => void dropInto(entry.path, ev) : undefined}
+              data-drop-dir={entry.isDir ? entry.path : undefined}
               onClick={(ev) => select(entry, ev)}
               onDoubleClick={() => open(entry)}
               onContextMenu={(ev) => {

@@ -11,7 +11,7 @@ const file = (name: string, dir = "/home/u", over: Partial<FileEntry> = {}): Fil
 });
 const folder = (name: string, dir = "/home/u") => file(name, dir, { isDir: true, size: 4096, permissions: 0o755 });
 
-const hooks: { drop: (p: string[]) => void; transfer: (e: TransferEvent) => void; sync: (e: { path: string; ok: boolean }) => void } = { drop: () => {}, transfer: () => {}, sync: () => {} };
+const hooks: { drop: (p: string[], into?: string | null) => void; transfer: (e: TransferEvent) => void; sync: (e: { path: string; ok: boolean }) => void } = { drop: () => {}, transfer: () => {}, sync: () => {} };
 
 function fakeApi(listing: Record<string, FileEntry[]> = {}) {
   const lists: Record<string, FileEntry[]> = {
@@ -37,7 +37,8 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpUpload: vi.fn(async () => ["x"]),
     sftpDownload: vi.fn(async () => ["y"]),
     pickFiles: vi.fn(async () => [] as string[]),
-    onFilesDropped: vi.fn(async (cb: (p: string[]) => void) => { hooks.drop = cb; return () => {}; }),
+    pickFolder: vi.fn(async () => "/Users/u/Hedef" as string | null),
+    onFilesDropped: vi.fn(async (cb: (p: string[], into?: string | null) => void) => { hooks.drop = cb; return () => {}; }),
     onTransferProgress: vi.fn(async (cb: (e: TransferEvent) => void) => { hooks.transfer = cb; return () => {}; }),
   } satisfies FilesApi;
 }
@@ -562,4 +563,44 @@ test("opening in the external editor reports each upload back to the server", as
   expect(await screen.findByRole("status")).toHaveTextContent("rapor.txt sunucuya yüklendi");
   act(() => hooks.sync({ path: "/home/u/rapor.txt", ok: false }));
   expect(await screen.findByRole("status")).toHaveTextContent("yüklenemedi");
+});
+
+test("files dropped on a folder row go into that folder, with unique names there", async () => {
+  const api = fakeApi({ "/home/u/docs": [file("a.txt", "/home/u/docs")] });
+  setup({ api });
+  await screen.findByText("rapor.txt");
+  await vi.waitFor(() => expect(api.onFilesDropped).toHaveBeenCalled());
+  await act(async () => hooks.drop(["/Users/u/a.txt", "/Users/u/b.txt"], "/home/u/docs"));
+  expect(api.sftpUpload).toHaveBeenCalledWith("t1", [
+    { local: "/Users/u/a.txt", remote: "/home/u/docs/a (kopya).txt" },
+    { local: "/Users/u/b.txt", remote: "/home/u/docs/b.txt" },
+  ]);
+});
+
+test("folder rows and breadcrumbs announce themselves as drop targets", async () => {
+  setup();
+  await screen.findByText("rapor.txt");
+  expect(row("docs")).toHaveAttribute("data-drop-dir", "/home/u/docs");
+  expect(row("rapor.txt")).not.toHaveAttribute("data-drop-dir");
+  expect(screen.getByRole("button", { name: "home" })).toHaveAttribute("data-drop-dir", "/home");
+});
+
+test("download to… asks for a folder and downloads the selection there", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Şuraya indir…" }));
+  expect(api.pickFolder).toHaveBeenCalled();
+  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"], "/Users/u/Hedef");
+});
+
+test("cancelling the folder picker downloads nothing", async () => {
+  const api = fakeApi();
+  api.pickFolder = vi.fn(async () => null);
+  setup({ api });
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Şuraya indir…" }));
+  await vi.waitFor(() => expect(api.pickFolder).toHaveBeenCalled());
+  expect(api.sftpDownload).not.toHaveBeenCalled();
 });

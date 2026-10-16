@@ -54,8 +54,12 @@ export const sftpWriteText = (tabId: string, path: string, content: string) =>
   invoke<void>("sftp_write_text", { tabId, path, content });
 export const sftpUpload = (tabId: string, items: { local: string; remote: string }[]) =>
   invoke<string[]>("sftp_upload", { tabId, items });
-export const sftpDownload = (tabId: string, remotePaths: string[]) =>
-  invoke<string[]>("sftp_download", { tabId, remotePaths, localDir: null });
+export const sftpDownload = (tabId: string, remotePaths: string[], localDir?: string) =>
+  invoke<string[]>("sftp_download", { tabId, remotePaths, localDir: localDir ?? null });
+export async function pickFolder(): Promise<string | null> {
+  const picked = await openDialog({ multiple: false, directory: true });
+  return typeof picked === "string" ? picked : null;
+}
 export const transferCancel = (transferId: string) => invoke<boolean>("transfer_cancel", { transferId });
 
 export async function pickFiles(): Promise<string[]> {
@@ -64,9 +68,12 @@ export async function pickFiles(): Promise<string[]> {
   return Array.isArray(picked) ? picked : [picked];
 }
 
-export const onFilesDropped = async (cb: (paths: string[]) => void): Promise<() => void> =>
+export const onFilesDropped = async (cb: (paths: string[], intoDir?: string | null) => void): Promise<() => void> =>
   getCurrentWebview().onDragDropEvent((e) => {
-    if (e.payload.type === "drop") cb(e.payload.paths);
+    if (e.payload.type !== "drop") return;
+    const { x, y } = e.payload.position;
+    const target = document.elementFromPoint(x / window.devicePixelRatio, y / window.devicePixelRatio);
+    cb(e.payload.paths, target?.closest("[data-drop-dir]")?.getAttribute("data-drop-dir") ?? null);
   });
 
 export const onTransferProgress = async (cb: (e: TransferEvent) => void): Promise<() => void> =>
@@ -221,6 +228,7 @@ export const realApi = {
   sftpDownload,
   transferCancel,
   pickFiles,
+  pickFolder,
   onFilesDropped,
   onTransferProgress,
   metricsStart,

@@ -178,6 +178,7 @@ function sftpApi() {
     pickFiles: vi.fn(async () => []),
     onFilesDropped: vi.fn(async () => () => {}),
     sftpChmod: vi.fn(async () => {}),
+    pickFolder: vi.fn(async () => null),
     sftpEditExternal: vi.fn(async () => ""),
     onExternalEditSync: vi.fn(async () => () => {}),
     onTransferProgress: vi.fn(async () => () => {}),
