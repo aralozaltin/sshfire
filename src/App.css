@@ -188,3 +188,12 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .import-dialog__list input, .import-dialog__all input { width: auto; }
 .import-dialog__addr { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .import-dialog__all { flex-direction: row !important; align-items: center; gap: 6px; }
+
+.tunnels { padding: 4px; }
+.tunnels__list { list-style: none; margin: 0 0 8px; padding: 0; }
+.tunnels__list li { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-bottom: 1px solid var(--chrome-dark); }
+.tunnels__desc { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tunnels__state { color: var(--muted); font-size: 11px; }
+.tunnels__form { display: grid; gap: 4px; padding: 4px; border-top: 1px solid var(--line); }
+.tunnels__form label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 6px; }
+.tunnels__error { color: var(--danger); margin: 0; }

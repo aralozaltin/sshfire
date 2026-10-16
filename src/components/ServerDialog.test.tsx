@@ -70,3 +70,11 @@ test("key file auth asks for a key path instead of a password", async () => {
     undefined,
   );
 });
+
+test("editing a server keeps its saved tunnels", async () => {
+  const onSave = vi.fn();
+  const withTunnels: Session = { ...existing, tunnels: [{ kind: "dynamic", listen_port: 1080 }] };
+  render(<ServerDialog initial={withTunnels} onSave={onSave} onCancel={() => {}} />);
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].tunnels).toEqual([{ kind: "dynamic", listen_port: 1080 }]);
+});

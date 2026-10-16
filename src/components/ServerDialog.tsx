@@ -41,6 +41,7 @@ export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
       user: user.trim(),
       folder: folder.trim() ? folder.trim() : null,
       auth,
+      ...(initial?.tunnels ? { tunnels: initial.tunnels } : {}),
     };
     const pw = authType === "password" && password ? password : undefined;
     onSave(initial ? { ...base, id: initial.id } : base, pw);

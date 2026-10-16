@@ -1,5 +1,16 @@
 export type Auth = { type: "password" } | { type: "key_file"; path: string };
 
+export type TunnelSpec =
+  | { kind: "local"; listen_port: number; dest_host: string; dest_port: number }
+  | { kind: "dynamic"; listen_port: number };
+
+export interface RunningTunnel {
+  id: string;
+  spec: TunnelSpec;
+  localPort: number;
+  connections: number;
+}
+
 export interface NewSession {
   name: string;
   host: string;
@@ -7,6 +18,7 @@ export interface NewSession {
   user: string;
   folder: string | null;
   auth: Auth;
+  tunnels?: TunnelSpec[];
 }
 
 export interface Session extends NewSession {

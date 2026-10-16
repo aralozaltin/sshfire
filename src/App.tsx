@@ -12,13 +12,14 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { FileBrowser } from "./components/FileBrowser";
 import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { TransferPanel } from "./components/TransferPanel";
+import { TunnelPanel } from "./components/TunnelPanel";
 import { MultiExecBar } from "./components/MultiExecBar";
 import { MultiExecHub } from "./terminal/multiExec";
 import { useTransfers } from "./files/transfers";
 import type { ClipboardItem } from "./files/fileOps";
 import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
 import type { TermLike } from "./terminal/shellSession";
-import type { NewSession, Session } from "./types";
+import type { NewSession, RunningTunnel, Session, TunnelSpec } from "./types";
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
 import { Splitter } from "./components/Splitter";
@@ -86,6 +87,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const hub = useRef(new MultiExecHub()).current;
   const [multiOn, setMultiOn] = useState(false);
   const [multiKeys, setMultiKeys] = useState<string[]>([]);
+  const [running, setRunning] = useState<RunningTunnel[]>([]);
   const [cwds, setCwds] = useState<Record<string, string>>({});
   const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
   const { transfers, dismiss } = useTransfers(api.onTransferProgress);
@@ -246,6 +248,46 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
 
   const activeTab = tabs.find((x) => x.key === activeKey);
   const activeBackendId = activeKey && activeTab?.status === "open" ? backendIds[activeKey] ?? null : null;
+  const activeSession = sessions.find((x) => x.id === activeTab?.sessionId);
+
+  useEffect(() => {
+    if (!activeBackendId) {
+      setRunning([]);
+      return;
+    }
+    const refresh = () => void api.tunnelList(activeBackendId).then(setRunning, () => {});
+    refresh();
+    if (sidebarTab !== "tunnels") return;
+    const timer = setInterval(refresh, 2000);
+    return () => clearInterval(timer);
+  }, [api, activeBackendId, sidebarTab]);
+
+  async function startTunnel(spec: TunnelSpec) {
+    if (!activeBackendId) return;
+    try {
+      await api.tunnelStart(activeBackendId, spec);
+      setRunning(await api.tunnelList(activeBackendId));
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
+  async function stopTunnel(id: string) {
+    if (!activeBackendId) return;
+    await api.tunnelStop(activeBackendId, id);
+    setRunning(await api.tunnelList(activeBackendId));
+  }
+
+  async function saveTunnels(specs: TunnelSpec[]) {
+    if (!activeSession) return;
+    try {
+      await api.updateSession({ ...activeSession, tunnels: specs }, undefined);
+      await reload();
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
   const editing = dialog?.mode === "edit" ? sessions.find((s) => s.id === dialog.id) : undefined;
 
   return (
@@ -265,6 +307,17 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 onImport={() => void openImport()}
               />
             </nav>
+          }
+          tunnels={
+            <TunnelPanel
+              tunnels={activeSession?.tunnels ?? []}
+              running={running}
+              connected={activeBackendId !== null}
+              hasSession={activeSession !== undefined}
+              onStart={(spec) => void startTunnel(spec)}
+              onStop={(id) => void stopTunnel(id)}
+              onChange={(specs) => void saveTunnels(specs)}
+            />
           }
           files={
             <FileBrowser

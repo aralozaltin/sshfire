@@ -5,7 +5,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { Metrics } from "./metrics/types";
-import type { NewSession, Session } from "./types";
+import type { NewSession, RunningTunnel, Session, TunnelSpec } from "./types";
 
 export const listSessions = () => invoke<Session[]>("sessions_list");
 export interface StartupWarning {
@@ -87,6 +87,10 @@ export interface SshConfigHost {
 }
 export const sshConfigHosts = () => invoke<{ hosts: SshConfigHost[]; defaultUser: string }>("ssh_config_hosts");
 
+export const tunnelStart = (tabId: string, spec: TunnelSpec) => invoke<RunningTunnel>("tunnel_start", { tabId, spec });
+export const tunnelStop = (tabId: string, id: string) => invoke<void>("tunnel_stop", { tabId, id });
+export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_list", { tabId });
+
 export const answerPassword = (requestId: string, password: string | null, remember: boolean) =>
   invoke<void>("password_answer", { requestId, password, remember });
 
@@ -147,6 +151,9 @@ export const realApi = {
   cwdStart,
   cwdStop,
   sshConfigHosts,
+  tunnelStart,
+  tunnelStop,
+  tunnelList,
   answerPassword,
   onPasswordPrompt: async (cb: (e: PasswordPromptEvent) => void) => (await onPasswordPrompt(cb)) as () => void,
   answerHostKey,

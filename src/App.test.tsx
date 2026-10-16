@@ -34,6 +34,9 @@ function fakeApi(over: Partial<AppApi> = {}) {
     onShellClosed: vi.fn(async () => () => {}),
     ...sftpApi(),
     sshConfigHosts: vi.fn(async () => ({ hosts: [], defaultUser: "u" })),
+    tunnelStart: vi.fn(async (_t: string, spec: { listen_port: number }) => ({ id: "r1", spec, localPort: spec.listen_port, connections: 0 })),
+    tunnelStop: vi.fn(async () => {}),
+    tunnelList: vi.fn(async () => []),
     ...over,
   } as unknown as AppApi;
   return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)), promptPassword: (e: Parameters<typeof passwordCb>[0]) => act(() => passwordCb(e)) };
@@ -317,4 +320,39 @@ test("importing from ssh config adds the chosen hosts with key files and a folde
     { name: "web", host: "web.example.com", port: 22, user: "aral", folder: "ssh config", auth: { type: "password" } },
     undefined,
   );
+});
+
+test("the tunnels tab saves a new tunnel on the session and starts it on the active connection", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalled());
+  await userEvent.click(await screen.findByRole("tab", { name: "Tüneller" }));
+  await userEvent.type(screen.getByLabelText("Yerel port"), "8080");
+  await userEvent.type(screen.getByLabelText("Hedef adres"), "db.internal");
+  await userEvent.type(screen.getByLabelText("Hedef port"), "5432");
+  await userEvent.click(screen.getByRole("button", { name: "Ekle" }));
+  const saved = { kind: "local", listen_port: 8080, dest_host: "db.internal", dest_port: 5432 };
+  await vi.waitFor(() => expect(api.updateSession).toHaveBeenCalledWith(expect.objectContaining({ id: "1", tunnels: [saved] }), undefined));
+});
+
+test("starting and stopping a saved tunnel goes through the backend with the connection id", async () => {
+  const saved = { kind: "dynamic", listen_port: 1080 };
+  let sessions = [{ id: "1", name: "Test 3.81", host: "192.168.3.81", port: 22, user: "root", folder: "Test", auth: { type: "password" }, tunnels: [saved] }];
+  let running: unknown[] = [];
+  const { api } = fakeApi({
+    listSessions: vi.fn(async () => sessions),
+    tunnelStart: vi.fn(async (_t: string, spec: unknown) => { running = [{ id: "r1", spec, localPort: 1080, connections: 0 }]; return running[0]; }),
+    tunnelStop: vi.fn(async () => { running = []; }),
+    tunnelList: vi.fn(async () => running),
+  } as unknown as Partial<AppApi>);
+  void sessions;
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalled());
+  await userEvent.click(await screen.findByRole("tab", { name: "Tüneller" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Başlat" }));
+  expect(api.tunnelStart).toHaveBeenCalledWith("tab-1", saved);
+  await userEvent.click(await screen.findByRole("button", { name: "Durdur" }));
+  expect(api.tunnelStop).toHaveBeenCalledWith("tab-1", "r1");
 });

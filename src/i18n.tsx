@@ -84,6 +84,9 @@ export function errorText(t: Messages, e: unknown): string {
     case "file_too_large": return t.errors.fileTooLarge;
     case "not_text": return t.errors.notText;
     case "password_cancelled": return t.errors.passwordCancelled;
+    case "port_in_use": return t.errors.portInUse;
+    case "invalid_tunnel": return t.errors.invalidTunnel(d);
+    case "tunnel_other": return t.errors.tunnelOther(d);
     case "sftp_other": return t.errors.sftpOther(d);
     default: return t.errors.unknownCode(e.code, d);
   }
