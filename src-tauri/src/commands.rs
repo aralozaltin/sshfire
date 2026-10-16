@@ -133,35 +133,37 @@ pub async fn connect(
     rows: u16,
     on_data: Channel<InvokeResponseBody>,
 ) -> Result<String, AppError> {
-    let session = state
+    let chain: Vec<Session> = state
         .store
         .lock()
         .unwrap()
-        .list()
-        .iter()
-        .find(|s| s.id == session_id)
-        .cloned()
+        .jump_chain(&session_id)
+        .map(|c| c.into_iter().cloned().collect())
         .ok_or_else(|| AppError::code("session_not_found"))?;
     let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
     let secrets = OverlaySecrets::new(state.secrets.clone());
-    if matches!(session.auth, vcore::sessions::Auth::Password) && !matches!(secrets.get(&session.id), Ok(Some(_))) {
-        match ask_password(&app, &state, &session).await {
-            Some(reply) => {
-                let secret = Secret::new(reply.password);
-                if reply.remember {
-                    state.secrets.set(&session.id, &secret).map_err(|e| AppError::from(&e))?;
-                } else {
-                    secrets.remember_for_this_connection(&session.id, &secret);
+    let mut previous: Option<Arc<SshConnection>> = None;
+    for hop in &chain {
+        if matches!(hop.auth, vcore::sessions::Auth::Password) && !matches!(secrets.get(&hop.id), Ok(Some(_))) {
+            match ask_password(&app, &state, hop).await {
+                Some(reply) => {
+                    let secret = Secret::new(reply.password);
+                    if reply.remember {
+                        state.secrets.set(&hop.id, &secret).map_err(|e| AppError::from(&e))?;
+                    } else {
+                        secrets.remember_for_this_connection(&hop.id, &secret);
+                    }
                 }
+                None => return Err(AppError::code("password_cancelled")),
             }
-            None => return Err(AppError::code("password_cancelled")),
         }
+        let connected = match &previous {
+            None => SshConnection::connect(hop, &secrets, state.hosts.clone(), prompt.clone()).await,
+            Some(jump) => SshConnection::connect_via(jump, hop, &secrets, state.hosts.clone(), prompt.clone()).await,
+        };
+        previous = Some(Arc::new(connected.map_err(|e| AppError::from(&e))?));
     }
-    let conn = Arc::new(
-        SshConnection::connect(&session, &secrets, state.hosts.clone(), prompt)
-            .await
-            .map_err(|e| AppError::from(&e))?,
-    );
+    let conn = previous.ok_or_else(|| AppError::code("session_not_found"))?;
     let ptys_before = conn.list_ptys().await.ok();
     let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
     let tty = match ptys_before {

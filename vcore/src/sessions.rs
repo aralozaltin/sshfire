@@ -19,6 +19,9 @@ pub struct Session {
     pub auth: Auth,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tunnels: Vec<crate::tunnel::TunnelSpec>,
+    /// Bu sunucuya hangi kayıtlı sunucu üzerinden (atlama/bastion) bağlanılacağı.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,6 +34,8 @@ pub struct NewSession {
     pub auth: Auth,
     #[serde(default)]
     pub tunnels: Vec<crate::tunnel::TunnelSpec>,
+    #[serde(default)]
+    pub jump: Option<String>,
 }
 
 #[derive(Debug)]
@@ -115,8 +120,46 @@ impl SessionStore {
         &self.sessions
     }
 
+    fn check_jump(&self, id: Option<&str>, jump: &Option<String>) -> Result<(), StoreError> {
+        let Some(first) = jump else { return Ok(()) };
+        let mut seen = vec![first.clone()];
+        let mut current = first.clone();
+        loop {
+            if Some(current.as_str()) == id {
+                return Err(StoreError::Invalid("jump host loop".into()));
+            }
+            let Some(next) = self.sessions.iter().find(|x| x.id == current) else {
+                return Err(StoreError::Invalid("jump host not found".into()));
+            };
+            match &next.jump {
+                Some(n) if !seen.contains(n) => {
+                    seen.push(n.clone());
+                    current = n.clone();
+                }
+                Some(_) => return Err(StoreError::Invalid("jump host loop".into())),
+                None => return Ok(()),
+            }
+            if seen.len() > 5 {
+                return Err(StoreError::Invalid("jump chain is too long".into()));
+            }
+        }
+    }
+
+    /// Bağlantı sırasıyla atlama zinciri: önce ilk atlama, en sonda sunucunun kendisi.
+    pub fn jump_chain(&self, id: &str) -> Option<Vec<&Session>> {
+        let mut chain = vec![self.sessions.iter().find(|x| x.id == id)?];
+        while let Some(next) = chain[0].jump.as_deref() {
+            if chain.len() > 5 {
+                return None;
+            }
+            chain.insert(0, self.sessions.iter().find(|x| x.id == next)?);
+        }
+        Some(chain)
+    }
+
     pub fn add(&mut self, s: NewSession) -> Result<Session, StoreError> {
         validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+        self.check_jump(None, &s.jump)?;
         let session = Session {
             id: uuid::Uuid::new_v4().to_string(),
             name: s.name,
@@ -126,6 +169,7 @@ impl SessionStore {
             folder: s.folder,
             auth: s.auth,
             tunnels: s.tunnels,
+            jump: s.jump,
         };
         self.sessions.push(session.clone());
         self.save()?;
@@ -134,6 +178,7 @@ impl SessionStore {
 
     pub fn update(&mut self, s: Session) -> Result<(), StoreError> {
         validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+        self.check_jump(Some(&s.id), &s.jump)?;
         let slot = self
             .sessions
             .iter_mut()
@@ -145,6 +190,9 @@ impl SessionStore {
 
     pub fn remove(&mut self, id: &str) -> Result<(), StoreError> {
         self.sessions.retain(|x| x.id != id);
+        for s in self.sessions.iter_mut().filter(|s| s.jump.as_deref() == Some(id)) {
+            s.jump = None;
+        }
         self.save()
     }
 
@@ -178,6 +226,7 @@ mod tests {
             folder: None,
             auth: Auth::Password,
             tunnels: vec![],
+            jump: None,
         }
     }
 
@@ -278,6 +327,55 @@ mod tests {
         let mut s = store.add(new("a", "h")).unwrap();
         s.tunnels = vec![crate::tunnel::TunnelSpec::Local { listen_port: 80, dest_host: "".into(), dest_port: 1 }];
         assert!(matches!(store.update(s), Err(StoreError::Invalid(_))));
+    }
+
+    #[test]
+    fn a_jump_host_must_exist_and_cannot_form_a_loop() {
+        let dir = tempdir().unwrap();
+        let mut store = SessionStore::open(&dir.path().join("s.json")).unwrap();
+        let mut dangling = new("a", "h");
+        dangling.jump = Some("yok".into());
+        assert!(matches!(store.add(dangling), Err(StoreError::Invalid(_))));
+        let bastion = store.add(new("bastion", "b")).unwrap();
+        let mut inner = new("inner", "i");
+        inner.jump = Some(bastion.id.clone());
+        let inner = store.add(inner).unwrap();
+        let mut selfish = inner.clone();
+        selfish.jump = Some(selfish.id.clone());
+        assert!(matches!(store.update(selfish), Err(StoreError::Invalid(_))));
+        let mut looped = bastion.clone();
+        looped.jump = Some(inner.id.clone());
+        assert!(matches!(store.update(looped), Err(StoreError::Invalid(_))));
+    }
+
+    #[test]
+    fn jump_chain_lists_hops_in_connection_order() {
+        let dir = tempdir().unwrap();
+        let mut store = SessionStore::open(&dir.path().join("s.json")).unwrap();
+        let a = store.add(new("a", "ha")).unwrap();
+        let mut nb = new("b", "hb");
+        nb.jump = Some(a.id.clone());
+        let b = store.add(nb).unwrap();
+        let mut nc = new("c", "hc");
+        nc.jump = Some(b.id.clone());
+        let c = store.add(nc).unwrap();
+        let names: Vec<&str> = store.jump_chain(&c.id).unwrap().iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["a", "b", "c"]);
+        assert_eq!(store.jump_chain(&a.id).unwrap().len(), 1);
+        assert!(store.jump_chain("yok").is_none());
+    }
+
+    #[test]
+    fn removing_a_session_clears_the_jump_of_those_that_used_it() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("s.json");
+        let mut store = SessionStore::open(&file).unwrap();
+        let bastion = store.add(new("bastion", "b")).unwrap();
+        let mut inner = new("inner", "i");
+        inner.jump = Some(bastion.id.clone());
+        let inner = store.add(inner).unwrap();
+        store.remove(&bastion.id).unwrap();
+        assert_eq!(SessionStore::open(&file).unwrap().list().iter().find(|s| s.id == inner.id).unwrap().jump, None);
     }
 
     #[test]

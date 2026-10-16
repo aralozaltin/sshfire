@@ -149,6 +149,8 @@ impl client::Handler for Handler {
 
 pub struct SshConnection {
     handle: client::Handle<Handler>,
+    // Atlama sunucusu bağlantısı; bu bağlantı yaşadığı sürece açık kalmalı.
+    _jump: Option<Arc<SshConnection>>,
 }
 
 impl SshConnection {
@@ -179,6 +181,11 @@ impl SshConnection {
                 return Err(recorded.unwrap_or_else(|| SshError::Unreachable(e.to_string())));
             }
         };
+        Self::authenticate(&mut handle, session, secrets).await?;
+        Ok(SshConnection { handle, _jump: None })
+    }
+
+    async fn authenticate(handle: &mut client::Handle<Handler>, session: &Session, secrets: &dyn SecretStore) -> Result<(), SshError> {
         let authenticated = match &session.auth {
             crate::sessions::Auth::Password => {
                 let secret = secrets
@@ -206,7 +213,38 @@ impl SshConnection {
         if !authenticated.success() {
             return Err(SshError::AuthFailed);
         }
-        Ok(SshConnection { handle })
+        Ok(())
+    }
+
+    /// `jump` bağlantısı üzerinden (direct-tcpip) hedefe ikinci bir SSH oturumu kurar.
+    pub async fn connect_via(
+        jump: &Arc<SshConnection>,
+        session: &Session,
+        secrets: &dyn SecretStore,
+        hosts: Arc<Mutex<KnownHosts>>,
+        prompt: Arc<dyn HostKeyPrompt>,
+    ) -> Result<SshConnection, SshError> {
+        let channel = jump
+            .handle
+            .channel_open_direct_tcpip(session.host.clone(), u32::from(session.port), "127.0.0.1", 0)
+            .await
+            .map_err(|e| SshError::Unreachable(e.to_string()))?;
+        let failure = Arc::new(Mutex::new(None));
+        let handler = Handler { host: session.host.clone(), port: session.port, hosts, prompt, failure: failure.clone() };
+        let config = Arc::new(client::Config {
+            keepalive_interval: Some(Duration::from_secs(30)),
+            keepalive_max: 3,
+            ..Default::default()
+        });
+        let mut handle = match client::connect_stream(config, channel.into_stream(), handler).await {
+            Ok(h) => h,
+            Err(e) => {
+                let recorded = failure.lock().unwrap().take();
+                return Err(recorded.unwrap_or_else(|| SshError::Unreachable(e.to_string())));
+            }
+        };
+        Self::authenticate(&mut handle, session, secrets).await?;
+        Ok(SshConnection { handle, _jump: Some(jump.clone()) })
     }
 
     pub async fn exec(&self, command: &str) -> Result<String, SshError> {

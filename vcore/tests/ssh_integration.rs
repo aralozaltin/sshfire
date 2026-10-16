@@ -53,7 +53,7 @@ fn session(auth: Auth) -> Session {
         user: USER.into(),
         folder: None,
         auth,
-        tunnels: vec![],
+        tunnels: vec![], jump: None,
     }
 }
 
@@ -332,4 +332,54 @@ async fn shared_connection_serves_a_shell_and_exec_at_the_same_time() {
     shell.write(b"echo shell-$((3+4))\n").await.unwrap();
     assert_eq!(conn.exec("echo side").await.unwrap(), "side\n");
     read_until(&mut shell, "shell-7").await;
+}
+
+#[tokio::test]
+async fn connect_via_a_jump_host_reaches_the_target_and_runs_commands() {
+    if !server_up() { return; }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    let h = hosts(&dir);
+    let jump = Arc::new(SshConnection::connect(&session(Auth::Password), &secrets, h.clone(), TestPrompt::new(HostKeyDecision::Trust)).await.unwrap());
+    // Hedef, atlama sunucusunun gördüğü adresle verilir (burada aynı sunucunun loopback'i).
+    let mut target = session(Auth::Password);
+    target.id = "target".into();
+    target.host = "127.0.0.1".into();
+    secrets.set("target", &Secret::new(PASSWORD)).unwrap();
+    let inner = SshConnection::connect_via(&jump, &target, &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust)).await.unwrap();
+    assert_eq!(inner.exec("echo through-the-jump").await.unwrap(), "through-the-jump\n");
+    let mut shell = inner.open_shell(80, 24).await.unwrap();
+    shell.write(b"echo shell-$((6*7))\n").await.unwrap();
+    read_until(&mut shell, "shell-42").await;
+}
+
+#[tokio::test]
+async fn a_dead_target_behind_the_jump_host_is_reported_as_unreachable() {
+    if !server_up() { return; }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    let jump = Arc::new(SshConnection::connect(&session(Auth::Password), &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust)).await.unwrap());
+    let mut target = session(Auth::Password);
+    target.id = "target".into();
+    target.host = "127.0.0.1".into();
+    target.port = 1;
+    let err = SshConnection::connect_via(&jump, &target, &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust)).await.err().unwrap();
+    assert!(matches!(err, SshError::Unreachable(_)), "got {err:?}");
+}
+
+#[tokio::test]
+async fn a_wrong_password_on_the_target_behind_the_jump_host_is_an_auth_failure() {
+    if !server_up() { return; }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    secrets.set("target", &Secret::new("yanlis-parola")).unwrap();
+    let jump = Arc::new(SshConnection::connect(&session(Auth::Password), &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust)).await.unwrap());
+    let mut target = session(Auth::Password);
+    target.id = "target".into();
+    target.host = "127.0.0.1".into();
+    let err = SshConnection::connect_via(&jump, &target, &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust)).await.err().unwrap();
+    assert_eq!(err, SshError::AuthFailed);
 }
