@@ -80,3 +80,15 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Dosyaya çift tık metin düzenleyiciyi açıyor, Ctrl/⌘+S kaydediyor, ikili dosya reddediliyor, kaydedilmemişken kapatınca soruyor
 - [ ] Terminalde ⌘/Ctrl +/−/0 yazı boyutu, ⌘/Ctrl+Shift+F arama, sağ tık kopyala/yapıştır (seçim varsa kopyalar)
 - [ ] Terminalde bir `https://…` adresine ⌘ (Mac) / Ctrl (Windows) basılıyken tıklayınca varsayılan tarayıcıda açılıyor; `file://` gibi adresler açılmıyor
+
+## Aşama 4 (elle)
+
+- [ ] Terminal sağ üstündeki ● düğmesi (fareyle üzerine gelince görünür): tıklayınca kayıt yeri sorulur, "REC" kırmızı kalır; ikinci tıklama durdurur; dosyada renk kodu yok; sekmeyi kapatınca kayıt biter
+- [ ] Dosya sağ tık → İzinleri değiştir: kutular ve sekizlik alan birbirini güncelliyor, Uygula sunucuda `stat` ile görünüyor
+- [ ] Dosya paneli filtre kutusu: yazdıkça listeyi daraltıyor, Esc temizliyor, klasör değişince sıfırlanıyor
+- [ ] Tüneller → Uzak (-R): sunucu portu aç (örn. 9000 → localhost:3000), sunucuda `curl localhost:9000` yerel servise ulaşıyor; durdurunca sunucudaki port kapanıyor
+- [ ] Ayarlar → Terminal renkleri: şema anında açık sekmelerde değişiyor, yeniden açınca hatırlanıyor; "Varsayılan" açık/koyu temaya uyuyor
+- [ ] Sunucu düzenle → Renk etiketi: listede isim solunda nokta, sekmede üst şerit; "Renksiz" temizliyor
+- [ ] Dosya sağ tık → Harici düzenleyicide aç: dosya varsayılan uygulamada açılıyor, kaydedince panelde "yüklendi" bildirimi çıkıyor ve sunucudaki içerik değişiyor; sekmeyi kapatınca geçici dosya siliniyor
+- [ ] Bağlı sunucunun satırında yeşil nokta (Sunucular sekmesinde); bağlantı kapanınca kayboluyor
+- [ ] Güncelleme: Ayarlar → Güncellemeleri denetle yeni sürümü buluyor, indirip kuruyor ve yeniden başlatıyor
