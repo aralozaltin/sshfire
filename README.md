@@ -31,9 +31,9 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 **Interface**
 - Light and dark theme, English and Turkish, resizable sidebar and columns
 
-## Status
+## Platforms
 
-Work in progress. Developed and tested on macOS; the core and the Tauri layer also compile and pass their unit tests on Linux. Windows has not been built or tested yet. See [`docs/manual-checklist.md`](docs/manual-checklist.md) (in Turkish) for what still needs checking by hand.
+macOS, Windows and Linux. Release builds for all three are produced by GitHub Actions.
 
 ## Getting started
 
