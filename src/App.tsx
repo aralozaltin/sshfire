@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { realApi, type AppApi, type StartupWarning } from "./api";
+import { realApi, type AppApi, type StartupWarning, type UpdateInfo } from "./api";
 import { ServerList } from "./components/ServerList";
 import { ServerDialog } from "./components/ServerDialog";
 import { Tabs, type TabInfo } from "./components/Tabs";
@@ -29,6 +29,9 @@ import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, ty
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
 import { SettingsMenu } from "./components/SettingsMenu";
+import { UpdateDialog } from "./components/UpdateDialog";
+import { UpdateSettings } from "./components/UpdateSettings";
+import { loadAutoUpdate, loadLastCheck, saveAutoUpdate, saveLastCheck, shouldCheckNow } from "./updates/updates";
 import { Splitter } from "./components/Splitter";
 import { loadSidebarWidth, saveSidebarWidth } from "./layout/sidebarWidth";
 import "./App.css";
@@ -83,6 +86,14 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
   const [importCandidates, setImportCandidates] = useState<ImportCandidate[] | null>(null);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [updateState, setUpdateState] = useState<"ready" | "installing" | "error">("ready");
+  const [updateProgress, setUpdateProgress] = useState<{ done: number; total: number | null } | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [appVer, setAppVer] = useState<string | null>(null);
+  const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
+  const [checking, setChecking] = useState(false);
+  const [checkMessage, setCheckMessage] = useState<string | null>(null);
   const [authRequest, setAuthRequest] = useState<AuthPromptRequest | null>(null);
   const [passwordRequest, setPasswordRequest] = useState<PasswordRequest | null>(null);
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
@@ -313,6 +324,57 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     }
   }
 
+  async function runCheck(manual: boolean, version: string | null) {
+    setChecking(true);
+    setCheckMessage(null);
+    try {
+      const found = await api.checkForUpdate();
+      saveLastCheck(Date.now());
+      if (found) {
+        setUpdate(found);
+        setUpdateState("ready");
+        setUpdateProgress(null);
+      } else if (manual) {
+        setCheckMessage(t.updates.upToDate(version ?? ""));
+      }
+    } catch {
+      if (manual) setCheckMessage(t.updates.checkFailed);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function installUpdate() {
+    if (!update) return;
+    setUpdateState("installing");
+    setUpdateError(null);
+    try {
+      await update.install((done, total) => setUpdateProgress({ done, total }));
+    } catch (e) {
+      setUpdateError(e instanceof Error ? e.message : String(e));
+      setUpdateState("error");
+    }
+  }
+
+  function changeAutoUpdate(on: boolean) {
+    setAutoUpdate(on);
+    saveAutoUpdate(on);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    void api.appVersion().then((v) => {
+      if (cancelled) return;
+      setAppVer(v);
+      if (shouldCheckNow(loadAutoUpdate(), loadLastCheck(), Date.now())) void runCheck(false, v);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Yalnızca açılışta bir kez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api]);
+
   function answerAuth(requestId: string, answers: string[] | null) {
     void api.answerAuth(requestId, answers);
     setAuthRequest(null);
@@ -461,6 +523,14 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           <SettingsMenu>
             <ThemeToggle mode={themeMode} onChange={changeTheme} />
             <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
+            <UpdateSettings
+              version={appVer}
+              auto={autoUpdate}
+              checking={checking}
+              message={checkMessage}
+              onAutoChange={changeAutoUpdate}
+              onCheck={() => void runCheck(true, appVer)}
+            />
           </SettingsMenu>
         </div>
       </aside>
@@ -569,6 +639,19 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
       {importCandidates && (
         <div className="overlay">
           <ImportDialog candidates={importCandidates} onImport={(c) => void runImport(c)} onCancel={() => setImportCandidates(null)} />
+        </div>
+      )}
+      {update && (
+        <div className="overlay">
+          <UpdateDialog
+            version={update.version}
+            notes={update.notes}
+            state={updateState}
+            progress={updateProgress}
+            error={updateError}
+            onInstall={() => void installUpdate()}
+            onLater={() => setUpdate(null)}
+          />
         </div>
       )}
       {authRequest && (

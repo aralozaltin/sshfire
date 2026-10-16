@@ -244,3 +244,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .files__bar { align-items: center; flex-wrap: nowrap; }
 .files__sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
 .files__follow { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+.update-dialog { width: min(460px, 94vw); }
+.update-dialog__notes { margin: 0 10px; max-height: 160px; overflow: auto; white-space: pre-wrap; background: var(--surface); border: 1px solid var(--line); padding: 6px; font: 12px/1.4 inherit; }
+.update-dialog progress { width: calc(100% - 20px); }
+
+.update-settings { display: grid; gap: 4px; padding-top: 6px; border-top: 1px solid var(--chrome-dark); }
+.update-settings__version, .update-settings__message { color: var(--muted); font-size: 11px; }

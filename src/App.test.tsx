@@ -36,6 +36,8 @@ function fakeApi(over: Partial<AppApi> = {}) {
     onHostKeyPrompt: vi.fn(async (cb) => { hostKeyCb = cb; return () => {}; }),
     onShellClosed: vi.fn(async () => () => {}),
     ...sftpApi(),
+    checkForUpdate: vi.fn(async () => null),
+    appVersion: vi.fn(async () => "0.1.0"),
     sshConfigHosts: vi.fn(async () => ({ hosts: [], defaultUser: "u" })),
     exportSessions: vi.fn(async () => "/tmp/yedek.json"),
     importSessions: vi.fn(async () => ({ added: 2, skipped: 1 })),
@@ -573,4 +575,103 @@ test("a passphrase prompt shows the key-file wording", async () => {
   await screen.findByText("Test 3.81");
   promptPassword({ requestId: "p9", host: "h", user: "u", kind: "passphrase" });
   expect(await screen.findByText("Anahtar parolası gerekli")).toBeInTheDocument();
+});
+
+const newer = (install = vi.fn(async (onProgress: (d: number, t: number | null) => void) => { onProgress(50, 100); })) => ({
+  version: "0.2.0", notes: "Yeni özellikler", install,
+});
+
+test("on startup a newer version opens the update dialog and records the check time", async () => {
+  const { api } = fakeApi({ checkForUpdate: vi.fn(async () => newer()) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  expect(await screen.findByText("SSHFire 0.2.0 indirilebilir.")).toBeInTheDocument();
+  expect(localStorage.getItem("ssh-istemci.lastUpdateCheck")).not.toBeNull();
+});
+
+test("no automatic check happens when it is switched off or was done within a day", async () => {
+  localStorage.setItem("ssh-istemci.autoUpdate", "false");
+  const first = fakeApi();
+  const { unmount } = render(<App api={first.api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  expect(first.api.checkForUpdate).not.toHaveBeenCalled();
+  unmount();
+  localStorage.setItem("ssh-istemci.autoUpdate", "true");
+  localStorage.setItem("ssh-istemci.lastUpdateCheck", String(Date.now() - 3600_000));
+  const second = fakeApi();
+  render(<App api={second.api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  expect(second.api.checkForUpdate).not.toHaveBeenCalled();
+});
+
+test("later closes the dialog without installing", async () => {
+  const install = vi.fn(async () => {});
+  const { api } = fakeApi({ checkForUpdate: vi.fn(async () => newer(install)) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.click(await screen.findByRole("button", { name: "Sonra" }));
+  expect(screen.queryByText("SSHFire 0.2.0 indirilebilir.")).not.toBeInTheDocument();
+  expect(install).not.toHaveBeenCalled();
+});
+
+test("updating installs the new version and shows the download progress", async () => {
+  let report: (d: number, t: number | null) => void = () => {};
+  let finish: () => void = () => {};
+  const install = vi.fn((onProgress: (d: number, t: number | null) => void) => {
+    report = onProgress;
+    return new Promise<void>((res) => { finish = res; });
+  });
+  const { api } = fakeApi({ checkForUpdate: vi.fn(async () => newer(install as never)) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.click(await screen.findByRole("button", { name: "Güncelle ve yeniden başlat" }));
+  expect(install).toHaveBeenCalled();
+  act(() => report(30, 120));
+  expect(await screen.findByRole("progressbar")).toHaveAttribute("aria-valuenow", "25");
+  act(() => finish());
+});
+
+test("a failed installation shows the reason and allows a retry", async () => {
+  const install = vi.fn(async () => { throw new Error("imza doğrulanamadı"); });
+  const { api } = fakeApi({ checkForUpdate: vi.fn(async () => newer(install as never)) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.click(await screen.findByRole("button", { name: "Güncelle ve yeniden başlat" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("imza doğrulanamadı");
+  expect(screen.getByRole("button", { name: "Güncelle ve yeniden başlat" })).toBeEnabled();
+});
+
+test("the settings panel shows the version and checks manually even when automatic checks are off", async () => {
+  localStorage.setItem("ssh-istemci.autoUpdate", "false");
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
+  expect(await screen.findByText("Sürüm 0.1.0")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Güncellemeleri denetle" }));
+  expect(await screen.findByText("Güncelsin (sürüm 0.1.0).")).toBeInTheDocument();
+  expect(api.checkForUpdate).toHaveBeenCalledTimes(1);
+});
+
+test("a manual check that finds an update opens the dialog and a failing check says so", async () => {
+  localStorage.setItem("ssh-istemci.autoUpdate", "false");
+  const check = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("ağ yok")).mockResolvedValueOnce(newer());
+  const { api } = fakeApi({ checkForUpdate: check } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
+  const button = () => screen.getByRole("button", { name: "Güncellemeleri denetle" });
+  await userEvent.click(button());
+  await screen.findByText("Güncelsin (sürüm 0.1.0).");
+  await userEvent.click(button());
+  expect(await screen.findByText("Güncelleme denetlenemedi.")).toBeInTheDocument();
+  await userEvent.click(button());
+  expect(await screen.findByText("SSHFire 0.2.0 indirilebilir.")).toBeInTheDocument();
+});
+
+test("the automatic check switch is saved", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
+  const box = screen.getByRole("checkbox", { name: "Açılışta otomatik denetle" });
+  expect(box).toBeChecked();
+  await userEvent.click(box);
+  expect(localStorage.getItem("ssh-istemci.autoUpdate")).toBe("false");
 });

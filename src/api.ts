@@ -2,6 +2,9 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { getVersion } from "@tauri-apps/api/app";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { Metrics } from "./metrics/types";
@@ -106,6 +109,36 @@ export async function importSessions(): Promise<{ added: number; skipped: number
   return invoke<{ added: number; skipped: number }>("sessions_import", { path: picked });
 }
 
+export interface UpdateInfo {
+  version: string;
+  notes: string | null;
+  /** İndirir, imzasını doğrular, kurar ve uygulamayı yeniden başlatır. */
+  install: (onProgress: (done: number, total: number | null) => void) => Promise<void>;
+}
+
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  const update = await check();
+  if (!update) return null;
+  return {
+    version: update.version,
+    notes: update.body ?? null,
+    install: async (onProgress) => {
+      let done = 0;
+      let total: number | null = null;
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") total = event.data.contentLength ?? null;
+        else if (event.event === "Progress") {
+          done += event.data.chunkLength;
+          onProgress(done, total);
+        }
+      });
+      await relaunch();
+    },
+  };
+}
+
+export const appVersion = () => getVersion();
+
 export const answerPassword = (requestId: string, password: string | null, remember: boolean) =>
   invoke<void>("password_answer", { requestId, password, remember });
 
@@ -178,6 +211,8 @@ export const realApi = {
   metricsStop,
   cwdStart,
   cwdStop,
+  checkForUpdate,
+  appVersion,
   sshConfigHosts,
   exportSessions,
   importSessions,
