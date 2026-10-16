@@ -25,6 +25,7 @@ pub struct Tab {
     pub writer: ShellWriter,
     pub metrics_task: Option<tauri::async_runtime::JoinHandle<()>>,
     pub tty: Option<u32>,
+    pub tunnels: std::collections::HashMap<String, (vcore::tunnel::TunnelSpec, vcore::tunnel::TunnelHandle)>,
     pub cwd_task: Option<tauri::async_runtime::JoinHandle<()>>,
     pub throttle: Arc<Throttle>,
     pub task: tauri::async_runtime::JoinHandle<()>,

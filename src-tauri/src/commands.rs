@@ -192,7 +192,7 @@ pub async fn connect(
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason });
         }
     });
-    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, cwd_task: None, throttle, task });
+    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, tunnels: Default::default(), cwd_task: None, throttle, task });
     Ok(tab_id)
 }
 
@@ -307,4 +307,54 @@ pub fn cwd_stop(state: State<'_, AppState>, tab_id: String) {
             c.abort();
         }
     }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TunnelInfo {
+    pub id: String,
+    pub spec: vcore::tunnel::TunnelSpec,
+    pub local_port: u16,
+    pub connections: u64,
+}
+
+#[tauri::command]
+pub async fn tunnel_start(state: State<'_, AppState>, tab_id: String, spec: vcore::tunnel::TunnelSpec) -> Result<TunnelInfo, AppError> {
+    spec.validate().map_err(|m| AppError::from(&vcore::tunnel::TunnelError::Invalid(m)))?;
+    let conn = {
+        let tabs = state.tabs.lock().unwrap();
+        tabs.get(&tab_id).ok_or_else(|| AppError::code("tab_not_found"))?.conn.clone()
+    };
+    let handle = conn.start_tunnel(&spec).await.map_err(|e| AppError::from(&e))?;
+    let id = uuid::Uuid::new_v4().to_string();
+    let info = TunnelInfo { id: id.clone(), spec: spec.clone(), local_port: handle.local_port, connections: 0 };
+    match state.tabs.lock().unwrap().get_mut(&tab_id) {
+        Some(tab) => {
+            tab.tunnels.insert(id, (spec, handle));
+            Ok(info)
+        }
+        None => Err(AppError::code("tab_not_found")),
+    }
+}
+
+#[tauri::command]
+pub fn tunnel_stop(state: State<'_, AppState>, tab_id: String, id: String) {
+    if let Some(tab) = state.tabs.lock().unwrap().get_mut(&tab_id) {
+        tab.tunnels.remove(&id);
+    }
+}
+
+#[tauri::command]
+pub fn tunnel_list(state: State<'_, AppState>, tab_id: String) -> Vec<TunnelInfo> {
+    let tabs = state.tabs.lock().unwrap();
+    let Some(tab) = tabs.get(&tab_id) else { return Vec::new() };
+    tab.tunnels
+        .iter()
+        .map(|(id, (spec, h))| TunnelInfo {
+            id: id.clone(),
+            spec: spec.clone(),
+            local_port: h.local_port,
+            connections: h.connections.load(std::sync::atomic::Ordering::SeqCst),
+        })
+        .collect()
 }

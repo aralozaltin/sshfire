@@ -262,6 +262,100 @@ impl SshConnection {
         Ok(if cwd.is_empty() { None } else { Some(cwd.to_string()) })
     }
 
+    pub async fn start_tunnel(self: &Arc<Self>, spec: &crate::tunnel::TunnelSpec) -> Result<crate::tunnel::TunnelHandle, crate::tunnel::TunnelError> {
+        use crate::tunnel::{TunnelError, TunnelHandle};
+        use std::sync::atomic::{AtomicU64, Ordering};
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", spec.listen_port())).await.map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AddrInUse {
+                TunnelError::PortInUse
+            } else {
+                TunnelError::Other(e.to_string())
+            }
+        })?;
+        let local_port = listener.local_addr().map_err(|e| TunnelError::Other(e.to_string()))?.port();
+        let connections = Arc::new(AtomicU64::new(0));
+        let (conn, spec, counter) = (self.clone(), spec.clone(), connections.clone());
+        let task = tokio::spawn(async move {
+            while let Ok((socket, peer)) = listener.accept().await {
+                counter.fetch_add(1, Ordering::SeqCst);
+                let (conn, spec) = (conn.clone(), spec.clone());
+                tokio::spawn(async move {
+                    let _ = conn.serve_tunnel_client(&spec, socket, peer).await;
+                });
+            }
+        });
+        Ok(TunnelHandle::new(task, local_port, connections))
+    }
+
+    async fn open_direct(&self, host: &str, port: u16, peer: std::net::SocketAddr) -> Result<russh::ChannelStream<client::Msg>, russh::Error> {
+        let channel = self
+            .handle
+            .channel_open_direct_tcpip(host.to_string(), u32::from(port), peer.ip().to_string(), u32::from(peer.port()))
+            .await?;
+        Ok(channel.into_stream())
+    }
+
+    async fn serve_tunnel_client(&self, spec: &crate::tunnel::TunnelSpec, mut socket: tokio::net::TcpStream, peer: std::net::SocketAddr) -> std::io::Result<()> {
+        use crate::tunnel::{parse_socks_greeting, parse_socks_request, SocksError, TunnelSpec};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        match spec {
+            TunnelSpec::Local { dest_host, dest_port, .. } => {
+                let mut stream = self.open_direct(dest_host, *dest_port, peer).await.map_err(std::io::Error::other)?;
+                tokio::io::copy_bidirectional(&mut socket, &mut stream).await?;
+            }
+            TunnelSpec::Dynamic { .. } => {
+                let mut buf: Vec<u8> = Vec::new();
+                let mut chunk = [0u8; 256];
+                let greeting_len = loop {
+                    match parse_socks_greeting(&buf) {
+                        Ok(Some((len, no_auth))) => {
+                            if !no_auth {
+                                socket.write_all(&[5, 0xff]).await?;
+                                return Ok(());
+                            }
+                            break len;
+                        }
+                        Ok(None) => {}
+                        Err(_) => return Ok(()),
+                    }
+                    let n = tokio::time::timeout(Duration::from_secs(10), socket.read(&mut chunk)).await??;
+                    if n == 0 || buf.len() > 512 {
+                        return Ok(());
+                    }
+                    buf.extend_from_slice(&chunk[..n]);
+                };
+                socket.write_all(&[5, 0]).await?;
+                buf.drain(..greeting_len);
+                let (host, port) = loop {
+                    match parse_socks_request(&buf) {
+                        Ok(Some((_, host, port))) => break (host, port),
+                        Ok(None) => {}
+                        Err(e) => {
+                            let code = if e == SocksError::UnsupportedCommand { 7 } else { 8 };
+                            socket.write_all(&[5, code, 0, 1, 0, 0, 0, 0, 0, 0]).await?;
+                            return Ok(());
+                        }
+                    }
+                    let n = tokio::time::timeout(Duration::from_secs(10), socket.read(&mut chunk)).await??;
+                    if n == 0 || buf.len() > 512 {
+                        return Ok(());
+                    }
+                    buf.extend_from_slice(&chunk[..n]);
+                };
+                match self.open_direct(&host, port, peer).await {
+                    Ok(mut stream) => {
+                        socket.write_all(&[5, 0, 0, 1, 0, 0, 0, 0, 0, 0]).await?;
+                        tokio::io::copy_bidirectional(&mut socket, &mut stream).await?;
+                    }
+                    Err(_) => {
+                        socket.write_all(&[5, 5, 0, 1, 0, 0, 0, 0, 0, 0]).await?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) async fn open_sftp_channel(&self) -> Result<russh::Channel<client::Msg>, SshError> {
         let other = |e: russh::Error| SshError::Other(e.to_string());
         let channel = self.handle.channel_open_session().await.map_err(other)?;

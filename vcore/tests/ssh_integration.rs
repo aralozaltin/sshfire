@@ -53,6 +53,7 @@ fn session(auth: Auth) -> Session {
         user: USER.into(),
         folder: None,
         auth,
+        tunnels: vec![],
     }
 }
 

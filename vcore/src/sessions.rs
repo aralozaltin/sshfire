@@ -17,6 +17,8 @@ pub struct Session {
     pub user: String,
     pub folder: Option<String>,
     pub auth: Auth,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tunnels: Vec<crate::tunnel::TunnelSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -27,6 +29,8 @@ pub struct NewSession {
     pub user: String,
     pub folder: Option<String>,
     pub auth: Auth,
+    #[serde(default)]
+    pub tunnels: Vec<crate::tunnel::TunnelSpec>,
 }
 
 #[derive(Debug)]
@@ -64,7 +68,7 @@ pub struct SessionStore {
     sessions: Vec<Session>,
 }
 
-fn validate(name: &str, host: &str, port: u16, user: &str) -> Result<(), StoreError> {
+fn validate(name: &str, host: &str, port: u16, user: &str, tunnels: &[crate::tunnel::TunnelSpec]) -> Result<(), StoreError> {
     if name.trim().is_empty() {
         return Err(StoreError::Invalid("name is empty".into()));
     }
@@ -76,6 +80,9 @@ fn validate(name: &str, host: &str, port: u16, user: &str) -> Result<(), StoreEr
     }
     if user.trim().is_empty() {
         return Err(StoreError::Invalid("user is empty".into()));
+    }
+    for t in tunnels {
+        t.validate().map_err(StoreError::Invalid)?;
     }
     Ok(())
 }
@@ -109,7 +116,7 @@ impl SessionStore {
     }
 
     pub fn add(&mut self, s: NewSession) -> Result<Session, StoreError> {
-        validate(&s.name, &s.host, s.port, &s.user)?;
+        validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
         let session = Session {
             id: uuid::Uuid::new_v4().to_string(),
             name: s.name,
@@ -118,6 +125,7 @@ impl SessionStore {
             user: s.user,
             folder: s.folder,
             auth: s.auth,
+            tunnels: s.tunnels,
         };
         self.sessions.push(session.clone());
         self.save()?;
@@ -125,7 +133,7 @@ impl SessionStore {
     }
 
     pub fn update(&mut self, s: Session) -> Result<(), StoreError> {
-        validate(&s.name, &s.host, s.port, &s.user)?;
+        validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
         let slot = self
             .sessions
             .iter_mut()
@@ -169,6 +177,7 @@ mod tests {
             user: "root".into(),
             folder: None,
             auth: Auth::Password,
+            tunnels: vec![],
         }
     }
 
@@ -243,6 +252,32 @@ mod tests {
             _ => panic!("expected Corrupt"),
         }
         assert!(!file.exists());
+    }
+
+    #[test]
+    fn tunnels_roundtrip_and_old_files_without_them_still_load() {
+        let dir = tempdir().unwrap();
+        let file = dir.path().join("s.json");
+        let mut store = SessionStore::open(&file).unwrap();
+        let mut n = new("a", "h");
+        n.tunnels = vec![crate::tunnel::TunnelSpec::Dynamic { listen_port: 1080 }];
+        let added = store.add(n).unwrap();
+        assert_eq!(SessionStore::open(&file).unwrap().list()[0].tunnels, added.tunnels);
+        std::fs::write(&file, r#"{"sessions":[{"id":"1","name":"eski","host":"h","port":22,"user":"u","folder":null,"auth":{"type":"password"}}]}"#).unwrap();
+        let old = SessionStore::open(&file).unwrap();
+        assert!(old.list()[0].tunnels.is_empty());
+    }
+
+    #[test]
+    fn invalid_tunnels_are_rejected_on_add_and_update() {
+        let dir = tempdir().unwrap();
+        let mut store = SessionStore::open(&dir.path().join("s.json")).unwrap();
+        let mut bad = new("a", "h");
+        bad.tunnels = vec![crate::tunnel::TunnelSpec::Dynamic { listen_port: 0 }];
+        assert!(matches!(store.add(bad), Err(StoreError::Invalid(_))));
+        let mut s = store.add(new("a", "h")).unwrap();
+        s.tunnels = vec![crate::tunnel::TunnelSpec::Local { listen_port: 80, dest_host: "".into(), dest_port: 1 }];
+        assert!(matches!(store.update(s), Err(StoreError::Invalid(_))));
     }
 
     #[test]

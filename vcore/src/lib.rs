@@ -8,4 +8,5 @@ pub mod text;
 pub mod shellquote;
 pub mod sessions;
 pub mod sshconfig;
+pub mod tunnel;
 pub mod ssh;

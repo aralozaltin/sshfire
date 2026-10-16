@@ -3,6 +3,7 @@ use vcore::secrets::SecretError;
 use vcore::sessions::StoreError;
 use vcore::sftp::SftpError;
 use vcore::ssh::SshError;
+use vcore::tunnel::TunnelError;
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct AppError {
@@ -67,6 +68,16 @@ impl From<&SftpError> for AppError {
     }
 }
 
+impl From<&TunnelError> for AppError {
+    fn from(e: &TunnelError) -> AppError {
+        match e {
+            TunnelError::PortInUse => AppError::code("port_in_use"),
+            TunnelError::Invalid(m) => AppError::with_detail("invalid_tunnel", m.clone()),
+            TunnelError::Other(m) => AppError::with_detail("tunnel_other", m.clone()),
+        }
+    }
+}
+
 impl From<&StoreError> for AppError {
     fn from(e: &StoreError) -> AppError {
         match e {
@@ -122,6 +133,14 @@ mod tests {
         assert_eq!(AppError::from(&SftpError::TooLarge).code, "file_too_large");
         let e = AppError::from(&SftpError::Other("boom".into()));
         assert_eq!((e.code, e.detail.as_deref()), ("sftp_other", Some("boom")));
+    }
+
+    #[test]
+    fn tunnel_errors_map_to_stable_codes() {
+        assert_eq!(AppError::from(&TunnelError::PortInUse).code, "port_in_use");
+        let e = AppError::from(&TunnelError::Invalid("x".into()));
+        assert_eq!((e.code, e.detail.as_deref()), ("invalid_tunnel", Some("x")));
+        assert_eq!(AppError::from(&TunnelError::Other("y".into())).code, "tunnel_other");
     }
 
     #[test]
