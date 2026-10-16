@@ -1,6 +1,12 @@
 import { useEffect, useReducer, useRef } from "react";
 import { ShellSession, type ShellApi, type TermLike } from "../terminal/shellSession";
-import { tr } from "../locales/tr";
+import { errorText, useT } from "../i18n";
+import type { Messages } from "../locales/tr";
+
+function closeReasonText(t: Messages, reason: string): string {
+  const m = /^exit:(\d+)$/.exec(reason);
+  return m ? t.terminal.exitCode(Number(m[1])) : reason;
+}
 
 export interface TerminalTabProps {
   sessionId: string;
@@ -13,6 +19,7 @@ export interface TerminalTabProps {
 }
 
 export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect }: TerminalTabProps) {
+  const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -55,14 +62,14 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       <div ref={hostRef} data-testid="terminal-host" className="terminal__host" />
       {status !== "closed" && (
         <span className="sr-only" data-status={status}>
-          {status === "connecting" ? tr.terminal.connecting : tr.terminal.connected}
+          {status === "connecting" ? t.terminal.connecting : t.terminal.connected}
         </span>
       )}
       {status === "closed" && (
         <div role="status" className="terminal__banner">
-          {s?.error ? <strong>{s.error}</strong> : <strong>{tr.terminal.disconnected}</strong>}
-          {s?.closeReason && <span> {s.closeReason}</span>}
-          {onReconnect && <button type="button" onClick={onReconnect}>{tr.terminal.reconnect}</button>}
+          {s?.error ? <strong>{errorText(t, s.error)}</strong> : <strong>{t.terminal.disconnected}</strong>}
+          {s?.closeReason && <span> {closeReasonText(t, s.closeReason)}</span>}
+          {onReconnect && <button type="button" onClick={onReconnect}>{t.terminal.reconnect}</button>}
         </div>
       )}
     </div>

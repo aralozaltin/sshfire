@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { realApi, type AppApi } from "./api";
+import { realApi, type AppApi, type StartupWarning } from "./api";
 import { ServerList } from "./components/ServerList";
 import { ServerDialog } from "./components/ServerDialog";
 import { Tabs, type TabInfo } from "./components/Tabs";
@@ -10,7 +10,8 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
 import type { TermLike } from "./terminal/shellSession";
 import type { NewSession, Session } from "./types";
-import { tr } from "./locales/tr";
+import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
+import { LanguageSelect } from "./components/LanguageSelect";
 import "./App.css";
 
 interface OpenTab {
@@ -30,13 +31,39 @@ export interface AppProps {
 let counter = 0;
 const nextKey = () => `tab-${Date.now()}-${counter++}`;
 
-export default function App({ api = realApi, createTerm = createXterm }: AppProps) {
+export default function App(props: AppProps) {
+  const [localeSetting, setLocaleSetting] = useState<LocaleSetting>(loadLocaleSetting);
+  const locale = resolveLocale(localeSetting, navigator.language);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  function changeLocale(setting: LocaleSetting) {
+    setLocaleSetting(setting);
+    saveLocaleSetting(setting);
+  }
+
+  return (
+    <I18nProvider locale={locale}>
+      <AppInner {...props} localeSetting={localeSetting} onLocaleChange={changeLocale} />
+    </I18nProvider>
+  );
+}
+
+interface AppInnerProps extends AppProps {
+  localeSetting: LocaleSetting;
+  onLocaleChange: (setting: LocaleSetting) => void;
+}
+
+function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLocaleChange }: AppInnerProps) {
+  const t = useT();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [tabs, setTabs] = useState<OpenTab[]>([]);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
@@ -66,7 +93,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
 
   useEffect(() => {
     void reload();
-    void api.startupWarning().then(setWarning);
+    void api.startupWarning().then((w) => setWarnings(w ?? []));
     let off: (() => void) | undefined;
     let cancelled = false;
     void api.onHostKeyPrompt((e) => setHostKey(e)).then((fn) => {
@@ -115,7 +142,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
       setError(null);
       await reload();
     } catch (e) {
-      setError(typeof e === "string" ? e : String(e));
+      setError(errorText(t, e));
     }
   }
 
@@ -136,7 +163,7 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
 
   return (
     <div className="app">
-      <nav aria-label={tr.servers} className="app__sidebar">
+      <nav aria-label={t.servers} className="app__sidebar">
         <ServerList
           sessions={sessions}
           onConnect={openTab}
@@ -146,10 +173,16 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
         />
         <div className="app__footer">
           <ThemeToggle mode={themeMode} onChange={changeTheme} />
+          <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
         </div>
       </nav>
       <main className="app__main">
-        {warning && <div role="alert" className="banner banner--warn"><strong>{tr.startupWarning}:</strong> {warning}</div>}
+        {warnings.map((w) => (
+          <div key={w.code} role="alert" className="banner banner--warn">
+            <strong>{t.startupWarning}:</strong>{" "}
+            {w.code === "sessions_corrupt" ? t.warnings.sessionsCorrupt(w.backup) : t.warnings.hostsCorrupt(w.backup)}
+          </div>
+        ))}
         {error && <div role="alert" className="banner banner--error">{error}</div>}
         <Tabs
           tabs={tabs.map((t) => ({ id: t.key, title: t.title, status: t.status }))}
@@ -184,12 +217,12 @@ export default function App({ api = realApi, createTerm = createXterm }: AppProp
       )}
       {deleting && (
         <div className="overlay">
-          <div role="alertdialog" aria-modal="true" aria-label={tr.confirmDelete.title} className="hostkey-dialog">
-            <h2>{tr.confirmDelete.title}</h2>
-            <p>{tr.confirmDelete.body(sessions.find((x) => x.id === deleting)?.name ?? "")}</p>
+          <div role="alertdialog" aria-modal="true" aria-label={t.confirmDelete.title} className="hostkey-dialog">
+            <h2>{t.confirmDelete.title}</h2>
+            <p>{t.confirmDelete.body(sessions.find((x) => x.id === deleting)?.name ?? "")}</p>
             <div className="hostkey-dialog__actions">
-              <button type="button" autoFocus onClick={() => setDeleting(null)}>{tr.dialog.cancel}</button>
-              <button type="button" onClick={() => void confirmRemove()}>{tr.remove}</button>
+              <button type="button" autoFocus onClick={() => setDeleting(null)}>{t.dialog.cancel}</button>
+              <button type="button" onClick={() => void confirmRemove()}>{t.remove}</button>
             </div>
           </div>
         </div>

@@ -3,7 +3,11 @@ import { listen } from "@tauri-apps/api/event";
 import type { NewSession, Session } from "./types";
 
 export const listSessions = () => invoke<Session[]>("sessions_list");
-export const startupWarning = () => invoke<string | null>("startup_warning");
+export interface StartupWarning {
+  code: "sessions_corrupt" | "hosts_corrupt";
+  backup: string;
+}
+export const startupWarning = () => invoke<StartupWarning[]>("startup_warning");
 
 export const addSession = (session: NewSession, password?: string) =>
   invoke<Session>("session_add", { session, password: password ?? null });

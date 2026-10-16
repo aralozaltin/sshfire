@@ -1,4 +1,4 @@
-import { tr } from "../locales/tr";
+import { useT } from "../i18n";
 
 export interface TabInfo {
   id: string;
@@ -14,21 +14,22 @@ export interface TabsProps {
 }
 
 export function Tabs({ tabs, activeId, onSelect, onClose }: TabsProps) {
-  if (tabs.length === 0) return <p className="tabs__empty">{tr.tabs.empty}</p>;
+  const t = useT();
+  if (tabs.length === 0) return <p className="tabs__empty">{t.tabs.empty}</p>;
   return (
-    <div role="tablist" aria-label={tr.tabs.label} className="tabs">
-      {tabs.map((t) => (
-        <div key={t.id} className={`tabs__item tabs__item--${t.status}`}>
+    <div role="tablist" aria-label={t.tabs.label} className="tabs">
+      {tabs.map((tab) => (
+        <div key={tab.id} className={`tabs__item tabs__item--${tab.status}`}>
           <button
             type="button"
             role="tab"
-            aria-selected={t.id === activeId}
+            aria-selected={tab.id === activeId}
             className="tabs__tab"
-            onClick={() => onSelect(t.id)}
+            onClick={() => onSelect(tab.id)}
           >
-            {t.title}
+            {tab.title}
           </button>
-          <button type="button" aria-label={`${t.title} ${tr.tabs.close}`} className="tabs__close" onClick={() => onClose(t.id)}>
+          <button type="button" aria-label={`${tab.title} ${t.tabs.close}`} className="tabs__close" onClick={() => onClose(tab.id)}>
             ×
           </button>
         </div>

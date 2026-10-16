@@ -1,4 +1,4 @@
-import { tr } from "../locales/tr";
+import { useT } from "../i18n";
 
 export interface HostKeyRequest {
   requestId: string;
@@ -13,16 +13,17 @@ export interface HostKeyDialogProps {
 }
 
 export function HostKeyDialog({ request, onAnswer }: HostKeyDialogProps) {
+  const t = useT();
   const { requestId, host, port, fingerprint } = request;
   return (
-    <div role="alertdialog" aria-modal="true" aria-label={tr.hostKey.title} className="hostkey-dialog">
-      <h2>{tr.hostKey.title}</h2>
-      <p>{tr.hostKey.body}</p>
+    <div role="alertdialog" aria-modal="true" aria-label={t.hostKey.title} className="hostkey-dialog">
+      <h2>{t.hostKey.title}</h2>
+      <p>{t.hostKey.body}</p>
       <p className="hostkey-dialog__host">{host}:{port}</p>
       <code className="hostkey-dialog__fp">{fingerprint}</code>
       <div className="hostkey-dialog__actions">
-        <button type="button" autoFocus onClick={() => onAnswer(requestId, false)}>{tr.hostKey.reject}</button>
-        <button type="button" onClick={() => onAnswer(requestId, true)}>{tr.hostKey.trust}</button>
+        <button type="button" autoFocus onClick={() => onAnswer(requestId, false)}>{t.hostKey.reject}</button>
+        <button type="button" onClick={() => onAnswer(requestId, true)}>{t.hostKey.trust}</button>
       </div>
     </div>
   );

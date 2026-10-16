@@ -226,7 +226,10 @@ async fn server_side_exit_emits_closed_event() {
     loop {
         let ev = tokio::time::timeout_at(deadline, shell.read()).await.expect("timeout waiting for Closed");
         match ev {
-            Some(ShellEvent::Closed { .. }) => break,
+            Some(ShellEvent::Closed { reason }) => {
+                assert_eq!(reason.as_deref(), Some("exit:0"));
+                break;
+            }
             Some(ShellEvent::Data(_)) => continue,
             None => panic!("stream ended without Closed"),
         }

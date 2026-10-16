@@ -44,11 +44,11 @@ struct FileData {
 impl std::fmt::Display for StoreError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StoreError::Invalid(m) => write!(f, "geçersiz oturum: {m}"),
+            StoreError::Invalid(m) => write!(f, "invalid session: {m}"),
             StoreError::Corrupt { backup } => {
-                write!(f, "oturum dosyası bozuk, yedeği: {}", backup.display())
+                write!(f, "sessions file is corrupt, backup: {}", backup.display())
             }
-            StoreError::Io(e) => write!(f, "dosya hatası: {e}"),
+            StoreError::Io(e) => write!(f, "file error: {e}"),
         }
     }
 }
@@ -66,16 +66,16 @@ pub struct SessionStore {
 
 fn validate(name: &str, host: &str, port: u16, user: &str) -> Result<(), StoreError> {
     if name.trim().is_empty() {
-        return Err(StoreError::Invalid("ad boş".into()));
+        return Err(StoreError::Invalid("name is empty".into()));
     }
     if host.trim().is_empty() {
-        return Err(StoreError::Invalid("adres boş".into()));
+        return Err(StoreError::Invalid("host is empty".into()));
     }
     if port == 0 {
-        return Err(StoreError::Invalid("port 0 olamaz".into()));
+        return Err(StoreError::Invalid("port must not be 0".into()));
     }
     if user.trim().is_empty() {
-        return Err(StoreError::Invalid("kullanıcı boş".into()));
+        return Err(StoreError::Invalid("user is empty".into()));
     }
     Ok(())
 }
@@ -130,7 +130,7 @@ impl SessionStore {
             .sessions
             .iter_mut()
             .find(|x| x.id == s.id)
-            .ok_or_else(|| StoreError::Invalid("oturum bulunamadı".into()))?;
+            .ok_or_else(|| StoreError::Invalid("session not found".into()))?;
         *slot = s;
         self.save()
     }

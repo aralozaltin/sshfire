@@ -49,3 +49,11 @@ test("unmounting closes the shell and disposes the terminal", async () => {
   await vi.waitFor(() => expect(api.shellClose).toHaveBeenCalledWith("t1"));
   expect(term.disposed).toBe(true);
 });
+
+test("the exit code of the remote shell is shown in the user's language", async () => {
+  const { term, api, emitClosed } = setup();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  emitClosed("exit:3");
+  expect(await screen.findByText("Çıkış kodu 3")).toBeInTheDocument();
+});

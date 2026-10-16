@@ -19,11 +19,11 @@ pub enum KnownHostsError {
 impl std::fmt::Display for KnownHostsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KnownHostsError::Changed => write!(f, "sunucu anahtarı değişmiş; açıkça değiştirilmeli"),
+            KnownHostsError::Changed => write!(f, "host key changed; replace it explicitly"),
             KnownHostsError::Corrupt { backup } => {
-                write!(f, "bilinen sunucular dosyası bozuk, yedeği: {}", backup.display())
+                write!(f, "known hosts file is corrupt, backup: {}", backup.display())
             }
-            KnownHostsError::Io(e) => write!(f, "dosya hatası: {e}"),
+            KnownHostsError::Io(e) => write!(f, "file error: {e}"),
         }
     }
 }

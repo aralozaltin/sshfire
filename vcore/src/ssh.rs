@@ -57,7 +57,7 @@ impl ShellWriter {
     }
 
     async fn send(&self, cmd: Cmd) -> Result<(), SshError> {
-        self.cmds.send(cmd).await.map_err(|_| SshError::Other("kabuk kapalı".into()))
+        self.cmds.send(cmd).await.map_err(|_| SshError::Other("shell is closed".into()))
     }
 }
 
@@ -104,7 +104,7 @@ impl client::Handler for Handler {
 
     async fn check_server_key(&mut self, key: &PublicKeyOrCertificate) -> Result<bool, Self::Error> {
         let PublicKeyOrCertificate::PublicKey { key, .. } = key else {
-            return self.fail(SshError::Other("sertifikalı sunucu anahtarı desteklenmiyor".into()));
+            return self.fail(SshError::Other("certificate host keys are not supported".into()));
         };
         let fingerprint = key.fingerprint(HashAlg::Sha256).to_string();
         let status = self.hosts.lock().unwrap().check(&self.host, self.port, &fingerprint);
@@ -166,7 +166,7 @@ impl SshConnection {
                 let secret = secrets
                     .get(&session.id)
                     .map_err(SshError::Secret)?
-                    .ok_or_else(|| SshError::Secret(SecretError::Other("şifre kayıtlı değil".into())))?;
+                    .ok_or_else(|| SshError::Secret(SecretError::Other("no password stored".into())))?;
                 handle
                     .authenticate_password(session.user.clone(), secret.expose())
                     .await
@@ -223,9 +223,10 @@ impl SshConnection {
                             if ev_tx.send(ShellEvent::Data(data.to_vec())).await.is_err() { return; }
                         }
                         Some(ChannelMsg::ExitStatus { exit_status }) => {
-                            reason = Some(format!("çıkış kodu {exit_status}"));
+                            reason = Some(format!("exit:{exit_status}"));
                         }
-                        Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break,
+                        // Eof ile Close arasında ExitStatus gelebilir; yalnızca Close'ta çıkılır.
+                        Some(ChannelMsg::Close) | None => break,
                         _ => {}
                     },
                 }

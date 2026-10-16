@@ -16,7 +16,7 @@ function fakeApi(over: Partial<AppApi> = {}) {
   let hostKeyCb: (e: { requestId: string; host: string; port: number; fingerprint: string }) => void = () => {};
   const api = {
     listSessions: vi.fn(async () => sessions),
-    startupWarning: vi.fn(async () => null as string | null),
+    startupWarning: vi.fn(async () => [] as { code: string; backup: string }[]),
     addSession: vi.fn(async (s, _pw) => { const added = { ...s, id: "2" } as Session; sessions = [...sessions, added]; return added; }),
     updateSession: vi.fn(async () => {}),
     removeSession: vi.fn(async (id: string) => { sessions = sessions.filter((x) => x.id !== id); }),
@@ -74,7 +74,7 @@ test("a host key prompt shows the dialog and the answer goes back to the backend
 });
 
 test("a startup warning from a corrupt file is shown", async () => {
-  const { api } = fakeApi({ startupWarning: vi.fn(async () => "Oturum dosyası bozuktu; yedeği: /x/sessions.json.bak") } as Partial<AppApi>);
+  const { api } = fakeApi({ startupWarning: vi.fn(async () => [{ code: "sessions_corrupt", backup: "/x/sessions.json.bak" }]) } as Partial<AppApi>);
   render(<App api={api} createTerm={fakeTerm} />);
   expect(await screen.findByText(/Oturum dosyası bozuktu/)).toBeInTheDocument();
 });
@@ -115,4 +115,30 @@ test("choosing the dark theme sets data-theme and remembers it", async () => {
   await userEvent.selectOptions(screen.getByLabelText("Tema"), "dark");
   expect(document.documentElement.dataset.theme).toBe("dark");
   expect(localStorage.getItem("ssh-istemci.theme")).toBe("dark");
+});
+
+test("choosing English switches the visible labels and remembers it", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.selectOptions(screen.getByLabelText("Dil"), "en");
+  expect(screen.getByRole("navigation", { name: "Servers" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Add server" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Theme")).toBeInTheDocument();
+  expect(localStorage.getItem("ssh-istemci.locale")).toBe("en");
+  await userEvent.selectOptions(screen.getByLabelText("Language"), "tr");
+  expect(screen.getByRole("navigation", { name: "Sunucular" })).toBeInTheDocument();
+});
+
+test("backend errors are shown in the chosen language", async () => {
+  const { api } = fakeApi({ addSession: vi.fn(async () => { throw { code: "invalid_session", detail: "host empty" }; }) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.selectOptions(screen.getByLabelText("Dil"), "en");
+  await userEvent.click(screen.getByRole("button", { name: "Add server" }));
+  await userEvent.type(screen.getByLabelText("Name"), "x");
+  await userEvent.type(screen.getByLabelText("Address"), "h");
+  await userEvent.type(screen.getByLabelText("User"), "u");
+  await userEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(await screen.findByText(/Invalid server: host empty/)).toBeInTheDocument();
 });

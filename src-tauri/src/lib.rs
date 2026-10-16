@@ -1,8 +1,9 @@
+mod app_error;
 mod commands;
 mod state;
 mod stream;
 
-use state::AppState;
+use state::{AppState, StartupWarning};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
@@ -13,12 +14,12 @@ use vcore::sessions::{SessionStore, StoreError};
 const KEYCHAIN_SERVICE: &str = "ssh-istemci";
 
 fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Error>> {
-    let mut warnings: Vec<String> = Vec::new();
+    let mut warnings: Vec<StartupWarning> = Vec::new();
     let sessions_path = dir.join("sessions.json");
     let store = match SessionStore::open(&sessions_path) {
         Ok(s) => s,
         Err(StoreError::Corrupt { backup }) => {
-            warnings.push(format!("Oturum dosyası bozuktu; yedeği: {}", backup.display()));
+            warnings.push(StartupWarning { code: "sessions_corrupt", backup: backup.display().to_string() });
             SessionStore::open(&sessions_path)?
         }
         Err(e) => return Err(e.to_string().into()),
@@ -27,7 +28,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
     let hosts = match KnownHosts::open(&hosts_path) {
         Ok(h) => h,
         Err(KnownHostsError::Corrupt { backup }) => {
-            warnings.push(format!("Bilinen sunucular dosyası bozuktu; yedeği: {}", backup.display()));
+            warnings.push(StartupWarning { code: "hosts_corrupt", backup: backup.display().to_string() });
             KnownHosts::open(&hosts_path)?
         }
         Err(e) => return Err(e.to_string().into()),
@@ -38,7 +39,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         hosts: Arc::new(Mutex::new(hosts)),
         tabs: Mutex::new(HashMap::new()),
         pending_prompts: Arc::new(Mutex::new(HashMap::new())),
-        startup_warning: if warnings.is_empty() { None } else { Some(warnings.join(" ")) },
+        startup_warnings: warnings,
     })
 }
 

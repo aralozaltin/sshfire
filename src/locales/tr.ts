@@ -37,6 +37,7 @@ export const tr = {
     connected: "Bağlandı",
     disconnected: "Bağlantı kesildi",
     reconnect: "Yeniden bağlan",
+    exitCode: (code: number) => `Çıkış kodu ${code}`,
     failed: "Bağlantı kurulamadı",
   },
   hostKey: {
@@ -48,4 +49,29 @@ export const tr = {
   theme: { label: "Tema", system: "Sistem", light: "Açık", dark: "Koyu" },
   startupWarning: "Uyarı",
   confirmDelete: { title: "Silme onayı", body: (name: string) => `${name} silinsin mi? Kayıtlı parolası da silinir.` },
-} as const;
+  language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
+  errors: {
+    hostKeyRejected: "Sunucu anahtarı reddedildi.",
+    hostKeyChanged: (previous: string, current: string) =>
+      `Sunucu anahtarı değişmiş! Kayıtlı: ${previous} — Gelen: ${current}. Bağlantı reddedildi.`,
+    authFailed: "Kimlik doğrulama başarısız.",
+    unreachable: (detail: string) => `Sunucuya ulaşılamadı: ${detail}`,
+    secretDenied: "Anahtar deposuna erişim reddedildi.",
+    secretUnavailable: (detail: string) => `Anahtar deposu kullanılamıyor: ${detail}`,
+    secretOther: "Anahtar deposu işlemi başarısız.",
+    keyUnreadable: (detail: string) => `Anahtar dosyası okunamadı: ${detail}`,
+    sshOther: (detail: string) => `Bağlantı hatası: ${detail}`,
+    sessionNotFound: "Oturum bulunamadı.",
+    tabNotFound: "Sekme bulunamadı.",
+    invalidSession: (detail: string) => `Geçersiz sunucu: ${detail}`,
+    storeError: (detail: string) => `Kayıt hatası: ${detail}`,
+    unknownCode: (code: string, detail: string) => `Hata (${code})${detail ? `: ${detail}` : ""}`,
+    unknown: "Bilinmeyen hata.",
+  },
+  warnings: {
+    sessionsCorrupt: (backup: string) => `Oturum dosyası bozuktu; yedeği: ${backup}`,
+    hostsCorrupt: (backup: string) => `Bilinen sunucular dosyası bozuktu; yedeği: ${backup}`,
+  },
+};
+
+export type Messages = typeof tr;

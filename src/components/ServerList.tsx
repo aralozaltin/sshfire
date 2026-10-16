@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Session } from "../types";
-import { tr } from "../locales/tr";
+import { useT } from "../i18n";
 
 export interface ServerListProps {
   sessions: Session[];
@@ -16,6 +16,7 @@ function matches(s: Session, q: string): boolean {
 }
 
 export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: ServerListProps) {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const q = query.trim().toLowerCase();
@@ -23,7 +24,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
   const groups = useMemo(() => {
     const map = new Map<string, Session[]>();
     for (const s of sessions.filter((x) => matches(x, q))) {
-      const key = s.folder?.trim() || tr.noFolder;
+      const key = s.folder?.trim() || t.noFolder;
       map.set(key, [...(map.get(key) ?? []), s]);
     }
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, "tr"));
@@ -32,9 +33,9 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
   if (sessions.length === 0) {
     return (
       <div className="server-list server-list--empty">
-        <h2>{tr.emptyTitle}</h2>
-        <p>{tr.emptyHint}</p>
-        <button type="button" onClick={onAdd}>{tr.add}</button>
+        <h2>{t.emptyTitle}</h2>
+        <p>{t.emptyHint}</p>
+        <button type="button" onClick={onAdd}>{t.add}</button>
       </div>
     );
   }
@@ -44,14 +45,14 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
       <div className="server-list__bar">
         <input
           type="search"
-          aria-label={tr.search}
-          placeholder={tr.searchPlaceholder}
+          aria-label={t.search}
+          placeholder={t.searchPlaceholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="button" onClick={onAdd}>{tr.add}</button>
+        <button type="button" onClick={onAdd}>{t.add}</button>
       </div>
-      {groups.length === 0 && <p className="server-list__none">{tr.noResults}</p>}
+      {groups.length === 0 && <p className="server-list__none">{t.noResults}</p>}
       {groups.map(([folder, items]) => (
         <section key={folder} role="group" aria-label={folder} className="server-list__group">
           <h3>{folder}</h3>
@@ -74,8 +75,8 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
                   <span className="server-list__name">{s.name}</span>{" "}
                   <span className="server-list__host">{s.user}@{s.host}{s.port !== 22 ? `:${s.port}` : ""}</span>
                 </button>
-                <button type="button" aria-label={`${s.name} ${tr.edit.toLowerCase()}`} onClick={() => onEdit(s.id)}>✎</button>
-                <button type="button" aria-label={`${s.name} ${tr.remove.toLowerCase()}`} onClick={() => onDelete(s.id)}>✕</button>
+                <button type="button" aria-label={`${s.name} ${t.edit.toLowerCase()}`} onClick={() => onEdit(s.id)}>✎</button>
+                <button type="button" aria-label={`${s.name} ${t.remove.toLowerCase()}`} onClick={() => onDelete(s.id)}>✕</button>
               </li>
             ))}
           </ul>

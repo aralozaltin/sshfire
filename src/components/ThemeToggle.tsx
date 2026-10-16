@@ -1,5 +1,5 @@
 import type { ThemeMode } from "../theme";
-import { tr } from "../locales/tr";
+import { useT } from "../i18n";
 
 export interface ThemeToggleProps {
   mode: ThemeMode;
@@ -7,13 +7,14 @@ export interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ mode, onChange }: ThemeToggleProps) {
+  const t = useT();
   return (
     <label className="theme-toggle">
-      {tr.theme.label}
+      {t.theme.label}
       <select value={mode} onChange={(e) => onChange(e.target.value as ThemeMode)}>
-        <option value="system">{tr.theme.system}</option>
-        <option value="light">{tr.theme.light}</option>
-        <option value="dark">{tr.theme.dark}</option>
+        <option value="system">{t.theme.system}</option>
+        <option value="light">{t.theme.light}</option>
+        <option value="dark">{t.theme.dark}</option>
       </select>
     </label>
   );

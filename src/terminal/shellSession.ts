@@ -23,7 +23,7 @@ export interface ShellApi {
 export class ShellSession {
   status: ShellStatus = "connecting";
   closeReason: string | null = null;
-  error: string | null = null;
+  error: unknown = null;
   tabId: string | null = null;
   private pendingAck = 0;
   private unlisten: (() => void) | null = null;
@@ -45,7 +45,7 @@ export class ShellSession {
     try {
       this.tabId = await this.api.connect(sessionId, cols, rows, (bytes) => this.handleData(bytes));
     } catch (e) {
-      this.error = typeof e === "string" ? e : e instanceof Error ? e.message : "Bağlantı kurulamadı.";
+      this.error = e ?? new Error("connect failed");
       this.setStatus("closed");
       return;
     }

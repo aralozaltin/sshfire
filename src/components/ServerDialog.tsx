@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { Auth, NewSession, Session } from "../types";
-import { tr } from "../locales/tr";
+import { useT } from "../i18n";
 
 export interface ServerDialogProps {
   initial?: Session;
@@ -8,9 +8,9 @@ export interface ServerDialogProps {
   onCancel: () => void;
 }
 
-const d = tr.dialog;
-
 export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
+  const t = useT();
+  const d = t.dialog;
   const [name, setName] = useState(initial?.name ?? "");
   const [host, setHost] = useState(initial?.host ?? "");
   const [port, setPort] = useState(String(initial?.port ?? 22));

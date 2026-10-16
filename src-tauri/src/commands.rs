@@ -1,4 +1,5 @@
-use crate::state::{AppState, Tab};
+use crate::app_error::AppError;
+use crate::state::{AppState, StartupWarning, Tab};
 use crate::stream::{HIGH_WATER, LOW_WATER, Throttle};
 use async_trait::async_trait;
 use serde::Serialize;
@@ -7,25 +8,9 @@ use std::time::Duration;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, State};
 use vcore::known_hosts::HostKeyStatus;
-use vcore::secrets::{Secret, SecretError};
+use vcore::secrets::Secret;
 use vcore::sessions::{NewSession, Session};
-use vcore::ssh::{HostKeyDecision, HostKeyPrompt, ShellEvent, SshConnection, SshError};
-
-pub fn describe(e: &SshError) -> String {
-    match e {
-        SshError::HostKeyRejected => "Sunucu anahtarı reddedildi.".into(),
-        SshError::HostKeyChanged { previous, current } => format!(
-            "Sunucu anahtarı değişmiş! Kayıtlı: {previous} — Gelen: {current}. Bağlantı reddedildi."
-        ),
-        SshError::AuthFailed => "Kimlik doğrulama başarısız.".into(),
-        SshError::Unreachable(m) => format!("Sunucuya ulaşılamadı: {m}"),
-        SshError::Secret(SecretError::Denied) => "Anahtar deposuna erişim reddedildi.".into(),
-        SshError::Secret(SecretError::Unavailable(m)) => format!("Anahtar deposu kullanılamıyor: {m}"),
-        SshError::Secret(SecretError::Other(m)) => m.clone(),
-        SshError::Key(m) => format!("Anahtar dosyası okunamadı: {m}"),
-        SshError::Other(m) => m.clone(),
-    }
-}
+use vcore::ssh::{HostKeyDecision, HostKeyPrompt, ShellEvent, SshConnection};
 
 struct TauriPrompt {
     app: AppHandle,
@@ -74,8 +59,8 @@ struct ShellClosedEvent {
 }
 
 #[tauri::command]
-pub fn startup_warning(state: State<'_, AppState>) -> Option<String> {
-    state.startup_warning.clone()
+pub fn startup_warning(state: State<'_, AppState>) -> Vec<StartupWarning> {
+    state.startup_warnings.clone()
 }
 
 #[tauri::command]
@@ -84,27 +69,27 @@ pub fn sessions_list(state: State<'_, AppState>) -> Vec<Session> {
 }
 
 #[tauri::command]
-pub fn session_add(state: State<'_, AppState>, session: NewSession, password: Option<String>) -> Result<Session, String> {
-    let added = state.store.lock().unwrap().add(session).map_err(|e| e.to_string())?;
+pub fn session_add(state: State<'_, AppState>, session: NewSession, password: Option<String>) -> Result<Session, AppError> {
+    let added = state.store.lock().unwrap().add(session).map_err(|e| AppError::from(&e))?;
     if let Some(pw) = password.filter(|p| !p.is_empty()) {
-        state.secrets.set(&added.id, &Secret::new(pw)).map_err(|e| format!("{e:?}"))?;
+        state.secrets.set(&added.id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
     }
     Ok(added)
 }
 
 #[tauri::command]
-pub fn session_update(state: State<'_, AppState>, session: Session, password: Option<String>) -> Result<(), String> {
+pub fn session_update(state: State<'_, AppState>, session: Session, password: Option<String>) -> Result<(), AppError> {
     let id = session.id.clone();
-    state.store.lock().unwrap().update(session).map_err(|e| e.to_string())?;
+    state.store.lock().unwrap().update(session).map_err(|e| AppError::from(&e))?;
     if let Some(pw) = password.filter(|p| !p.is_empty()) {
-        state.secrets.set(&id, &Secret::new(pw)).map_err(|e| format!("{e:?}"))?;
+        state.secrets.set(&id, &Secret::new(pw)).map_err(|e| AppError::from(&e))?;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn session_remove(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    state.store.lock().unwrap().remove(&id).map_err(|e| e.to_string())?;
+pub fn session_remove(state: State<'_, AppState>, id: String) -> Result<(), AppError> {
+    state.store.lock().unwrap().remove(&id).map_err(|e| AppError::from(&e))?;
     let _ = state.secrets.delete(&id);
     Ok(())
 }
@@ -117,7 +102,7 @@ pub async fn connect(
     cols: u16,
     rows: u16,
     on_data: Channel<InvokeResponseBody>,
-) -> Result<String, String> {
+) -> Result<String, AppError> {
     let session = state
         .store
         .lock()
@@ -126,12 +111,12 @@ pub async fn connect(
         .iter()
         .find(|s| s.id == session_id)
         .cloned()
-        .ok_or_else(|| "Oturum bulunamadı.".to_string())?;
+        .ok_or_else(|| AppError::code("session_not_found"))?;
     let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
     let conn = SshConnection::connect(&session, state.secrets.as_ref(), state.hosts.clone(), prompt)
         .await
-        .map_err(|e| describe(&e))?;
-    let mut shell = conn.open_shell(cols, rows).await.map_err(|e| describe(&e))?;
+        .map_err(|e| AppError::from(&e))?;
+    let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
 
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
@@ -167,20 +152,20 @@ pub fn hostkey_answer(state: State<'_, AppState>, request_id: String, trust: boo
     }
 }
 
-fn tab_writer(state: &AppState, tab_id: &str) -> Result<vcore::ssh::ShellWriter, String> {
-    state.tabs.lock().unwrap().get(tab_id).map(|t| t.writer.clone()).ok_or_else(|| "Sekme bulunamadı.".to_string())
+fn tab_writer(state: &AppState, tab_id: &str) -> Result<vcore::ssh::ShellWriter, AppError> {
+    state.tabs.lock().unwrap().get(tab_id).map(|t| t.writer.clone()).ok_or_else(|| AppError::code("tab_not_found"))
 }
 
 #[tauri::command]
-pub async fn shell_write(state: State<'_, AppState>, tab_id: String, data: Vec<u8>) -> Result<(), String> {
+pub async fn shell_write(state: State<'_, AppState>, tab_id: String, data: Vec<u8>) -> Result<(), AppError> {
     let w = tab_writer(&state, &tab_id)?;
-    w.write(&data).await.map_err(|e| describe(&e))
+    w.write(&data).await.map_err(|e| AppError::from(&e))
 }
 
 #[tauri::command]
-pub async fn shell_resize(state: State<'_, AppState>, tab_id: String, cols: u16, rows: u16) -> Result<(), String> {
+pub async fn shell_resize(state: State<'_, AppState>, tab_id: String, cols: u16, rows: u16) -> Result<(), AppError> {
     let w = tab_writer(&state, &tab_id)?;
-    w.resize(cols, rows).await.map_err(|e| describe(&e))
+    w.resize(cols, rows).await.map_err(|e| AppError::from(&e))
 }
 
 #[tauri::command]
@@ -194,21 +179,5 @@ pub fn shell_ack(state: State<'_, AppState>, tab_id: String, bytes: usize) {
 pub fn shell_close(state: State<'_, AppState>, tab_id: String) {
     if let Some(tab) = state.tabs.lock().unwrap().remove(&tab_id) {
         tab.task.abort();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn changed_host_key_message_shows_both_fingerprints() {
-        let m = describe(&SshError::HostKeyChanged { previous: "SHA256:eski".into(), current: "SHA256:yeni".into() });
-        assert!(m.contains("SHA256:eski") && m.contains("SHA256:yeni"));
-    }
-
-    #[test]
-    fn auth_failure_message_never_mentions_the_password_field_value() {
-        assert_eq!(describe(&SshError::AuthFailed), "Kimlik doğrulama başarısız.");
     }
 }

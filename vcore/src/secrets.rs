@@ -69,11 +69,11 @@ impl KeyringSecrets {
 
 fn map_keyring_error(e: &keyring::Error) -> SecretError {
     match e {
-        keyring::Error::NoDefaultStore => SecretError::Unavailable("anahtar deposu başlatılamadı".into()),
+        keyring::Error::NoDefaultStore => SecretError::Unavailable("keyring could not be initialised".into()),
         keyring::Error::NoStorageAccess(_) => SecretError::Denied,
-        keyring::Error::PlatformFailure(_) => SecretError::Unavailable("anahtar deposu hatası".into()),
+        keyring::Error::PlatformFailure(_) => SecretError::Unavailable("keyring platform failure".into()),
         // BadEncoding/BadDataFormat taşıdıkları baytları içerir; asla mesaja katılmaz.
-        _ => SecretError::Other("anahtar deposu işlemi başarısız".into()),
+        _ => SecretError::Other("keyring operation failed".into()),
     }
 }
 
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn keyring_access_problems_map_to_denied_and_unavailable() {
-        assert_eq!(map_keyring_error(&keyring::Error::NoDefaultStore), SecretError::Unavailable("anahtar deposu başlatılamadı".into()));
+        assert_eq!(map_keyring_error(&keyring::Error::NoDefaultStore), SecretError::Unavailable("keyring could not be initialised".into()));
         let denied = keyring::Error::NoStorageAccess("kilitli".into());
         assert_eq!(map_keyring_error(&denied), SecretError::Denied);
     }
