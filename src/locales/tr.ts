@@ -100,6 +100,15 @@ export const tr = {
     percent: (n: number) => `%${n}`,
     panelLabel: "Aktarımlar",
   },
+  metrics: {
+    cpu: "İşlemci",
+    memory: "Bellek",
+    disk: "Disk",
+    load: "Yük",
+    uptime: "Açık kalma",
+    network: "Ağ",
+    units: { d: "g", h: "s", m: "dk" },
+  },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

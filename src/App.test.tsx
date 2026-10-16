@@ -28,6 +28,7 @@ function fakeApi(over: Partial<AppApi> = {}) {
     answerHostKey: vi.fn(async () => {}),
     onHostKeyPrompt: vi.fn(async (cb) => { hostKeyCb = cb; return () => {}; }),
     onShellClosed: vi.fn(async () => () => {}),
+    ...sftpApi(),
     ...over,
   } as unknown as AppApi;
   return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)) };
@@ -84,7 +85,7 @@ test("closing a tab removes it", async () => {
   render(<App api={api} createTerm={fakeTerm} />);
   await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
   await userEvent.click(await screen.findByRole("button", { name: "Test 3.81 kapat" }));
-  expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+  expect(screen.queryByRole("tab", { name: /Test 3.81/ })).not.toBeInTheDocument();
 });
 
 test("deleting asks for confirmation inside the app and removes on confirm", async () => {
@@ -141,4 +142,52 @@ test("backend errors are shown in the chosen language", async () => {
   await userEvent.type(screen.getByLabelText("User"), "u");
   await userEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(await screen.findByText(/Invalid server: host empty/)).toBeInTheDocument();
+});
+
+function sftpApi() {
+  return {
+    sftpHome: vi.fn(async () => "/home/u"),
+    sftpList: vi.fn(async () => []),
+    sftpMkdir: vi.fn(async () => {}),
+    sftpRename: vi.fn(async () => {}),
+    sftpRemove: vi.fn(async () => {}),
+    sftpCopy: vi.fn(async () => {}),
+    sftpUpload: vi.fn(async () => []),
+    sftpDownload: vi.fn(async () => []),
+    transferCancel: vi.fn(async () => true),
+    pickFiles: vi.fn(async () => []),
+    onFilesDropped: vi.fn(async () => () => {}),
+    onTransferProgress: vi.fn(async () => () => {}),
+    metricsStart: vi.fn(async () => {}),
+    metricsStop: vi.fn(async () => {}),
+  };
+}
+
+test("the files tab shows the hint without a connection", async () => {
+  const { api } = fakeApi(sftpApi() as unknown as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
+  expect(screen.getByText(/Bir sunucuya bağlan/)).toBeInTheDocument();
+});
+
+test("the files tab follows the connected terminal and remembers its folder", async () => {
+  const extra = sftpApi();
+  const { api } = fakeApi(extra as unknown as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await screen.findByRole("tab", { name: /Test 3.81/ });
+  await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
+  await vi.waitFor(() => expect(extra.sftpList).toHaveBeenCalledWith("tab-1", "/home/u"));
+  await userEvent.click(screen.getByRole("tab", { name: "Sunucular" }));
+  await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
+  await vi.waitFor(() => expect(extra.sftpList.mock.calls.length).toBeGreaterThanOrEqual(2));
+});
+
+test("connecting starts metrics for the new terminal", async () => {
+  const extra = sftpApi();
+  const { api } = fakeApi(extra as unknown as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(extra.metricsStart).toHaveBeenCalledWith("tab-1", expect.any(Function)));
 });

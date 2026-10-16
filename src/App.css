@@ -61,7 +61,6 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 
 .app { display: grid; grid-template-columns: 250px 1fr; height: 100%; }
 .app__sidebar { border-right: 1px solid var(--line); overflow: auto; background: var(--surface); display: flex; flex-direction: column; }
-.app__sidebar > :first-child { flex: 1; }
 .app__footer { border-top: 1px solid var(--line); background: var(--chrome); padding: 4px 6px; }
 .theme-toggle { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: center; }
 .app__main { display: flex; flex-direction: column; min-width: 0; background: var(--chrome); }
@@ -131,3 +130,20 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .file-info dl > div { display: grid; grid-template-columns: 90px 1fr; gap: 6px; }
 .file-info dt { color: var(--muted); }
 .file-info dd { margin: 0; word-break: break-all; }
+
+.sidebar { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sidebar__tabs { display: flex; gap: 1px; padding: 3px 3px 0; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.sidebar__tab { border: 1px solid var(--line); border-bottom: 0; border-top: 2px solid transparent; border-radius: 0; background: var(--chrome-dark); }
+.sidebar__tab[aria-selected="true"] { background: var(--surface); border-top-color: var(--accent); }
+.sidebar__panel { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.app__sidebar > .sidebar { flex: 1; }
+.metrics { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 3px 8px; background: var(--chrome); border-top: 1px solid var(--line); color: var(--fg); font-variant-numeric: tabular-nums; }
+.metric--warn { color: #b7791f; font-weight: 600; }
+.metric--crit { color: var(--danger); font-weight: 700; }
+.transfers { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); max-height: 30%; overflow: auto; background: var(--surface); }
+.transfers__item { padding: 3px 6px; border-bottom: 1px solid var(--chrome-dark); }
+.transfers__head { display: flex; gap: 6px; align-items: center; }
+.transfers__name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.transfers progress { width: 100%; height: 8px; }
+.transfers__note { color: var(--muted); font-size: 11px; word-break: break-all; }
+.transfers__note--error { color: var(--danger); }

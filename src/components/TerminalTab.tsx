@@ -1,7 +1,9 @@
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { ShellSession, type ShellApi, type TermLike } from "../terminal/shellSession";
 import { errorText, useT } from "../i18n";
 import type { Messages } from "../locales/tr";
+import type { Metrics } from "../metrics/types";
+import { MetricsBar } from "./MetricsBar";
 
 function closeReasonText(t: Messages, reason: string): string {
   const m = /^exit:(\d+)$/.exec(reason);
@@ -16,12 +18,14 @@ export interface TerminalTabProps {
   dark?: boolean;
   onStatusChange?: (status: "connecting" | "open" | "closed") => void;
   onReconnect?: () => void;
+  onTabId?: (tabId: string) => void;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const sessionRef = useRef<ShellSession | null>(null);
 
@@ -33,11 +37,18 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       rerender();
     });
     sessionRef.current = session;
-    void session.open(sessionId);
+    let alive = true;
+    void session.open(sessionId).then(() => {
+      if (!alive || session.status !== "open" || !session.tabId) return;
+      onTabId?.(session.tabId);
+      void api.metricsStart?.(session.tabId, setMetrics);
+    });
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => term.fit()) : null;
     if (hostRef.current) observer?.observe(hostRef.current);
     return () => {
+      alive = false;
       observer?.disconnect();
+      if (session.tabId) void api.metricsStop?.(session.tabId);
       void session.close();
     };
     // sessionId yalnızca açılışta okunur; yeniden bağlanma sekmeyi yeniden oluşturur.
@@ -65,6 +76,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
           {status === "connecting" ? t.terminal.connecting : t.terminal.connected}
         </span>
       )}
+      {api.metricsStart && status !== "closed" && <MetricsBar metrics={metrics} />}
       {status === "closed" && (
         <div role="status" className="terminal__banner">
           {s?.error ? <strong>{errorText(t, s.error)}</strong> : <strong>{t.terminal.disconnected}</strong>}

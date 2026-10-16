@@ -102,6 +102,15 @@ export const en: Messages = {
     percent: (n: number) => `${n}%`,
     panelLabel: "Transfers",
   },
+  metrics: {
+    cpu: "CPU",
+    memory: "Memory",
+    disk: "Disk",
+    load: "Load",
+    uptime: "Uptime",
+    network: "Network",
+    units: { d: "d", h: "h", m: "m" },
+  },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

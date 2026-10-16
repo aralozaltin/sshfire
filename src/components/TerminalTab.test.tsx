@@ -57,3 +57,34 @@ test("the exit code of the remote shell is shown in the user's language", async 
   emitClosed("exit:3");
   expect(await screen.findByText("Çıkış kodu 3")).toBeInTheDocument();
 });
+
+test("live metrics start when the shell opens, update the bar and stop on unmount", async () => {
+  const { term, api } = setup();
+  let push: (m: unknown) => void = () => {};
+  const metricsStart = vi.fn(async (_id: string, cb: (m: unknown) => void) => { push = cb; });
+  const metricsStop = vi.fn(async () => {});
+  const full = { ...api, metricsStart, metricsStop } as unknown as ShellApi;
+  const { unmount } = render(<TerminalTab sessionId="s1" api={full} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(metricsStart).toHaveBeenCalledWith("t1", expect.any(Function));
+  expect(screen.getByLabelText("İşlemci")).toHaveTextContent("—");
+  act(() => push({ cpuPercent: 33, memUsed: 1, memTotal: 2, swapUsed: 0, swapTotal: 0, diskUsed: 1, diskTotal: 2, load: [0, 0, 0], uptimeSecs: 60, netRxBps: null, netTxBps: null }));
+  expect(screen.getByLabelText("İşlemci")).toHaveTextContent("33%");
+  unmount();
+  await vi.waitFor(() => expect(metricsStop).toHaveBeenCalledWith("t1"));
+});
+
+test("the backend tab id is reported once the connection is open", async () => {
+  const { term, api } = setup();
+  const onTabId = vi.fn();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} onTabId={onTabId} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(onTabId).toHaveBeenCalledWith("t1");
+});
+
+test("without metrics support the bar is not shown", async () => {
+  const { term, api } = setup();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(screen.queryByLabelText("İşlemci")).not.toBeInTheDocument();
+});

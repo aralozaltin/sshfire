@@ -7,6 +7,11 @@ import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
 import { createXterm } from "./terminal/xterm";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { FileBrowser } from "./components/FileBrowser";
+import { Sidebar, type SidebarTab } from "./components/Sidebar";
+import { TransferPanel } from "./components/TransferPanel";
+import { useTransfers } from "./files/transfers";
+import type { ClipboardItem } from "./files/fileOps";
 import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
 import type { TermLike } from "./terminal/shellSession";
 import type { NewSession, Session } from "./types";
@@ -66,6 +71,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("servers");
+  const [backendIds, setBackendIds] = useState<Record<string, string>>({});
+  const [filePaths, setFilePaths] = useState<Record<string, string>>({});
+  const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
+  const { transfers, dismiss } = useTransfers(api.onTransferProgress);
   const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
   const [systemDark, setSystemDark] = useState(
     () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches,
@@ -159,23 +169,46 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     setHostKey(null);
   }
 
+  const activeTab = tabs.find((x) => x.key === activeKey);
+  const activeBackendId = activeKey && activeTab?.status === "open" ? backendIds[activeKey] ?? null : null;
   const editing = dialog?.mode === "edit" ? sessions.find((s) => s.id === dialog.id) : undefined;
 
   return (
     <div className="app">
-      <nav aria-label={t.servers} className="app__sidebar">
-        <ServerList
-          sessions={sessions}
-          onConnect={openTab}
-          onEdit={(id) => setDialog({ mode: "edit", id })}
-          onDelete={setDeleting}
-          onAdd={() => setDialog({ mode: "add" })}
+      <aside className="app__sidebar">
+        <Sidebar
+          active={sidebarTab}
+          onChange={setSidebarTab}
+          servers={
+            <nav aria-label={t.servers}>
+              <ServerList
+                sessions={sessions}
+                onConnect={openTab}
+                onEdit={(id) => setDialog({ mode: "edit", id })}
+                onDelete={setDeleting}
+                onAdd={() => setDialog({ mode: "add" })}
+              />
+            </nav>
+          }
+          files={
+            <FileBrowser
+              key={activeBackendId ?? "none"}
+              tabId={activeBackendId}
+              connectionKey={activeKey ?? ""}
+              api={api}
+              clipboard={clipboard}
+              onClipboardChange={setClipboard}
+              initialPath={activeKey ? filePaths[activeKey] : undefined}
+              onPathChange={(p) => activeKey && setFilePaths((cur) => ({ ...cur, [activeKey]: p }))}
+            />
+          }
         />
+        <TransferPanel transfers={transfers} onCancel={(id) => void api.transferCancel(id)} onDismiss={dismiss} />
         <div className="app__footer">
           <ThemeToggle mode={themeMode} onChange={changeTheme} />
           <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
         </div>
-      </nav>
+      </aside>
       <main className="app__main">
         {warnings.map((w) => (
           <div key={w.code} role="alert" className="banner banner--warn">
@@ -201,6 +234,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               dark={resolvedTheme === "dark"}
               onStatusChange={(st) => setStatus(t.key, st)}
               onReconnect={() => reconnect(t.key)}
+              onTabId={(id) => setBackendIds((cur) => ({ ...cur, [t.key]: id }))}
             />
           ))}
         </div>

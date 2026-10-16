@@ -1,3 +1,5 @@
+import type { Metrics } from "../metrics/types";
+
 export type ShellStatus = "connecting" | "open" | "closed";
 
 export interface TermLike {
@@ -18,6 +20,8 @@ export interface ShellApi {
   shellAck(tabId: string, bytes: number): Promise<void>;
   shellClose(tabId: string): Promise<void>;
   onShellClosed(cb: (e: { tabId: string; reason: string | null }) => void): Promise<() => void>;
+  metricsStart?(tabId: string, cb: (m: Metrics | null) => void): Promise<void>;
+  metricsStop?(tabId: string): Promise<void>;
 }
 
 export class ShellSession {

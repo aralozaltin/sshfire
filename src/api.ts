@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
+import type { Metrics } from "./metrics/types";
 import type { NewSession, Session } from "./types";
 
 export const listSessions = () => invoke<Session[]>("sessions_list");
@@ -60,6 +61,13 @@ export const onFilesDropped = async (cb: (paths: string[]) => void): Promise<() 
 export const onTransferProgress = async (cb: (e: TransferEvent) => void): Promise<() => void> =>
   listen<TransferEvent>("transfer-progress", (e) => cb(e.payload));
 
+export function metricsStart(tabId: string, onMetrics: (m: Metrics | null) => void) {
+  const channel = new Channel<Metrics | null>();
+  channel.onmessage = onMetrics;
+  return invoke<void>("metrics_start", { tabId, onMetrics: channel });
+}
+export const metricsStop = (tabId: string) => invoke<void>("metrics_stop", { tabId });
+
 export const answerHostKey = (requestId: string, trust: boolean) =>
   invoke<void>("hostkey_answer", { requestId, trust });
 
@@ -102,6 +110,8 @@ export const realApi = {
   pickFiles,
   onFilesDropped,
   onTransferProgress,
+  metricsStart,
+  metricsStop,
   answerHostKey,
   onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
   onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,
