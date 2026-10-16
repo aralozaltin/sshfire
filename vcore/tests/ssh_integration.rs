@@ -337,10 +337,20 @@ async fn shared_connection_serves_a_shell_and_exec_at_the_same_time() {
 async fn finds_the_new_pty_and_follows_cd() {
     if !server_up() { return; }
     let (_dir, conn) = connected().await;
-    let before = conn.list_ptys().await.unwrap();
-    let shell = conn.open_shell(80, 24).await.unwrap();
-    let pty = conn.detect_shell_pty(&before).await.expect("the new pty should be detected");
-    assert!(!before.contains(&pty));
+    // Diğer testler aynı sunucuda paralel pty açtığı için aday belirsiz kalabilir; birkaç kez dene.
+    let mut found = None;
+    for _ in 0..8 {
+        let before = conn.list_ptys().await.unwrap();
+        let shell = conn.open_shell(80, 24).await.unwrap();
+        if let Some(pty) = conn.detect_shell_pty(&before).await {
+            assert!(!before.contains(&pty));
+            found = Some((shell, pty));
+            break;
+        }
+        drop(shell);
+        tokio::time::sleep(Duration::from_millis(300)).await;
+    }
+    let (shell, pty) = found.expect("the new pty should be detected");
     shell.write(b"cd /tmp\n").await.unwrap();
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     loop {

@@ -81,6 +81,8 @@ pub fn run() {
             sftp_commands::sftp_rename,
             sftp_commands::sftp_remove,
             sftp_commands::sftp_copy,
+            sftp_commands::sftp_read_text,
+            sftp_commands::sftp_write_text,
             sftp_commands::sftp_upload,
             sftp_commands::sftp_download,
             sftp_commands::transfer_cancel,

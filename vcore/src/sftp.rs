@@ -44,6 +44,7 @@ pub enum SftpError {
     PermissionDenied,
     Exists,
     Cancelled,
+    TooLarge,
     Other(String),
 }
 
@@ -54,6 +55,7 @@ impl std::fmt::Display for SftpError {
             SftpError::PermissionDenied => write!(f, "permission denied"),
             SftpError::Exists => write!(f, "already exists"),
             SftpError::Cancelled => write!(f, "cancelled"),
+            SftpError::TooLarge => write!(f, "file is too large"),
             SftpError::Other(m) => write!(f, "{m}"),
         }
     }
@@ -211,6 +213,28 @@ impl SftpClient {
             }
             self.session.remove_dir(dir).await.map_err(map_err)
         })
+    }
+
+    pub async fn read_file(&self, path: &str, max_bytes: u64) -> Result<Vec<u8>, SftpError> {
+        let md = self.session.metadata(path.to_string()).await.map_err(map_err)?;
+        if md.len() > max_bytes {
+            return Err(SftpError::TooLarge);
+        }
+        let mut file = self.session.open(path.to_string()).await.map_err(map_err)?;
+        let mut out = Vec::new();
+        // Boyut yalan söylemiş olabilir; sınırı okurken de uygula.
+        (&mut file).take(max_bytes + 1).read_to_end(&mut out).await.map_err(io_err)?;
+        if out.len() as u64 > max_bytes {
+            return Err(SftpError::TooLarge);
+        }
+        Ok(out)
+    }
+
+    /// Mevcut dosyanın üzerine yazar (izin ve sahiplik korunur, çünkü dosya yeniden oluşturulmaz).
+    pub async fn write_file(&self, path: &str, data: &[u8]) -> Result<(), SftpError> {
+        let mut file = self.session.create(path.to_string()).await.map_err(map_err)?;
+        file.write_all(data).await.map_err(io_err)?;
+        file.shutdown().await.map_err(io_err)
     }
 
     pub async fn upload(&self, local: &Path, remote: &str, progress: Progress<'_>, cancel: &CancelToken) -> Result<(), SftpError> {

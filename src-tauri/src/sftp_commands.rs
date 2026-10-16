@@ -64,6 +64,19 @@ pub async fn sftp_copy(state: State<'_, AppState>, tab_id: String, from: String,
     copy_remote(&conn, &from, &to).await.map_err(|e| AppError::from(&e))
 }
 
+const MAX_EDIT_BYTES: u64 = 2 * 1024 * 1024;
+
+#[tauri::command]
+pub async fn sftp_read_text(state: State<'_, AppState>, tab_id: String, path: String) -> Result<String, AppError> {
+    let bytes = client(&state, &tab_id).await?.read_file(&path, MAX_EDIT_BYTES).await.map_err(|e| AppError::from(&e))?;
+    vcore::text::decode_text(bytes).map_err(|_| AppError::code("not_text"))
+}
+
+#[tauri::command]
+pub async fn sftp_write_text(state: State<'_, AppState>, tab_id: String, path: String, content: String) -> Result<(), AppError> {
+    client(&state, &tab_id).await?.write_file(&path, content.as_bytes()).await.map_err(|e| AppError::from(&e))
+}
+
 #[derive(Deserialize)]
 pub struct UploadItem {
     pub local: String,

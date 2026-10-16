@@ -61,6 +61,7 @@ impl From<&SftpError> for AppError {
             SftpError::PermissionDenied => AppError::code("permission_denied"),
             SftpError::Exists => AppError::code("already_exists"),
             SftpError::Cancelled => AppError::code("cancelled"),
+            SftpError::TooLarge => AppError::code("file_too_large"),
             SftpError::Other(m) => AppError::with_detail("sftp_other", m.clone()),
         }
     }
@@ -118,6 +119,7 @@ mod tests {
         assert_eq!(AppError::from(&SftpError::PermissionDenied).code, "permission_denied");
         assert_eq!(AppError::from(&SftpError::Exists).code, "already_exists");
         assert_eq!(AppError::from(&SftpError::Cancelled).code, "cancelled");
+        assert_eq!(AppError::from(&SftpError::TooLarge).code, "file_too_large");
         let e = AppError::from(&SftpError::Other("boom".into()));
         assert_eq!((e.code, e.detail.as_deref()), ("sftp_other", Some("boom")));
     }

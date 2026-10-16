@@ -229,3 +229,30 @@ async fn listing_10k_files_completes_under_10_seconds() {
     assert!(started.elapsed() < Duration::from_secs(10), "{:?}", started.elapsed());
     e.cleanup().await;
 }
+
+#[tokio::test]
+async fn read_file_returns_the_bytes_and_refuses_files_over_the_limit() {
+    if !server_up() { return; }
+    let e = env().await;
+    let f = format!("{}/a.txt", e.base);
+    e.conn.exec(&format!("printf 'merhaba\\ndünya' > {}", shell_quote(&f))).await.unwrap();
+    assert_eq!(e.sftp.read_file(&f, 1024).await.unwrap(), "merhaba\ndünya".as_bytes());
+    assert_eq!(e.sftp.read_file(&f, 5).await.unwrap_err(), SftpError::TooLarge);
+    assert_eq!(e.sftp.read_file(&format!("{}/yok", e.base), 1024).await.unwrap_err(), SftpError::NotFound);
+    e.cleanup().await;
+}
+
+#[tokio::test]
+async fn write_file_replaces_content_creates_new_files_and_keeps_the_mode() {
+    if !server_up() { return; }
+    let e = env().await;
+    let f = format!("{}/script.sh", e.base);
+    e.conn.exec(&format!("printf 'eski içerik, daha uzun' > {f} && chmod 750 {f}", f = shell_quote(&f))).await.unwrap();
+    e.sftp.write_file(&f, "yeni".as_bytes()).await.unwrap();
+    assert_eq!(e.sftp.read_file(&f, 1024).await.unwrap(), b"yeni");
+    assert_eq!(e.sftp.stat(&f).await.unwrap().permissions, Some(0o750));
+    let created = format!("{}/yeni.txt", e.base);
+    e.sftp.write_file(&created, b"ilk").await.unwrap();
+    assert_eq!(e.sftp.read_file(&created, 1024).await.unwrap(), b"ilk");
+    e.cleanup().await;
+}
