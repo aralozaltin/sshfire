@@ -42,3 +42,36 @@ test("high usage gets warning and critical classes", () => {
   expect(screen.getByLabelText("Bellek")).toHaveClass("metric--crit");
   expect(screen.getByLabelText("Disk")).not.toHaveClass("metric--warn");
 });
+
+const fillWidth = (label: string) => (screen.getByLabelText(label).querySelector(".metric__fill") as HTMLElement | null)?.style.width;
+
+test("CPU, memory and disk show a small usage bar sized to their percentage", () => {
+  render(<MetricsBar metrics={base} />);
+  expect(fillWidth("İşlemci")).toBe("12%");
+  expect(fillWidth("Bellek")).toBe("19%");
+  expect(fillWidth("Disk")).toBe("20%");
+  expect(screen.getByLabelText("Yük").querySelector(".metric__fill")).toBeNull();
+});
+
+test("the usage bars are decorative and carry the severity class", () => {
+  render(<MetricsBar metrics={{ ...base, cpuPercent: 95 }} />);
+  const bar = screen.getByLabelText("İşlemci").querySelector(".metric__bar") as HTMLElement;
+  expect(bar).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getByLabelText("İşlemci")).toHaveClass("metric--crit");
+});
+
+test("bars are empty when a value is unknown and never exceed 100 percent", () => {
+  const { rerender } = render(<MetricsBar metrics={{ ...base, cpuPercent: null }} />);
+  expect(fillWidth("İşlemci")).toBe("0%");
+  rerender(<MetricsBar metrics={{ ...base, cpuPercent: 250 }} />);
+  expect(fillWidth("İşlemci")).toBe("100%");
+  rerender(<MetricsBar metrics={null} />);
+  expect(fillWidth("Bellek")).toBe("0%");
+});
+
+test("network speeds show separate download and upload parts", () => {
+  render(<MetricsBar metrics={base} />);
+  const net = screen.getByLabelText("Ağ");
+  expect(net.querySelector(".metric__down")).toHaveTextContent("↓ 1.2 MB/s");
+  expect(net.querySelector(".metric__up")).toHaveTextContent("↑ 40 KB/s");
+});

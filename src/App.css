@@ -137,9 +137,6 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .sidebar__tab[aria-selected="true"] { background: var(--surface); border-top-color: var(--accent); }
 .sidebar__panel { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .app__sidebar > .sidebar { flex: 1; }
-.metrics { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 3px 8px; background: var(--chrome); border-top: 1px solid var(--line); color: var(--fg); font-variant-numeric: tabular-nums; }
-.metric--warn { color: #b7791f; font-weight: 600; }
-.metric--crit { color: var(--danger); font-weight: 700; }
 .transfers { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); max-height: 30%; overflow: auto; background: var(--surface); }
 .transfers__item { padding: 3px 6px; border-bottom: 1px solid var(--chrome-dark); }
 .transfers__head { display: flex; gap: 6px; align-items: center; }
@@ -224,3 +221,17 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .layout-cols .shell-pane--active, .layout-rows .shell-pane--active, .layout-grid .shell-pane--active { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
 
 .toolbar__local { margin: 0 4px 0 6px; }
+
+.metrics { display: flex; flex-wrap: wrap; align-items: center; background: var(--chrome); border-top: 1px solid var(--line); color: var(--fg); font-variant-numeric: tabular-nums; font-size: 11px; line-height: 1; }
+.metric { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-right: 1px solid var(--chrome-dark); white-space: nowrap; }
+.metric:last-child { border-right: 0; }
+.metric__label { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: 9.5px; }
+.metric__value { font-weight: 600; }
+.metric__bar { width: 34px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.metric__fill { display: block; height: 100%; background: #3fa66b; border-radius: 3px; }
+.metric--warn .metric__fill { background: #d9a017; }
+.metric--crit .metric__fill { background: #d64545; }
+.metric--warn .metric__value { color: #b7791f; }
+.metric--crit .metric__value { color: var(--danger); }
+.metric__down { color: #3a8f5c; }
+.metric__up { color: #c77d2b; }
