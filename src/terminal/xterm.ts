@@ -10,8 +10,7 @@ import type { TermLike } from "./shellSession";
 import { classifyKey } from "./shortcuts";
 import { loadFontSize, saveFontSize, stepFontSize } from "./fontSize";
 
-const DARK = { background: "#0c0c0c", foreground: "#d4d4d4", cursor: "#d4d4d4" };
-const LIGHT = { background: "#ffffff", foreground: "#1a1a1a", cursor: "#1a1a1a", selectionBackground: "#cfe3f8" };
+import { loadScheme, SCHEME_EVENT, terminalTheme } from "./schemes";
 
 export function createXterm(el: HTMLElement): TermLike {
   const term = new Terminal({
@@ -20,8 +19,13 @@ export function createXterm(el: HTMLElement): TermLike {
     fontFamily: 'Menlo, "SF Mono", Consolas, monospace',
     fontSize: loadFontSize(),
     allowProposedApi: true,
-    theme: document.documentElement.dataset.theme === "light" ? LIGHT : DARK,
+    theme: terminalTheme(loadScheme(), document.documentElement.dataset.theme !== "light"),
   });
+  let darkApp = document.documentElement.dataset.theme !== "light";
+  const onScheme = (e: Event) => {
+    term.options.theme = terminalTheme((e as CustomEvent<string>).detail, darkApp);
+  };
+  window.addEventListener(SCHEME_EVENT, onScheme);
   const fit = new FitAddon();
   const search = new SearchAddon();
   term.loadAddon(fit);
@@ -91,8 +95,12 @@ export function createXterm(el: HTMLElement): TermLike {
       findRequested = cb;
     },
     setTheme: (dark) => {
-      term.options.theme = dark ? DARK : LIGHT;
+      darkApp = dark;
+      term.options.theme = terminalTheme(loadScheme(), dark);
     },
-    dispose: () => term.dispose(),
+    dispose: () => {
+      window.removeEventListener(SCHEME_EVENT, onScheme);
+      term.dispose();
+    },
   };
 }

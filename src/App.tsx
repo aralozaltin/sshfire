@@ -29,6 +29,8 @@ import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, ty
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
 import { SettingsMenu } from "./components/SettingsMenu";
+import { TerminalSchemeSelect } from "./components/TerminalSchemeSelect";
+import { loadScheme, saveScheme } from "./terminal/schemes";
 import { UpdateDialog } from "./components/UpdateDialog";
 import { UpdateSettings } from "./components/UpdateSettings";
 import { loadAutoUpdate, loadLastCheck, saveAutoUpdate, saveLastCheck, shouldCheckNow } from "./updates/updates";
@@ -92,6 +94,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [appVer, setAppVer] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
+  const [termScheme, setTermScheme] = useState(loadScheme);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState<string | null>(null);
   const [authRequest, setAuthRequest] = useState<AuthPromptRequest | null>(null);
@@ -523,6 +526,13 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           <SettingsMenu>
             <ThemeToggle mode={themeMode} onChange={changeTheme} />
             <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
+            <TerminalSchemeSelect
+              scheme={termScheme}
+              onChange={(id) => {
+                setTermScheme(id);
+                saveScheme(id);
+              }}
+            />
             <UpdateSettings
               version={appVer}
               auto={autoUpdate}

@@ -195,6 +195,11 @@ export const en: Messages = {
     describeRemote: (listen: number, host: string, port: number) => `server:${listen} → ${host}:${port}`,
     empty: "No tunnels are defined for this server.",
   },
+  termScheme: {
+    label: "Terminal colors",
+    default: "Default (follows theme)",
+    names: { dracula: "Dracula", nord: "Nord", "solarized-dark": "Solarized Dark", "tokyo-night": "Tokyo Night", gruvbox: "Gruvbox" },
+  },
   find: { label: "Find in terminal", placeholder: "Find…", next: "Next", prev: "Previous", close: "Close search" },
   macros: {
     tab: "Macros",

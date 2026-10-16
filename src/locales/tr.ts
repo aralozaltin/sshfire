@@ -193,6 +193,11 @@ export const tr = {
     describeRemote: (listen: number, host: string, port: number) => `sunucu:${listen} → ${host}:${port}`,
     empty: "Bu sunucu için tanımlı tünel yok.",
   },
+  termScheme: {
+    label: "Terminal renkleri",
+    default: "Varsayılan (temaya uyar)",
+    names: { dracula: "Dracula", nord: "Nord", "solarized-dark": "Solarized Dark", "tokyo-night": "Tokyo Night", gruvbox: "Gruvbox" },
+  },
   find: { label: "Terminalde ara", placeholder: "Ara…", next: "Sonraki", prev: "Önceki", close: "Aramayı kapat" },
   macros: {
     tab: "Makrolar",
