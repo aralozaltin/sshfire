@@ -113,16 +113,18 @@ pub async fn connect(
         .cloned()
         .ok_or_else(|| AppError::code("session_not_found"))?;
     let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
-    let conn = SshConnection::connect(&session, state.secrets.as_ref(), state.hosts.clone(), prompt)
-        .await
-        .map_err(|e| AppError::from(&e))?;
+    let conn = Arc::new(
+        SshConnection::connect(&session, state.secrets.as_ref(), state.hosts.clone(), prompt)
+            .await
+            .map_err(|e| AppError::from(&e))?,
+    );
     let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
 
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
     let writer = shell.writer();
     let task = tauri::async_runtime::spawn({
-        let (app, tab_id, throttle) = (app.clone(), tab_id.clone(), throttle.clone());
+        let (app, tab_id, throttle, conn) = (app.clone(), tab_id.clone(), throttle.clone(), conn.clone());
         async move {
             let _keep_alive = conn;
             let reason = loop {
@@ -141,7 +143,7 @@ pub async fn connect(
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason });
         }
     });
-    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { writer, throttle, task });
+    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { conn, writer, metrics_task: None, throttle, task });
     Ok(tab_id)
 }
 
@@ -179,5 +181,45 @@ pub fn shell_ack(state: State<'_, AppState>, tab_id: String, bytes: usize) {
 pub fn shell_close(state: State<'_, AppState>, tab_id: String) {
     if let Some(tab) = state.tabs.lock().unwrap().remove(&tab_id) {
         tab.task.abort();
+        if let Some(m) = tab.metrics_task {
+            m.abort();
+        }
+    }
+}
+
+#[tauri::command]
+pub fn metrics_start(state: State<'_, AppState>, tab_id: String, on_metrics: Channel<Option<vcore::metrics::Metrics>>) -> Result<(), AppError> {
+    let mut tabs = state.tabs.lock().unwrap();
+    let tab = tabs.get_mut(&tab_id).ok_or_else(|| AppError::code("tab_not_found"))?;
+    if let Some(old) = tab.metrics_task.take() {
+        old.abort();
+    }
+    let conn = tab.conn.clone();
+    tab.metrics_task = Some(tauri::async_runtime::spawn(async move {
+        let mut prev = None;
+        let mut last = std::time::Instant::now();
+        let mut first = true;
+        loop {
+            let output = conn.exec(vcore::metrics::PROBE_COMMAND).await.ok();
+            let now = std::time::Instant::now();
+            let dt = if first { 0.0 } else { now.duration_since(last).as_secs_f32() };
+            first = false;
+            last = now;
+            let metrics = crate::metrics_task::step(&mut prev, output.as_deref(), dt);
+            if on_metrics.send(metrics).is_err() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+    }));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn metrics_stop(state: State<'_, AppState>, tab_id: String) {
+    if let Some(tab) = state.tabs.lock().unwrap().get_mut(&tab_id) {
+        if let Some(m) = tab.metrics_task.take() {
+            m.abort();
+        }
     }
 }

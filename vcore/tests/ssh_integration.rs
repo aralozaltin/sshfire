@@ -284,3 +284,51 @@ async fn hundred_megabytes_of_output_streams_through_the_bounded_channel() {
     assert!((TOTAL..TOTAL + 100).contains(&received), "received {received}");
     eprintln!("flood: {} MB in {:?}", TOTAL / 1_000_000, started.elapsed());
 }
+
+async fn connected() -> (tempfile::TempDir, SshConnection) {
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    let conn = SshConnection::connect(&session(Auth::Password), &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust))
+        .await
+        .unwrap();
+    (dir, conn)
+}
+
+#[tokio::test]
+async fn exec_returns_stdout() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    assert_eq!(conn.exec("echo hello; echo world").await.unwrap(), "hello\nworld\n");
+}
+
+#[tokio::test]
+async fn exec_nonzero_exit_is_an_error_with_stderr() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    let err = conn.exec("echo bad >&2; exit 3").await.unwrap_err();
+    match err {
+        SshError::Other(m) => assert!(m.contains('3') && m.contains("bad"), "{m}"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn probe_command_output_parses_on_the_linux_test_server() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    let text = conn.exec(vcore::metrics::PROBE_COMMAND).await.unwrap();
+    let sample = vcore::metrics::parse_sample(&text).expect("probe output should parse");
+    assert!(sample.mem_total > 0 && sample.disk_total > 0);
+}
+
+#[tokio::test]
+async fn shared_connection_serves_a_shell_and_exec_at_the_same_time() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    let conn = std::sync::Arc::new(conn);
+    let mut shell = conn.open_shell(80, 24).await.unwrap();
+    shell.write(b"echo shell-$((3+4))\n").await.unwrap();
+    assert_eq!(conn.exec("echo side").await.unwrap(), "side\n");
+    read_until(&mut shell, "shell-7").await;
+}

@@ -5,7 +5,7 @@ use tokio::sync::oneshot;
 use vcore::known_hosts::KnownHosts;
 use vcore::secrets::SecretStore;
 use vcore::sessions::SessionStore;
-use vcore::ssh::ShellWriter;
+use vcore::ssh::{ShellWriter, SshConnection};
 
 #[derive(Clone, serde::Serialize)]
 pub struct StartupWarning {
@@ -14,7 +14,9 @@ pub struct StartupWarning {
 }
 
 pub struct Tab {
+    pub conn: Arc<SshConnection>,
     pub writer: ShellWriter,
+    pub metrics_task: Option<tauri::async_runtime::JoinHandle<()>>,
     pub throttle: Arc<Throttle>,
     pub task: tauri::async_runtime::JoinHandle<()>,
 }

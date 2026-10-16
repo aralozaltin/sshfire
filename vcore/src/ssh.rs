@@ -191,6 +191,31 @@ impl SshConnection {
         Ok(SshConnection { handle })
     }
 
+    pub async fn exec(&self, command: &str) -> Result<String, SshError> {
+        let other = |e: russh::Error| SshError::Other(e.to_string());
+        let mut channel = self.handle.channel_open_session().await.map_err(other)?;
+        channel.exec(true, command).await.map_err(other)?;
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let mut status: Option<u32> = None;
+        while let Some(msg) = channel.wait().await {
+            match msg {
+                ChannelMsg::Data { data } => out.extend_from_slice(&data),
+                ChannelMsg::ExtendedData { data, .. } => err.extend_from_slice(&data),
+                ChannelMsg::ExitStatus { exit_status } => status = Some(exit_status),
+                ChannelMsg::Close => break,
+                _ => {}
+            }
+        }
+        match status {
+            Some(0) => Ok(String::from_utf8_lossy(&out).into_owned()),
+            Some(code) => Err(SshError::Other(format!(
+                "command exited with {code}: {}",
+                String::from_utf8_lossy(&err).trim()
+            ))),
+            None => Err(SshError::Other("connection closed before the command finished".into())),
+        }
+    }
+
     pub async fn open_shell(&self, cols: u16, rows: u16) -> Result<ShellChannel, SshError> {
         let other = |e: russh::Error| SshError::Other(e.to_string());
         let mut channel = self.handle.channel_open_session().await.map_err(other)?;

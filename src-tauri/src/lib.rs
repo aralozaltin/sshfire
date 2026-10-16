@@ -1,5 +1,6 @@
 mod app_error;
 mod commands;
+mod metrics_task;
 mod state;
 mod stream;
 
@@ -64,6 +65,8 @@ pub fn run() {
             commands::shell_resize,
             commands::shell_ack,
             commands::shell_close,
+            commands::metrics_start,
+            commands::metrics_stop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
