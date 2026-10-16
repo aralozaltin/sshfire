@@ -162,3 +162,33 @@ test("no startup command means nothing is typed", async () => {
   await new Promise((r) => setTimeout(r, 30));
   expect(api.shellWrite).not.toHaveBeenCalled();
 });
+
+test("the record button starts a session log and a second click stops it", async () => {
+  const { term, api } = setup();
+  const logStart = vi.fn(async () => "/tmp/api.log");
+  const logStop = vi.fn(async () => {});
+  render(<TerminalTab sessionId="s1" name="api-prod" api={{ ...api, logStart, logStop }} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  await userEvent.click(screen.getByRole("button", { name: "Oturumu kaydet" }));
+  expect(logStart).toHaveBeenCalledWith("t1", expect.stringMatching(/^api-prod-\d{8}-\d{6}\.log$/));
+  await userEvent.click(await screen.findByRole("button", { name: "Kaydı durdur" }));
+  expect(logStop).toHaveBeenCalledWith("t1");
+  expect(await screen.findByRole("button", { name: "Oturumu kaydet" })).toBeInTheDocument();
+});
+
+test("cancelling the save dialog leaves recording off", async () => {
+  const { term, api } = setup();
+  const logStart = vi.fn(async () => null);
+  render(<TerminalTab sessionId="s1" api={{ ...api, logStart, logStop: vi.fn() }} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  await userEvent.click(screen.getByRole("button", { name: "Oturumu kaydet" }));
+  await vi.waitFor(() => expect(logStart).toHaveBeenCalled());
+  expect(screen.queryByRole("button", { name: "Kaydı durdur" })).not.toBeInTheDocument();
+});
+
+test("there is no record button when the api cannot log", async () => {
+  const { term, api } = setup();
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(screen.queryByRole("button", { name: "Oturumu kaydet" })).not.toBeInTheDocument();
+});

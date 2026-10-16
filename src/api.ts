@@ -91,6 +91,15 @@ export interface SshConfigHost {
 }
 export const sshConfigHosts = () => invoke<{ hosts: SshConfigHost[]; defaultUser: string }>("ssh_config_hosts");
 
+/** Kayıt yerini sorar ve günlüğü başlatır; iptal edilirse `null`. */
+export async function logStart(tabId: string, suggestedName: string): Promise<string | null> {
+  const path = await saveDialog({ defaultPath: suggestedName, filters: [{ name: "Log", extensions: ["log", "txt"] }] });
+  if (!path) return null;
+  await invoke<void>("log_start", { tabId, path });
+  return path;
+}
+export const logStop = (tabId: string) => invoke<void>("log_stop", { tabId });
+
 export const tunnelStart = (tabId: string, spec: TunnelSpec) => invoke<RunningTunnel>("tunnel_start", { tabId, spec });
 export const tunnelStop = (tabId: string, id: string) => invoke<void>("tunnel_stop", { tabId, id });
 export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_list", { tabId });
@@ -211,6 +220,8 @@ export const realApi = {
   metricsStop,
   cwdStart,
   cwdStop,
+  logStart,
+  logStop,
   checkForUpdate,
   appVersion,
   sshConfigHosts,

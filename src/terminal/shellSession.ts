@@ -27,6 +27,9 @@ export interface ShellApi {
   metricsStop?(tabId: string): Promise<void>;
   cwdStart?(tabId: string, cb: (cwd: string) => void): Promise<void>;
   cwdStop?(tabId: string): Promise<void>;
+  /** Kayıt dosyasını sorar; iptal edilirse `null`, aksi halde günlüğün yazıldığı yol. */
+  logStart?(tabId: string, suggestedName: string): Promise<string | null>;
+  logStop?(tabId: string): Promise<void>;
 }
 
 export class ShellSession {

@@ -44,6 +44,8 @@ export const tr = {
     reconnect: "Yeniden bağlan",
     exitCode: (code: number) => `Çıkış kodu ${code}`,
     failed: "Bağlantı kurulamadı",
+    startLog: "Oturumu kaydet",
+    stopLog: "Kaydı durdur",
   },
   hostKey: {
     title: "Yeni sunucu anahtarı",

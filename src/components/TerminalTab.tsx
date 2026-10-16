@@ -28,13 +28,15 @@ export interface TerminalTabProps {
   onFocusPane?: () => void;
   local?: boolean;
   startupCommand?: string | null;
+  name?: string;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand, name }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
   const [findOpen, setFindOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const sessionRef = useRef<ShellSession | null>(null);
@@ -69,6 +71,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
         void api.metricsStop?.(session.tabId);
         void api.cwdStop?.(session.tabId);
       }
+      if (session.tabId) void api.logStop?.(session.tabId);
       void session.close();
     };
     // sessionId yalnızca açılışta okunur; yeniden bağlanma sekmeyi yeniden oluşturur.
@@ -86,6 +89,19 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     }
   }, [visible]);
 
+  async function toggleRecording() {
+    const tabId = sessionRef.current?.tabId;
+    if (!tabId) return;
+    if (recording) {
+      await api.logStop?.(tabId);
+      setRecording(false);
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+    const path = await api.logStart?.(tabId, `${(name ?? "session").replace(/[^\w.-]+/g, "_")}-${stamp}.log`);
+    if (path) setRecording(true);
+  }
+
   const s = sessionRef.current;
   const status = s?.status ?? "connecting";
   return (
@@ -99,6 +115,17 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
             termRef.current?.focus();
           }}
         />
+      )}
+      {api.logStart && status === "open" && (
+        <button
+          type="button"
+          className={`terminal__rec${recording ? " terminal__rec--on" : ""}`}
+          title={recording ? t.terminal.stopLog : t.terminal.startLog}
+          aria-label={recording ? t.terminal.stopLog : t.terminal.startLog}
+          onClick={() => void toggleRecording()}
+        >
+          ●{recording && <span> REC</span>}
+        </button>
       )}
       <div ref={hostRef} data-testid="terminal-host" className="terminal__host" />
       {status !== "closed" && (

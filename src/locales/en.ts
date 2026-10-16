@@ -45,6 +45,8 @@ export const en: Messages = {
     disconnected: "Disconnected",
     reconnect: "Reconnect",
     exitCode: (code: number) => `Exit code ${code}`,
+    startLog: "Record session",
+    stopLog: "Stop recording",
     failed: "Could not connect",
   },
   hostKey: {

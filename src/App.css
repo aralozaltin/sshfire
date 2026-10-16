@@ -251,3 +251,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .update-settings { display: grid; gap: 4px; padding-top: 6px; border-top: 1px solid var(--chrome-dark); }
 .update-settings__version, .update-settings__message { color: var(--muted); font-size: 11px; }
+
+.shell-pane { --rec-off: rgba(255, 255, 255, 0.35); }
+.terminal__rec { position: absolute; top: 6px; right: 14px; z-index: 5; background: transparent; border: 0; color: var(--rec-off); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 4px; opacity: 0; transition: opacity 0.15s; }
+.shell-pane:hover .terminal__rec, .terminal__rec--on, .terminal__rec:focus-visible { opacity: 1; }
+.terminal__rec--on { color: #ef4444; font-weight: 600; }
+.terminal__rec:hover { background: rgba(255, 255, 255, 0.1); }

@@ -575,6 +575,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               local={t.sessionId === LOCAL_SESSION_ID}
               startupCommand={sessions.find((x) => x.id === t.sessionId)?.startup}
               sessionId={t.sessionId}
+              name={t.name}
               api={api}
               createTerm={createTerm}
               visible={layout !== "single" || t.key === activeKey}
