@@ -185,3 +185,15 @@ pub async fn sftp_download(app: AppHandle, state: State<'_, AppState>, tab_id: S
 pub fn transfer_cancel(state: State<'_, AppState>, transfer_id: String) -> bool {
     state.transfers.cancel(&transfer_id)
 }
+
+#[tauri::command]
+pub fn ssh_config_hosts(app: AppHandle) -> Result<crate::ssh_config_import::SshConfigImport, AppError> {
+    let home = app.path().home_dir().map_err(|e| AppError::with_detail("store_error", e.to_string()))?;
+    let user = std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_default();
+    let text = match std::fs::read_to_string(home.join(".ssh").join("config")) {
+        Ok(t) => t,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(AppError::with_detail("store_error", e.to_string())),
+    };
+    Ok(crate::ssh_config_import::from_config_text(&text, &home.display().to_string(), &user))
+}

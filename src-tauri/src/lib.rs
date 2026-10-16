@@ -2,6 +2,7 @@ mod app_error;
 mod commands;
 mod cwd_task;
 mod sftp_commands;
+mod ssh_config_import;
 mod metrics_task;
 mod overlay_secrets;
 mod state;
@@ -89,6 +90,7 @@ pub fn run() {
             sftp_commands::sftp_upload,
             sftp_commands::sftp_download,
             sftp_commands::transfer_cancel,
+            sftp_commands::ssh_config_hosts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
