@@ -1,0 +1,73 @@
+import { useMemo, useState } from "react";
+import type { Session } from "../types";
+import { tr } from "../locales/tr";
+
+export interface ServerListProps {
+  sessions: Session[];
+  onConnect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAdd: () => void;
+}
+
+function matches(s: Session, q: string): boolean {
+  if (!q) return true;
+  return [s.name, s.host, s.folder ?? ""].some((v) => v.toLowerCase().includes(q));
+}
+
+export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: ServerListProps) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Session[]>();
+    for (const s of sessions.filter((x) => matches(x, q))) {
+      const key = s.folder?.trim() || tr.noFolder;
+      map.set(key, [...(map.get(key) ?? []), s]);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b, "tr"));
+  }, [sessions, q]);
+
+  if (sessions.length === 0) {
+    return (
+      <div className="server-list server-list--empty">
+        <h2>{tr.emptyTitle}</h2>
+        <p>{tr.emptyHint}</p>
+        <button type="button" onClick={onAdd}>{tr.add}</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="server-list">
+      <div className="server-list__bar">
+        <input
+          type="search"
+          aria-label={tr.search}
+          placeholder={tr.searchPlaceholder}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button type="button" onClick={onAdd}>{tr.add}</button>
+      </div>
+      {groups.length === 0 && <p className="server-list__none">{tr.noResults}</p>}
+      {groups.map(([folder, items]) => (
+        <section key={folder} role="group" aria-label={folder} className="server-list__group">
+          <h3>{folder}</h3>
+          <ul>
+            {items.map((s) => (
+              <li key={s.id}>
+                <button type="button" className="server-list__connect" onClick={() => onConnect(s.id)}>
+                  <span className="server-list__name">{s.name}</span>{" "}
+                  <span className="server-list__host">{s.user}@{s.host}{s.port !== 22 ? `:${s.port}` : ""}</span>
+                </button>
+                <button type="button" aria-label={`${s.name} ${tr.edit.toLowerCase()}`} onClick={() => onEdit(s.id)}>✎</button>
+                <button type="button" aria-label={`${s.name} ${tr.remove.toLowerCase()}`} onClick={() => onDelete(s.id)}>✕</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
