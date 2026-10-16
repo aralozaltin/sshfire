@@ -1,42 +1,67 @@
 # SSHFire
 
-SSHFire: kayıtlı sunuculara çift tıkla bağlanan, hızlı bir masaüstü SSH terminali. Tauri 2 + React + xterm.js, çekirdek Rust (`russh`).
-Şifreler işletim sisteminin anahtar deposunda (macOS Keychain, Windows Credential Manager, Linux Secret Service).
+A fast, lightweight desktop SSH client in the spirit of MobaXterm: saved servers, tabbed terminals, an SFTP file panel that follows your shell, and live server metrics, all in one small app.
 
+Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://github.com/Eugeny/russh)).
 
-## Özellikler
+## Features
 
-- Kayıtlı sunucu listesi (klasörler, arama), çift tıkla bağlanma; parolalar işletim sistemi anahtar deposunda, kayıtlı değilse bağlanırken sorulur
-- `~/.ssh/config` içe aktarma (ProxyJump dahil), sunucu listesini dosyaya dışa/içe aktarma
-- Sekmeli terminal (xterm.js), sağ tık kopyala/yapıştır, yakınlaştırma, arama; yan yana / alt alta / ızgara bölünmüş görünüm
-- Jump host (bastion) üzerinden bağlanma, bağlanınca otomatik komut çalıştırma, yerel terminal
-- SFTP dosya paneli: terminalin klasörünü izler; kopyala/kes/yapıştır, sürükle-bırak taşıma/kopyalama, satır içi yeniden adlandırma, yükle/indir, yerleşik metin düzenleyici
-- Terminal altında canlı sunucu metrikleri (CPU, bellek, disk, yük, ağ)
-- Port tünelleri (yerel -L ve SOCKS -D), MultiExec, makrolar (kayıtlı ve kaydedilebilir)
-- Açık / koyu tema, Türkçe / English, boyutlandırılabilir kenar çubuğu ve sütunlar
+**Connections**
+- Saved server list with folders and search; double-click to connect
+- Password, key file (including passphrase-protected keys), SSH agent and keyboard-interactive (two-factor) authentication
+- Jump hosts (bastions), host key verification (trust on first use, refuses changed keys)
+- Passwords and key passphrases live in the OS key store (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in files
+- Import hosts from `~/.ssh/config` (including `ProxyJump`), export and import the server list as JSON (passwords are never exported)
+- Optional command to run on connect, local terminal tab
 
-## Çalıştırma
+**Terminal**
+- Tabs plus side-by-side, stacked and grid layouts
+- Copy/paste, zoom, search, clickable links (Cmd/Ctrl + click, http/https only)
+- MultiExec (type once, send to several tabs), macros you can write or record
+- Live metrics bar: CPU, memory, disk, load, uptime, network (Linux servers)
+
+**Files**
+- SFTP panel that follows the shell's working directory
+- Copy, cut, paste, drag-and-drop move/copy, inline rename, upload/download with progress and cancel, drag files in from the OS
+- Built-in text editor for remote files (Ctrl/Cmd+S saves)
+
+**Tunnels**
+- Local (`-L`) and SOCKS5 dynamic (`-D`) port forwarding, saved per server
+
+**Interface**
+- Light and dark theme, English and Turkish, resizable sidebar and columns
+
+## Status
+
+Work in progress. Developed and tested on macOS; the core and the Tauri layer also compile and pass their unit tests on Linux. Windows has not been built or tested yet. See [`docs/manual-checklist.md`](docs/manual-checklist.md) (in Turkish) for what still needs checking by hand.
+
+## Getting started
+
+Requirements: Node.js, Rust (`rustup`) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
 
 ```bash
-npm install            # .npmrc legacy-peer-deps kullanır
-npm run tauri dev
+npm install            # .npmrc enables legacy-peer-deps
+npm run tauri dev      # run in development
+npm run tauri build    # production bundle
 ```
 
-Rust gerekir (`rustup`).
-
-## Test
+## Tests
 
 ```bash
-cargo test --workspace          # çekirdek; SSH testleri için aşağıdaki sunucu
-npm test                        # arayüz (Vitest)
-vcore/tests/docker/up.sh        # test sunucusu: 127.0.0.1:2222 (kapalıysa SSH testleri atlanır)
-cargo test -p vcore -- --ignored   # gerçek anahtar deposu testi (elle)
+cargo test --workspace             # Rust core and Tauri layer
+npm test                           # interface tests (Vitest)
+vcore/tests/docker/up.sh           # local OpenSSH test server on 127.0.0.1:2222
+cargo test -p vcore -- --ignored   # tests that touch the real OS key store (manual)
 ```
 
-Elle kontrol listesi: `docs/manual-checklist.md`
+The SSH, SFTP, tunnel and authentication integration tests run against a throwaway OpenSSH container and are skipped when it is not running. The test credentials in `vcore/tests/docker/` belong to that container only.
 
-## Yapı
+## Project layout
 
-- `vcore/` — arayüzden bağımsız Rust kütüphanesi: `sessions`, `secrets`, `known_hosts`, `ssh`
-- `src-tauri/` — Tauri komutları ve geri basınçlı terminal akışı
-- `src/` — React arayüzü
+- `vcore/`: UI-independent Rust library (sessions, secrets, known hosts, SSH, SFTP, tunnels, metrics, `~/.ssh/config` parser)
+- `src-tauri/`: Tauri commands, local terminal, transfer and streaming back-pressure
+- `src/`: React interface
+
+## License
+
+Not chosen yet.
