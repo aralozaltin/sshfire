@@ -111,6 +111,7 @@ export const tr = {
     units: { d: "g", h: "s", m: "dk" },
   },
   layout: { sidebarResize: "Kenar çubuğu genişliği", columnResize: (name: string) => `${name} sütun genişliği` },
+  multiExec: { label: "MultiExec", hint: "Yazdıkların seçili sekmelere gönderilir." },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

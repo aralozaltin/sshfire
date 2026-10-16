@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { realApi, type AppApi, type StartupWarning } from "./api";
 import { ServerList } from "./components/ServerList";
 import { ServerDialog } from "./components/ServerDialog";
@@ -10,6 +10,8 @@ import { ThemeToggle } from "./components/ThemeToggle";
 import { FileBrowser } from "./components/FileBrowser";
 import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { TransferPanel } from "./components/TransferPanel";
+import { MultiExecBar } from "./components/MultiExecBar";
+import { MultiExecHub } from "./terminal/multiExec";
 import { useTransfers } from "./files/transfers";
 import type { ClipboardItem } from "./files/fileOps";
 import { applyTheme, loadThemeMode, resolveTheme, saveThemeMode, type ThemeMode } from "./theme";
@@ -77,6 +79,9 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("servers");
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
+  const hub = useRef(new MultiExecHub()).current;
+  const [multiOn, setMultiOn] = useState(false);
+  const [multiKeys, setMultiKeys] = useState<string[]>([]);
   const [cwds, setCwds] = useState<Record<string, string>>({});
   const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
   const { transfers, dismiss } = useTransfers(api.onTransferProgress);
@@ -97,6 +102,15 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
+  useEffect(() => {
+    hub.setTargets(multiOn ? multiKeys : null);
+  }, [hub, multiOn, multiKeys]);
+
+  function toggleMulti(on: boolean) {
+    setMultiOn(on);
+    if (on) setMultiKeys(tabs.map((x) => x.key));
+  }
 
   function resizeSidebar(w: number) {
     setSidebarWidth(w);
@@ -234,10 +248,19 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           onSelect={setActiveKey}
           onClose={closeTab}
         />
+        <MultiExecBar
+          tabs={tabs.map((x) => ({ id: x.key, title: x.title }))}
+          enabled={multiOn}
+          selected={multiKeys}
+          onToggle={toggleMulti}
+          onSelect={setMultiKeys}
+        />
         <div className="app__terminals">
           {tabs.map((t) => (
             <TerminalTab
               key={t.key}
+              tabKey={t.key}
+              hub={hub}
               sessionId={t.sessionId}
               api={api}
               createTerm={createTerm}

@@ -35,13 +35,17 @@ export class ShellSession {
   private unlisten: (() => void) | null = null;
   private encoder = new TextEncoder();
   private disposed = false;
+  userInput: ((text: string) => void) | null = null;
 
   constructor(
     private api: ShellApi,
     private term: TermLike,
     private onChange: () => void = () => {},
   ) {
-    term.onData((text) => this.send(text));
+    term.onData((text) => {
+      this.send(text);
+      this.userInput?.(text);
+    });
     term.onResize((cols, rows) => this.resize(cols, rows));
   }
 

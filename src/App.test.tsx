@@ -222,3 +222,42 @@ test("the files panel follows the directory the terminal reports", async () => {
   act(() => pushCwd("/etc"));
   await vi.waitFor(() => expect(extra.sftpList).toHaveBeenCalledWith("tab-1", "/etc"));
 });
+
+test("MultiExec sends what is typed in one terminal to the other selected terminal", async () => {
+  const terms: { type: (t: string) => void }[] = [];
+  const createTerm = () => {
+    let cb: (t: string) => void = () => {};
+    terms.push({ type: (t) => cb(t) });
+    return { ...fakeTerm(), onData: (c: (t: string) => void) => { cb = c; } };
+  };
+  let n = 0;
+  const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
+  render(<App api={api} createTerm={createTerm} />);
+  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
+  await userEvent.dblClick(server);
+  await userEvent.dblClick(server);
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
+  await userEvent.click(await screen.findByRole("button", { name: "MultiExec" }));
+  terms[0].type("uptime\r");
+  const writes = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls.map(([id]) => id);
+  await vi.waitFor(() => expect(new Set(writes).size).toBe(2));
+});
+
+test("without MultiExec typing stays in its own terminal", async () => {
+  const terms: { type: (t: string) => void }[] = [];
+  const createTerm = () => {
+    let cb: (t: string) => void = () => {};
+    terms.push({ type: (t) => cb(t) });
+    return { ...fakeTerm(), onData: (c: (t: string) => void) => { cb = c; } };
+  };
+  let n = 0;
+  const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
+  render(<App api={api} createTerm={createTerm} />);
+  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
+  await userEvent.dblClick(server);
+  await userEvent.dblClick(server);
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
+  terms[0].type("ls\r");
+  const ids = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls.map(([id]) => id);
+  expect(new Set(ids).size).toBe(1);
+});

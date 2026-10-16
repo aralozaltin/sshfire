@@ -113,6 +113,7 @@ export const en: Messages = {
     units: { d: "d", h: "h", m: "m" },
   },
   layout: { sidebarResize: "Sidebar width", columnResize: (name: string) => `${name} column width` },
+  multiExec: { label: "MultiExec", hint: "What you type is sent to the selected tabs." },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

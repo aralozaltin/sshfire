@@ -1,12 +1,14 @@
 import { ShellSession, type ShellApi, type TermLike } from "./shellSession";
 
 function fakeTerm() {
+  let dataCb: (t: string) => void = () => {};
   const writes: { data: Uint8Array; done: () => void }[] = [];
-  const term: TermLike & { writes: typeof writes; disposed: boolean } = {
+  const term: TermLike & { writes: typeof writes; disposed: boolean; typeIntoTerminal: (t: string) => void } = {
     writes,
     disposed: false,
     write: (data, done) => writes.push({ data, done }),
-    onData: () => {},
+    onData: (cb) => { dataCb = cb; },
+    typeIntoTerminal: (t: string) => dataCb(t),
     onResize: () => {},
     size: () => ({ cols: 100, rows: 30 }),
     fit: () => {},
@@ -121,4 +123,25 @@ test("closing before connect resolves closes the tab as soon as it exists", asyn
   api.resolve(); await opening;
   expect(api.closedTabs).toEqual(["tab-1"]);
   expect(s.status).toBe("closed");
+});
+
+test("typing in the terminal sends the input and notifies the user-input hook", async () => {
+  const api = fakeApi(); const term = fakeTerm();
+  const s = new ShellSession(api, term);
+  const typed: string[] = [];
+  s.userInput = (t) => typed.push(t);
+  const opening = s.open("sess"); api.resolve(); await opening;
+  term.typeIntoTerminal("ls\r");
+  expect(typed).toEqual(["ls\r"]);
+  expect(Array.from(api.sent[0].data)).toEqual(Array.from(new TextEncoder().encode("ls\r")));
+});
+
+test("send() itself does not notify the hook, so broadcast input cannot loop", async () => {
+  const api = fakeApi(); const term = fakeTerm();
+  const s = new ShellSession(api, term);
+  const typed: string[] = [];
+  s.userInput = (t) => typed.push(t);
+  const opening = s.open("sess"); api.resolve(); await opening;
+  s.send("from-broadcast");
+  expect(typed).toEqual([]);
 });

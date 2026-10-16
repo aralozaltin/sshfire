@@ -163,3 +163,9 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .files__follow { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .files__follow input { width: auto; }
+
+.multiexec { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 2px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.multiexec__on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.multiexec__tab { display: inline-flex; align-items: center; gap: 4px; }
+.multiexec__tab input { width: auto; }
+.multiexec__hint { color: var(--muted); }

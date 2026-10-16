@@ -4,6 +4,7 @@ import { errorText, useT } from "../i18n";
 import type { Messages } from "../locales/tr";
 import type { Metrics } from "../metrics/types";
 import { MetricsBar } from "./MetricsBar";
+import type { MultiExecHub } from "../terminal/multiExec";
 
 function closeReasonText(t: Messages, reason: string): string {
   const m = /^exit:(\d+)$/.exec(reason);
@@ -20,9 +21,11 @@ export interface TerminalTabProps {
   onReconnect?: () => void;
   onTabId?: (tabId: string) => void;
   onCwd?: (cwd: string) => void;
+  hub?: MultiExecHub;
+  tabKey?: string;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -38,6 +41,8 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       rerender();
     });
     sessionRef.current = session;
+    const unregister = hub && tabKey ? hub.register(tabKey, (text) => session.send(text)) : undefined;
+    if (hub && tabKey) session.userInput = (text) => hub.broadcast(tabKey, text);
     let alive = true;
     void session.open(sessionId).then(() => {
       if (!alive || session.status !== "open" || !session.tabId) return;
@@ -49,6 +54,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     if (hostRef.current) observer?.observe(hostRef.current);
     return () => {
       alive = false;
+      unregister?.();
       observer?.disconnect();
       if (session.tabId) {
         void api.metricsStop?.(session.tabId);
