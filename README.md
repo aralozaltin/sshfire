@@ -6,11 +6,14 @@ Kayıtlı sunuculara çift tıkla bağlanan, hızlı bir masaüstü SSH terminal
 
 ## Özellikler
 
-- Kayıtlı sunucu listesi (klasörler, arama), parolalar işletim sistemi anahtar deposunda
-- Sekmeli terminal (xterm.js), host key doğrulama, parola ya da anahtar dosyasıyla giriş
-- SFTP dosya paneli: gezme, kopyala/kes/yapıştır, yeniden adlandır, sil, bilgi, yükle/indir, sürükle-bırak
+- Kayıtlı sunucu listesi (klasörler, arama), çift tıkla bağlanma; parolalar işletim sistemi anahtar deposunda, kayıtlı değilse bağlanırken sorulur
+- `~/.ssh/config` içe aktarma (ProxyJump dahil), sunucu listesini dosyaya dışa/içe aktarma
+- Sekmeli terminal (xterm.js), sağ tık kopyala/yapıştır, yakınlaştırma, arama; yan yana / alt alta / ızgara bölünmüş görünüm
+- Jump host (bastion) üzerinden bağlanma, bağlanınca otomatik komut çalıştırma, yerel terminal
+- SFTP dosya paneli: terminalin klasörünü izler; kopyala/kes/yapıştır, sürükle-bırak taşıma/kopyalama, satır içi yeniden adlandırma, yükle/indir, yerleşik metin düzenleyici
 - Terminal altında canlı sunucu metrikleri (CPU, bellek, disk, yük, ağ)
-- Açık / koyu tema, Türkçe / English
+- Port tünelleri (yerel -L ve SOCKS -D), MultiExec, makrolar (kayıtlı ve kaydedilebilir)
+- Açık / koyu tema, Türkçe / English, boyutlandırılabilir kenar çubuğu ve sütunlar
 
 ## Çalıştırma
 

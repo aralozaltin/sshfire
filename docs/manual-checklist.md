@@ -63,3 +63,19 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Sol panel genişliği ayırıcıdan sürüklenerek (ya da ok tuşlarıyla) değişiyor, çift tık varsayılana döner, yeniden açınca hatırlanıyor
 - [ ] Dosya tablosunda sütun kenarları sürüklenerek boyutlanıyor, çift tık varsayılana döner
 - [ ] Metrik çubuğu terminalin altında görünüyor (daha önce xterm ile CSS sınıfı çakıştığı için örtülüyordu)
+
+## Aşama 3 (elle)
+
+- [ ] Parolası kayıtlı olmayan sunucuya bağlanınca parola penceresi çıkıyor; "hatırla" işaretliyse bir sonraki bağlanışta sormuyor; Vazgeç "Parola girilmedi" gösteriyor
+- [ ] "SSH config'den al" `~/.ssh/config` sunucularını listeliyor, anahtar dosyaları doğru; `ProxyJump` olanlar jump host olarak bağlanıyor
+- [ ] Dışa aktar → dosya oluşuyor (içinde parola yok); başka makinede "Dosyadan al" yinelenenleri atlıyor, jump host bağlantıları korunuyor
+- [ ] Sunucu düzenleme penceresinde Atlama sunucusu ve "Bağlanınca çalıştır" alanları çalışıyor
+- [ ] Jump host üzerinden iki kademeli bağlantı (bastion → iç sunucu), her kademenin parmak izi/parolası sorulabiliyor
+- [ ] Tüneller sekmesi: yerel tünel tanımla/başlat (örn. 8080 → iç servis), tarayıcıdan eriş; SOCKS tüneli (`curl --socks5 127.0.0.1:1080 …`); durdurunca port serbest kalıyor; meşgul port anlaşılır hata veriyor
+- [ ] MultiExec: iki sekme aç, MultiExec'i aç, birine yazılan diğerine de gidiyor; kapatınca gitmiyor
+- [ ] Makrolar: yeni makro oluştur ve çalıştır; "Kaydı başlat" ile yazılanlar makro oluyor
+- [ ] Bölünmüş görünüm: Yan yana / Alt alta / Izgara; panele tıklayınca etkin oluyor; pencereyi boyutlandırınca terminaller uyuyor
+- [ ] Sekme sağ tık: Çoğalt, Yeniden adlandır, Diğerlerini kapat
+- [ ] Yerel terminal: kabuk açılıyor, renkler/boyut doğru; Dosyalar/Tüneller bu sekmede kullanılamıyor
+- [ ] Dosyaya çift tık metin düzenleyiciyi açıyor, Ctrl/⌘+S kaydediyor, ikili dosya reddediliyor, kaydedilmemişken kapatınca soruyor
+- [ ] Terminalde ⌘/Ctrl +/−/0 yazı boyutu, ⌘/Ctrl+Shift+F arama, sağ tık kopyala/yapıştır (seçim varsa kopyalar)
