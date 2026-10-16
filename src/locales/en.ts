@@ -115,7 +115,7 @@ export const en: Messages = {
     network: "Network",
     units: { d: "d", h: "h", m: "m" },
   },
-  layout: { sidebarResize: "Sidebar width", columnResize: (name: string) => `${name} column width` },
+  layout: { sidebarResize: "Sidebar width", columnResize: (name: string) => `${name} column width`, label: "Layout", single: "Single", cols: "Side by side", rows: "Stacked", grid: "Grid" },
   multiExec: { label: "MultiExec", hint: "What you type is sent to the selected tabs." },
   editor: {
     save: "Save",

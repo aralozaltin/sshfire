@@ -24,9 +24,11 @@ export interface TerminalTabProps {
   onCwd?: (cwd: string) => void;
   hub?: MultiExecHub;
   tabKey?: string;
+  active?: boolean;
+  onFocusPane?: () => void;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -83,7 +85,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const s = sessionRef.current;
   const status = s?.status ?? "connecting";
   return (
-    <div className="shell-pane" hidden={!visible}>
+    <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane}>
       {findOpen && (
         <FindBar
           onFind={(q, forward) => termRef.current?.find?.(q, forward)}

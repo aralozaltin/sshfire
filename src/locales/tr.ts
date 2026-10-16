@@ -113,7 +113,7 @@ export const tr = {
     network: "Ağ",
     units: { d: "g", h: "s", m: "dk" },
   },
-  layout: { sidebarResize: "Kenar çubuğu genişliği", columnResize: (name: string) => `${name} sütun genişliği` },
+  layout: { sidebarResize: "Kenar çubuğu genişliği", columnResize: (name: string) => `${name} sütun genişliği`, label: "Düzen", single: "Tek", cols: "Yan yana", rows: "Alt alta", grid: "Izgara" },
   multiExec: { label: "MultiExec", hint: "Yazdıkların seçili sekmelere gönderilir." },
   editor: {
     save: "Kaydet",

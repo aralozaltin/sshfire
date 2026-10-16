@@ -441,3 +441,38 @@ test("cancelling the import file dialog changes nothing", async () => {
   await new Promise((r) => setTimeout(r, 30));
   expect(screen.queryByText(/sunucu eklendi/)).not.toBeInTheDocument();
 });
+
+async function openTwoTabs() {
+  let n = 0;
+  const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
+  const view = render(<App api={api} createTerm={fakeTerm} />);
+  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
+  await userEvent.dblClick(server);
+  await userEvent.dblClick(server);
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
+  return { api, container: view.container };
+}
+
+test("tiling shows every terminal at once and single mode shows only the active one", async () => {
+  const { container } = await openTwoTabs();
+  const panes = () => [...container.querySelectorAll<HTMLElement>(".shell-pane")];
+  expect(panes().filter((p) => !p.hidden)).toHaveLength(1);
+  await userEvent.click(screen.getByRole("button", { name: "Yan yana" }));
+  expect(panes().filter((p) => !p.hidden)).toHaveLength(2);
+  expect(container.querySelector(".app__terminals")).toHaveClass("layout-cols");
+  await userEvent.click(screen.getByRole("button", { name: "Alt alta" }));
+  expect(container.querySelector(".app__terminals")).toHaveClass("layout-rows");
+  await userEvent.click(screen.getByRole("button", { name: "Tek" }));
+  expect(panes().filter((p) => !p.hidden)).toHaveLength(1);
+});
+
+test("clicking a tiled pane makes it the active one and the active pane is marked", async () => {
+  const { container } = await openTwoTabs();
+  await userEvent.click(screen.getByRole("button", { name: "Yan yana" }));
+  const panes = [...container.querySelectorAll<HTMLElement>(".shell-pane")];
+  const activeBefore = panes.findIndex((p) => p.classList.contains("shell-pane--active"));
+  const other = activeBefore === 0 ? 1 : 0;
+  await userEvent.click(panes[other]);
+  expect(panes[other]).toHaveClass("shell-pane--active");
+  expect(panes[activeBefore]).not.toHaveClass("shell-pane--active");
+});

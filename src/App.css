@@ -211,3 +211,14 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .banner--info { background: var(--select); color: var(--fg); }
 .server-list__import { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.toolbar .multiexec { border-bottom: 0; flex: 1; }
+.layout-switch { display: flex; gap: 2px; padding: 2px 6px; }
+.layout-switch button { padding: 1px 8px; }
+.app__terminals.layout-cols, .app__terminals.layout-rows, .app__terminals.layout-grid { display: grid; gap: 2px; background: var(--line); }
+.app__terminals.layout-cols { grid-auto-flow: column; grid-auto-columns: 1fr; }
+.app__terminals.layout-rows { grid-auto-flow: row; grid-auto-rows: 1fr; }
+.app__terminals.layout-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; }
+.layout-cols .shell-pane, .layout-rows .shell-pane, .layout-grid .shell-pane { position: relative; inset: auto; min-height: 0; min-width: 0; }
+.layout-cols .shell-pane--active, .layout-rows .shell-pane--active, .layout-grid .shell-pane--active { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }

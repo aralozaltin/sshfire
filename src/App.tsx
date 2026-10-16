@@ -16,6 +16,7 @@ import { TunnelPanel } from "./components/TunnelPanel";
 import { MacroPanel } from "./components/MacroPanel";
 import { loadMacros, newMacro, saveMacros, textToInput, type Macro } from "./macros/macros";
 import { MultiExecBar } from "./components/MultiExecBar";
+import { LayoutSwitch, type TerminalLayout } from "./components/LayoutSwitch";
 import { MultiExecHub } from "./terminal/multiExec";
 import { useTransfers } from "./files/transfers";
 import type { ClipboardItem } from "./files/fileOps";
@@ -88,6 +89,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
   const hub = useRef(new MultiExecHub()).current;
+  const [layout, setLayout] = useState<TerminalLayout>("single");
   const [multiOn, setMultiOn] = useState(false);
   const [multiKeys, setMultiKeys] = useState<string[]>([]);
   const [macros, setMacros] = useState<Macro[]>(loadMacros);
@@ -435,6 +437,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           onSelect={setActiveKey}
           onClose={closeTab}
         />
+        <div className="toolbar">
+          <LayoutSwitch tabCount={tabs.length} layout={layout} onChange={setLayout} />
         <MultiExecBar
           tabs={tabs.map((x) => ({ id: x.key, title: x.title }))}
           enabled={multiOn}
@@ -442,7 +446,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           onToggle={toggleMulti}
           onSelect={setMultiKeys}
         />
-        <div className="app__terminals">
+        </div>
+        <div className={`app__terminals layout-${layout}`}>
           {tabs.map((t) => (
             <TerminalTab
               key={t.key}
@@ -451,7 +456,9 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               sessionId={t.sessionId}
               api={api}
               createTerm={createTerm}
-              visible={t.key === activeKey}
+              visible={layout !== "single" || t.key === activeKey}
+              active={t.key === activeKey}
+              onFocusPane={() => setActiveKey(t.key)}
               dark={resolvedTheme === "dark"}
               onStatusChange={(st) => setStatus(t.key, st)}
               onReconnect={() => reconnect(t.key)}
