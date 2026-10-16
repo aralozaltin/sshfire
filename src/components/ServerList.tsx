@@ -9,6 +9,8 @@ export interface ServerListProps {
   onDelete: (id: string) => void;
   onAdd: () => void;
   onImport?: () => void;
+  onExport?: () => void;
+  onImportFile?: () => void;
 }
 
 function matches(s: Session, q: string): boolean {
@@ -16,7 +18,7 @@ function matches(s: Session, q: string): boolean {
   return [s.name, s.host, s.folder ?? ""].some((v) => v.toLowerCase().includes(q));
 }
 
-export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImport }: ServerListProps) {
+export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImport, onExport, onImportFile }: ServerListProps) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
         <p>{t.emptyHint}</p>
         <button type="button" onClick={onAdd}>{t.add}</button>
         {onImport && <button type="button" onClick={onImport}>{t.importConfig.button}</button>}
+        {onImportFile && <button type="button" onClick={onImportFile}>{t.sessionsIo.importFile}</button>}
       </div>
     );
   }
@@ -54,9 +57,11 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
         />
         <button type="button" onClick={onAdd}>{t.add}</button>
       </div>
-      {onImport && (
+      {(onImport || onExport || onImportFile) && (
         <div className="server-list__import">
-          <button type="button" onClick={onImport}>{t.importConfig.button}</button>
+          {onImport && <button type="button" onClick={onImport}>{t.importConfig.button}</button>}
+          {onImportFile && <button type="button" onClick={onImportFile}>{t.sessionsIo.importFile}</button>}
+          {onExport && <button type="button" onClick={onExport}>{t.sessionsIo.export}</button>}
         </div>
       )}
       {groups.length === 0 && <p className="server-list__none">{t.noResults}</p>}

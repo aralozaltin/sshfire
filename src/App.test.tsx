@@ -34,6 +34,8 @@ function fakeApi(over: Partial<AppApi> = {}) {
     onShellClosed: vi.fn(async () => () => {}),
     ...sftpApi(),
     sshConfigHosts: vi.fn(async () => ({ hosts: [], defaultUser: "u" })),
+    exportSessions: vi.fn(async () => "/tmp/yedek.json"),
+    importSessions: vi.fn(async () => ({ added: 2, skipped: 1 })),
     tunnelStart: vi.fn(async (_t: string, spec: { listen_port: number }) => ({ id: "r1", spec, localPort: spec.listen_port, connections: 0 })),
     tunnelStop: vi.fn(async () => {}),
     tunnelList: vi.fn(async () => []),
@@ -411,4 +413,31 @@ test("macros are not available to run without a connection", async () => {
   await screen.findByText("Test 3.81");
   await userEvent.click(screen.getByRole("tab", { name: "Makrolar" }));
   expect(screen.getByText("Makroyu çalıştırmak için bir sunucuya bağlan.")).toBeInTheDocument();
+});
+
+test("exporting tells the user where the file was saved and cancelling says nothing", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Dışa aktar" }));
+  expect(await screen.findByText("Sunucu listesi kaydedildi: /tmp/yedek.json")).toBeInTheDocument();
+});
+
+test("importing from a file reloads the list and reports what happened", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  const before = (api.listSessions as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  expect(await screen.findByText("2 sunucu eklendi, 1 tanesi zaten vardı.")).toBeInTheDocument();
+  expect((api.listSessions as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBeGreaterThan(before);
+});
+
+test("cancelling the import file dialog changes nothing", async () => {
+  const { api } = fakeApi({ importSessions: vi.fn(async () => null) } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  await new Promise((r) => setTimeout(r, 30));
+  expect(screen.queryByText(/sunucu eklendi/)).not.toBeInTheDocument();
 });

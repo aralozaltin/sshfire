@@ -187,6 +187,12 @@ export const en: Messages = {
     errText: "The macro cannot be empty",
     recordedName: "Recorded macro",
   },
+  sessionsIo: {
+    export: "Export",
+    importFile: "Import file",
+    imported: (added: number, skipped: number) => `${added} server${added === 1 ? "" : "s"} added, ${skipped} already existed.`,
+    exported: (path: string) => `Server list saved: ${path}`,
+  },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

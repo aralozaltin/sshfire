@@ -1,7 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { Metrics } from "./metrics/types";
@@ -91,6 +91,20 @@ export const tunnelStart = (tabId: string, spec: TunnelSpec) => invoke<RunningTu
 export const tunnelStop = (tabId: string, id: string) => invoke<void>("tunnel_stop", { tabId, id });
 export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_list", { tabId });
 
+/** Kayıt yerini sorar; iptal edilirse `null`, aksi halde yazılan dosyanın yolu. */
+export async function exportSessions(): Promise<string | null> {
+  const path = await saveDialog({ defaultPath: "ssh-istemci-sunucular.json", filters: [{ name: "JSON", extensions: ["json"] }] });
+  if (!path) return null;
+  await invoke<void>("sessions_export", { path });
+  return path;
+}
+
+export async function importSessions(): Promise<{ added: number; skipped: number } | null> {
+  const picked = await openDialog({ multiple: false, directory: false, filters: [{ name: "JSON", extensions: ["json"] }] });
+  if (!picked || Array.isArray(picked)) return null;
+  return invoke<{ added: number; skipped: number }>("sessions_import", { path: picked });
+}
+
 export const answerPassword = (requestId: string, password: string | null, remember: boolean) =>
   invoke<void>("password_answer", { requestId, password, remember });
 
@@ -151,6 +165,8 @@ export const realApi = {
   cwdStart,
   cwdStop,
   sshConfigHosts,
+  exportSessions,
+  importSessions,
   tunnelStart,
   tunnelStop,
   tunnelList,

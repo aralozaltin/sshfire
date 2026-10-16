@@ -81,6 +81,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [passwordRequest, setPasswordRequest] = useState<PasswordRequest | null>(null);
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("servers");
@@ -220,6 +221,26 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     }
   }
 
+  async function exportList() {
+    try {
+      const path = await api.exportSessions();
+      if (path) setNotice(t.sessionsIo.exported(path));
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
+  async function importFile() {
+    try {
+      const result = await api.importSessions();
+      if (!result) return;
+      setNotice(t.sessionsIo.imported(result.added, result.skipped));
+      await reload();
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
   async function runImport(chosen: ImportCandidate[]) {
     setImportCandidates(null);
     try {
@@ -346,6 +367,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 onDelete={setDeleting}
                 onAdd={() => setDialog({ mode: "add" })}
                 onImport={() => void openImport()}
+                onExport={() => void exportList()}
+                onImportFile={() => void importFile()}
               />
             </nav>
           }
@@ -401,6 +424,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           </div>
         ))}
         {error && <div role="alert" className="banner banner--error">{error}</div>}
+        {notice && (
+          <div role="status" className="banner banner--info">
+            {notice} <button type="button" aria-label={t.files.close} onClick={() => setNotice(null)}>×</button>
+          </div>
+        )}
         <Tabs
           tabs={tabs.map((t) => ({ id: t.key, title: t.title, status: t.status }))}
           activeId={activeKey}

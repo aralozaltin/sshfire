@@ -68,6 +68,28 @@ impl From<std::io::Error> for StoreError {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ImportReport {
+    pub added: usize,
+    pub skipped: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ExportFile {
+    version: u32,
+    sessions: Vec<Session>,
+}
+
+const EXPORT_VERSION: u32 = 1;
+
+pub fn parse_export(text: &str) -> Result<Vec<Session>, StoreError> {
+    let file: ExportFile = serde_json::from_str(text).map_err(|e| StoreError::Invalid(format!("not a session export: {e}")))?;
+    if file.version != EXPORT_VERSION {
+        return Err(StoreError::Invalid(format!("unsupported export version {}", file.version)));
+    }
+    Ok(file.sessions)
+}
+
 pub struct SessionStore {
     path: PathBuf,
     sessions: Vec<Session>,
@@ -114,6 +136,39 @@ impl SessionStore {
         let json = serde_json::to_vec_pretty(&data).expect("sessions serialize");
         crate::fsutil::atomic_write(&self.path, &json)?;
         Ok(())
+    }
+
+    /// Oturum listesini taşınabilir bir dosya metnine çevirir (parolalar hiçbir zaman dahil değildir).
+    pub fn export_json(&self) -> String {
+        let file = ExportFile { version: EXPORT_VERSION, sessions: self.sessions.clone() };
+        serde_json::to_string_pretty(&file).expect("sessions serialize")
+    }
+
+    /// Dışa aktarılmış oturumları ekler: aynı adres/port/kullanıcı olanları atlar, kimlikleri yeniler,
+    /// atlama sunucusu bağlantılarını yeni kimliklere taşır (dosya dışına işaret edenleri siler).
+    pub fn import(&mut self, incoming: Vec<Session>) -> Result<ImportReport, StoreError> {
+        let mut report = ImportReport { added: 0, skipped: 0 };
+        let mut remap: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut fresh: Vec<Session> = Vec::new();
+        for s in incoming {
+            validate(&s.name, &s.host, s.port, &s.user, &s.tunnels)?;
+            let existing = self.sessions.iter().find(|x| x.host == s.host && x.port == s.port && x.user == s.user);
+            if let Some(found) = existing {
+                remap.insert(s.id.clone(), found.id.clone());
+                report.skipped += 1;
+                continue;
+            }
+            let new_id = uuid::Uuid::new_v4().to_string();
+            remap.insert(s.id.clone(), new_id.clone());
+            fresh.push(Session { id: new_id, ..s });
+            report.added += 1;
+        }
+        for s in &mut fresh {
+            s.jump = s.jump.as_ref().and_then(|old| remap.get(old).cloned());
+        }
+        self.sessions.extend(fresh);
+        self.save()?;
+        Ok(report)
     }
 
     pub fn list(&self) -> &[Session] {
@@ -376,6 +431,59 @@ mod tests {
         let inner = store.add(inner).unwrap();
         store.remove(&bastion.id).unwrap();
         assert_eq!(SessionStore::open(&file).unwrap().list().iter().find(|s| s.id == inner.id).unwrap().jump, None);
+    }
+
+    #[test]
+    fn export_contains_sessions_but_never_passwords_and_can_be_read_back() {
+        let dir = tempdir().unwrap();
+        let mut store = SessionStore::open(&dir.path().join("a.json")).unwrap();
+        store.add(new("Prod", "10.0.0.1")).unwrap();
+        let text = store.export_json();
+        assert!(text.contains("Prod"));
+        assert!(!text.to_lowercase().contains("\"password\":"));
+        let parsed = parse_export(&text).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].name, "Prod");
+    }
+
+    #[test]
+    fn parse_export_rejects_garbage_and_unknown_versions() {
+        assert!(parse_export("{bozuk").is_err());
+        assert!(parse_export(r#"{"version":99,"sessions":[]}"#).is_err());
+        assert!(parse_export(r#"{"sessions":[]}"#).is_err());
+        assert_eq!(parse_export(r#"{"version":1,"sessions":[]}"#).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn import_adds_new_sessions_skips_duplicates_and_remaps_jump_hosts() {
+        let dir = tempdir().unwrap();
+        let mut source = SessionStore::open(&dir.path().join("src.json")).unwrap();
+        let bastion = source.add(new("Bastion", "b.example.com")).unwrap();
+        let mut inner = new("Inner", "10.1.1.1");
+        inner.jump = Some(bastion.id.clone());
+        source.add(inner).unwrap();
+        source.add(new("Eski", "dup.example.com")).unwrap();
+        let exported = parse_export(&source.export_json()).unwrap();
+
+        let mut target = SessionStore::open(&dir.path().join("dst.json")).unwrap();
+        target.add(new("Zaten var", "dup.example.com")).unwrap();
+        let report = target.import(exported).unwrap();
+        assert_eq!((report.added, report.skipped), (2, 1));
+        let inner = target.list().iter().find(|s| s.name == "Inner").unwrap();
+        let bastion = target.list().iter().find(|s| s.name == "Bastion").unwrap();
+        assert_eq!(inner.jump.as_deref(), Some(bastion.id.as_str()));
+        assert_ne!(bastion.id, source.list().iter().find(|s| s.name == "Bastion").unwrap().id, "ids must be regenerated");
+        assert_eq!(target.list().len(), 3);
+    }
+
+    #[test]
+    fn import_drops_jump_references_that_point_outside_the_file() {
+        let dir = tempdir().unwrap();
+        let mut target = SessionStore::open(&dir.path().join("dst.json")).unwrap();
+        let orphan = Session { id: "x".into(), name: "Yetim".into(), host: "h".into(), port: 22, user: "u".into(), folder: None, auth: Auth::Password, tunnels: vec![], jump: Some("yok".into()) };
+        let report = target.import(vec![orphan]).unwrap();
+        assert_eq!(report.added, 1);
+        assert_eq!(target.list()[0].jump, None);
     }
 
     #[test]

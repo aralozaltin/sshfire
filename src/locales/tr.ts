@@ -185,6 +185,12 @@ export const tr = {
     errText: "Makro boş olamaz",
     recordedName: "Kaydedilen makro",
   },
+  sessionsIo: {
+    export: "Dışa aktar",
+    importFile: "Dosyadan al",
+    imported: (added: number, skipped: number) => `${added} sunucu eklendi, ${skipped} tanesi zaten vardı.`,
+    exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
+  },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

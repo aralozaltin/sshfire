@@ -360,3 +360,23 @@ pub fn tunnel_list(state: State<'_, AppState>, tab_id: String) -> Vec<TunnelInfo
         })
         .collect()
 }
+
+#[derive(Serialize)]
+pub struct ImportSummary {
+    pub added: usize,
+    pub skipped: usize,
+}
+
+#[tauri::command]
+pub fn sessions_export(state: State<'_, AppState>, path: String) -> Result<(), AppError> {
+    let text = state.store.lock().unwrap().export_json();
+    std::fs::write(&path, text).map_err(|e| AppError::with_detail("store_error", e.to_string()))
+}
+
+#[tauri::command]
+pub fn sessions_import(state: State<'_, AppState>, path: String) -> Result<ImportSummary, AppError> {
+    let text = std::fs::read_to_string(&path).map_err(|e| AppError::with_detail("store_error", e.to_string()))?;
+    let sessions = vcore::sessions::parse_export(&text).map_err(|e| AppError::from(&e))?;
+    let report = state.store.lock().unwrap().import(sessions).map_err(|e| AppError::from(&e))?;
+    Ok(ImportSummary { added: report.added, skipped: report.skipped })
+}

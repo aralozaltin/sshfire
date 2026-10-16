@@ -67,6 +67,8 @@ pub fn run() {
             commands::session_add,
             commands::session_update,
             commands::session_remove,
+            commands::sessions_export,
+            commands::sessions_import,
             commands::connect,
             commands::hostkey_answer,
             commands::password_answer,

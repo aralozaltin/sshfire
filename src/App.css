@@ -208,3 +208,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .macros__form { display: grid; gap: 4px; padding: 6px; border-top: 1px solid var(--line); }
 .macros__form label { display: grid; gap: 2px; }
 .macros__form textarea { width: 100%; font: 12px/1.4 Menlo, Consolas, monospace; background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+
+.banner--info { background: var(--select); color: var(--fg); }
+.server-list__import { display: flex; flex-wrap: wrap; gap: 4px; }

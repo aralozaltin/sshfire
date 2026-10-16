@@ -81,3 +81,20 @@ test("empty state shows the add prompt and add button calls onAdd", async () => 
   await userEvent.click(screen.getByRole("button", { name: "Sunucu ekle" }));
   expect(onAdd).toHaveBeenCalled();
 });
+
+test("export and import-file buttons appear when their handlers are given and call them", async () => {
+  const onExport = vi.fn();
+  const onImportFile = vi.fn();
+  render(<ServerList sessions={sessions} {...props} onExport={onExport} onImportFile={onImportFile} />);
+  await userEvent.click(screen.getByRole("button", { name: "Dışa aktar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  expect(onExport).toHaveBeenCalled();
+  expect(onImportFile).toHaveBeenCalled();
+});
+
+test("the file import is also offered on the empty state so a fresh install can restore a backup", async () => {
+  const onImportFile = vi.fn();
+  render(<ServerList sessions={[]} {...props} onImportFile={onImportFile} />);
+  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  expect(onImportFile).toHaveBeenCalled();
+});
