@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f3a"/><stop offset="1" stop-color="#12151b"/></linearGradient>
+    <linearGradient id="fire" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff5a1f"/><stop offset=".55" stop-color="#ff9a1f"/><stop offset="1" stop-color="#ffd23f"/></linearGradient>
+    <linearGradient id="core" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffb347"/><stop offset="1" stop-color="#fff1a8"/></linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#bg)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="4"/>
+  <g transform="translate(0,-40)">
+    <path d="M512 170 C 548 268 690 330 690 520 C 690 650 612 740 512 740 C 412 740 334 654 334 546 C 334 462 384 410 414 352 C 430 408 462 438 486 442 C 462 362 482 258 512 170 Z" fill="url(#fire)"/>
+    <path d="M512 400 C 536 452 604 490 604 574 C 604 646 564 700 512 700 C 460 700 420 650 420 588 C 420 538 446 510 462 474 C 474 504 492 520 506 522 C 496 480 500 440 512 400 Z" fill="url(#core)"/>
+  </g>
+  <text x="512" y="880" text-anchor="middle" font-family="Menlo, Monaco, Consolas, monospace" font-weight="700" font-size="170" fill="#e8ecf2">&gt;_</text>
+</svg>

@@ -1,8 +1,12 @@
-# SSHFire
+<p align="center"><img src="assets/icon-256.png" alt="SSHFire" width="128"></p>
+
+<h1 align="center">SSHFire</h1>
 
 A fast, lightweight desktop SSH client in the spirit of MobaXterm: saved servers, tabbed terminals, an SFTP file panel that follows your shell, and live server metrics, all in one small app.
 
 Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://github.com/Eugeny/russh)).
+
+![SSHFire: terminal, file panel and live server metrics](docs/screenshots/main.png)
 
 ## Features
 
@@ -31,6 +35,10 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 **Interface**
 - Light and dark theme, English and Turkish, resizable sidebar and columns
 
+## Layouts
+
+![Side-by-side terminals with live metrics](docs/screenshots/split.png)
+
 ## Platforms
 
 macOS, Windows and Linux. Release builds for all three are produced by GitHub Actions.
@@ -39,12 +47,12 @@ macOS, Windows and Linux. Release builds for all three are produced by GitHub Ac
 
 Download the installer for your platform from the [latest release](https://github.com/aralozaltin/sshfire/releases/latest).
 
-SSHFire is not signed with an Apple Developer ID or a Windows code-signing certificate yet, so the first launch shows a warning:
+On first launch your system may ask you to confirm an app downloaded from the internet:
 
 - **macOS:** open *System Settings → Privacy & Security* and choose *Open Anyway*, or run `xattr -dr com.apple.quarantine /Applications/SSHFire.app` once.
 - **Windows:** in the SmartScreen dialog choose *More info → Run anyway*.
 
-After the first launch SSHFire updates itself: it checks for new releases on startup (switch this off or check manually in *Settings*). Updates are downloaded over HTTPS and verified against a built-in public key before they are installed.
+From then on SSHFire keeps itself up to date: it checks for new releases on startup (switch this off or check manually in *Settings*). Updates are downloaded over HTTPS and verified against a built-in public key before they are installed.
 
 ## Getting started
 

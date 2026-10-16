@@ -56,7 +56,16 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "SSHFire ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install SSHFire."
+          releaseBody: |
+            ## Install
+
+            Download the installer for your platform below.
+
+            - **macOS:** `.dmg` (Apple Silicon: `aarch64`, Intel: `x64`). If macOS asks you to confirm the app, open *System Settings → Privacy & Security → Open Anyway*.
+            - **Windows:** `.exe` or `.msi`. In the SmartScreen dialog choose *More info → Run anyway*.
+            - **Linux:** `.AppImage`, `.deb` or `.rpm`.
+
+            Installed copies update themselves.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
