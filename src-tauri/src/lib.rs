@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use vcore::known_hosts::{KnownHosts, KnownHostsError};
-use vcore::secrets::KeyringSecrets;
+use vcore::secrets::{KeyringSecrets, VaultSecrets};
 use vcore::sessions::{SessionStore, StoreError};
 
 const KEYCHAIN_SERVICE: &str = "ssh-istemci";
@@ -42,7 +42,11 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
     };
     Ok(AppState {
         store: Mutex::new(store),
-        secrets: Arc::new(KeyringSecrets::new(KEYCHAIN_SERVICE)),
+        // Tüm parolalar tek Keychain kaydında; eski sunucu-başına kayıtlar ilk kullanımda taşınır.
+        secrets: Arc::new(VaultSecrets::new(
+            Arc::new(KeyringSecrets::new(KEYCHAIN_SERVICE)),
+            Some(Arc::new(KeyringSecrets::new(KEYCHAIN_SERVICE))),
+        )),
         secret_cache: Arc::new(vcore::secrets::MemorySecrets::default()),
         hosts: Arc::new(Mutex::new(hosts)),
         tabs: Mutex::new(HashMap::new()),
