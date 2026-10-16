@@ -265,3 +265,5 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .permissions__grid label { display: flex; gap: 6px; align-items: center; }
 .permissions__octal { display: flex; gap: 8px; align-items: center; margin: 8px 10px 0; }
 .permissions__octal input { width: 64px; font-family: monospace; }
+
+.files__filter { flex: 1; min-width: 70px; max-width: 160px; margin-left: auto; }

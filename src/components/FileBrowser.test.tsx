@@ -526,3 +526,24 @@ test("an invalid octal value disables apply", async () => {
   await userEvent.type(within(dialog).getByLabelText("Sekizlik"), "999");
   expect(within(dialog).getByRole("button", { name: "Uygula" })).toBeDisabled();
 });
+
+test("the filter box narrows the listing by name, ignoring case", async () => {
+  setup();
+  await screen.findByText("rapor.txt");
+  await userEvent.type(screen.getByRole("searchbox", { name: "Dosyaları filtrele" }), "RAP");
+  expect(screen.getByText("rapor.txt")).toBeInTheDocument();
+  expect(screen.queryByText("notlar.md")).not.toBeInTheDocument();
+  expect(screen.queryByText("docs")).not.toBeInTheDocument();
+});
+
+test("a filter with no match says so and clears when entering a folder", async () => {
+  setup();
+  await screen.findByText("rapor.txt");
+  const box = screen.getByRole("searchbox", { name: "Dosyaları filtrele" });
+  await userEvent.type(box, "zzz");
+  expect(screen.getByText("Eşleşen dosya yok")).toBeInTheDocument();
+  await userEvent.clear(box);
+  await userEvent.dblClick(await screen.findByText("docs"));
+  await screen.findByText("a.txt");
+  expect(screen.getByRole("searchbox", { name: "Dosyaları filtrele" })).toHaveValue("");
+});

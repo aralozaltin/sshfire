@@ -42,6 +42,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
   const [chmodTarget, setChmodTarget] = useState<FileEntry | null>(null);
+  const [filter, setFilter] = useState("");
   const [follow, setFollow] = useState(true);
   const lastFollowed = useRef<string | null>(followPath ?? null);
   const [editing, setEditing] = useState<{ entry: FileEntry; content: string } | null>(null);
@@ -66,6 +67,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         setError(null);
         setSelected([]);
         setAnchor(null);
+        setFilter("");
         onPathChange?.(dir);
       } catch (e) {
         if (id === requestId.current) setError(e);
@@ -174,6 +176,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   if (!tabId) return <p className="files__hint">{f.noConnection}</p>;
 
   const selectedEntries = entries.filter((e) => selected.includes(e.path));
+  const needle = filter.trim().toLowerCase();
+  const shown = needle ? entries.filter((e) => e.name.toLowerCase().includes(needle)) : entries;
 
   async function run(action: () => Promise<void>) {
     try {
@@ -187,10 +191,10 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
 
   function select(entry: FileEntry, ev: MouseEvent) {
     if (ev.shiftKey && anchor) {
-      const a = entries.findIndex((x) => x.path === anchor);
-      const b = entries.findIndex((x) => x.path === entry.path);
+      const a = shown.findIndex((x) => x.path === anchor);
+      const b = shown.findIndex((x) => x.path === entry.path);
       const [from, to] = a < b ? [a, b] : [b, a];
-      setSelected(entries.slice(from, to + 1).map((x) => x.path));
+      setSelected(shown.slice(from, to + 1).map((x) => x.path));
       return;
     }
     if (ev.ctrlKey || ev.metaKey) {
@@ -314,15 +318,15 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     else if (mod && key === "v") void paste();
     else if (mod && key === "a") {
       e.preventDefault();
-      setSelected(entries.map((x) => x.path));
+      setSelected(shown.map((x) => x.path));
     } else if (e.key === "Delete" && selectedEntries.length > 0) setConfirming(selectedEntries);
     else if (e.key === "F2" && selectedEntries.length === 1) setRenaming(selectedEntries[0].path);
     else if (e.key === "Enter" && selectedEntries.length === 1) open(selectedEntries[0]);
     else if (e.key === "Backspace" || (e.altKey && e.key === "ArrowUp")) path && void load(parentPath(path));
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const i = entries.findIndex((x) => x.path === selected[selected.length - 1]);
-      const next = entries[Math.min(entries.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))];
+      const i = shown.findIndex((x) => x.path === selected[selected.length - 1]);
+      const next = shown[Math.min(shown.length - 1, Math.max(0, i + (e.key === "ArrowDown" ? 1 : -1)))];
       if (next) {
         setSelected([next.path]);
         setAnchor(next.path);
@@ -357,6 +361,17 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         <span className="files__sep" aria-hidden="true" />
         <button type="button" className="icon-button" aria-label={t.transfer.upload} title={t.transfer.upload} onClick={() => void pickAndUpload()}>⬆</button>
         <button type="button" className="icon-button" aria-label={t.transfer.download} title={t.transfer.download} disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>⬇</button>
+        <input
+          type="search"
+          className="files__filter"
+          aria-label={f.filter}
+          placeholder={f.filter}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setFilter("");
+          }}
+        />
         <label className="files__follow" title={f.followTerminal}>
           <input
             type="checkbox"
@@ -426,7 +441,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
           </tr>
         </thead>
         <tbody>
-          {entries.map((entry) => (
+          {shown.map((entry) => (
             <tr
               key={entry.path}
               aria-selected={selected.includes(entry.path)}
@@ -464,6 +479,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         </tbody>
       </table>
       {!loading && error == null && entries.length === 0 && path && <p className="files__hint">{f.emptyDir}</p>}
+      {!loading && error == null && entries.length > 0 && shown.length === 0 && <p className="files__hint">{f.noMatch}</p>}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />}
       {prompt && (
         <div className="overlay">

@@ -80,6 +80,8 @@ export const en: Messages = {
     nameHasSlash: "Name cannot contain '/'",
     nameEmpty: "Name cannot be empty",
     info: "Info",
+    filter: "Filter files",
+    noMatch: "No matching files",
     chmod: "Change permissions",
     permOwner: "Owner",
     permGroup: "Group",

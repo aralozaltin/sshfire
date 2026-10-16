@@ -78,6 +78,8 @@ export const tr = {
     nameHasSlash: "Ad '/' içeremez",
     nameEmpty: "Ad boş olamaz",
     info: "Bilgi",
+    filter: "Dosyaları filtrele",
+    noMatch: "Eşleşen dosya yok",
     chmod: "İzinleri değiştir",
     permOwner: "Sahip",
     permGroup: "Grup",
