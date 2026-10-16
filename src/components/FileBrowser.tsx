@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { errorText, useT } from "../i18n";
-import { baseName, breadcrumbs, joinPath, localBaseName, parentPath, planPaste, uniqueName, type ClipboardItem } from "../files/fileOps";
+import { breadcrumbs, joinPath, localBaseName, parentPath, planPaste, uniqueName, type ClipboardItem } from "../files/fileOps";
 import { formatMode, formatModified, formatSize } from "../files/format";
 import type { FileEntry, FilesApi } from "../files/types";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
 import { loadColumns, resizeColumn, saveColumns } from "../files/columns";
 import { FileInfoDialog } from "./FileInfoDialog";
+import { InlineRename } from "./InlineRename";
 import { PromptDialog } from "./PromptDialog";
 
 export interface FileBrowserProps {
@@ -19,7 +20,9 @@ export interface FileBrowserProps {
 }
 
 type MenuState = { x: number; y: number; onRow: boolean } | null;
-type PromptState = { kind: "rename"; entry: FileEntry } | { kind: "mkdir" } | null;
+type PromptState = { kind: "mkdir" } | null;
+
+const DRAG_MIME = "application/x-ssh-istemci-files";
 
 export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardChange, initialPath, onPathChange }: FileBrowserProps) {
   const t = useT();
@@ -35,6 +38,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const requestId = useRef(0);
   const [columns, setColumns] = useState<number[]>(loadColumns);
   const columnDrag = useRef<{ index: number; startX: number; startWidths: number[] } | null>(null);
@@ -213,8 +218,62 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     setPrompt(null);
     if (!p || !path || !tabId) return;
     await run(async () => {
-      if (p.kind === "mkdir") await api.sftpMkdir(tabId, joinPath(path, name));
-      else await api.sftpRename(tabId, p.entry.path, joinPath(parentPath(p.entry.path), name));
+      await api.sftpMkdir(tabId, joinPath(path, name));
+    });
+  }
+
+  async function submitRename(entry: FileEntry, name: string) {
+    setRenaming(null);
+    if (!tabId) return;
+    await run(async () => {
+      await api.sftpRename(tabId, entry.path, joinPath(parentPath(entry.path), name));
+    });
+  }
+
+  function dragPayload(ev: DragEvent): { connectionKey: string; entries: { path: string; isDir: boolean }[] } | null {
+    try {
+      const raw = ev.dataTransfer.getData(DRAG_MIME);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function startDrag(entry: FileEntry, ev: DragEvent) {
+    const dragged = selected.includes(entry.path) ? selectedEntries : [entry];
+    if (!selected.includes(entry.path)) {
+      setSelected([entry.path]);
+      setAnchor(entry.path);
+    }
+    ev.dataTransfer.setData(DRAG_MIME, JSON.stringify({ connectionKey, entries: dragged.map((e) => ({ path: e.path, isDir: e.isDir })) }));
+    ev.dataTransfer.effectAllowed = "copyMove";
+  }
+
+  function canDropOn(ev: DragEvent): boolean {
+    return Array.from(ev.dataTransfer.types).includes(DRAG_MIME);
+  }
+
+  function overTarget(dir: string, ev: DragEvent) {
+    if (!canDropOn(ev)) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = ev.ctrlKey || ev.altKey ? "copy" : "move";
+    setDropTarget(dir);
+  }
+
+  async function dropInto(dir: string, ev: DragEvent) {
+    ev.preventDefault();
+    setDropTarget(null);
+    const payload = dragPayload(ev);
+    if (!payload || !tabId) return;
+    if (payload.connectionKey !== connectionKey) return setNotice(f.unsupported);
+    const copy = ev.ctrlKey || ev.altKey;
+    await run(async () => {
+      const names = new Set((await api.sftpList(tabId, dir)).map((e) => e.name));
+      const steps = planPaste({ mode: copy ? "copy" : "cut", connectionKey, entries: payload.entries }, dir, names, true, f.copySuffix);
+      for (const s of steps) {
+        if (s.op === "copy") await api.sftpCopy(tabId, s.from, s.to);
+        else if (s.op === "move") await api.sftpRename(tabId, s.from, s.to);
+      }
     });
   }
 
@@ -232,7 +291,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
       e.preventDefault();
       setSelected(entries.map((x) => x.path));
     } else if (e.key === "Delete" && selectedEntries.length > 0) setConfirming(selectedEntries);
-    else if (e.key === "F2" && selectedEntries.length === 1) setPrompt({ kind: "rename", entry: selectedEntries[0] });
+    else if (e.key === "F2" && selectedEntries.length === 1) setRenaming(selectedEntries[0].path);
     else if (e.key === "Enter" && selectedEntries.length === 1) open(selectedEntries[0]);
     else if (e.key === "Backspace" || (e.altKey && e.key === "ArrowUp")) path && void load(parentPath(path));
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -252,7 +311,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.cut, onClick: () => copySelection("cut") },
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
         { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
-        { label: f.rename, onClick: () => selectedEntries[0] && setPrompt({ kind: "rename", entry: selectedEntries[0] }), disabled: selectedEntries.length !== 1 },
+        { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
         { label: t.remove, onClick: () => setConfirming(selectedEntries) },
         { label: f.info, onClick: () => selectedEntries[0] && setInfo(selectedEntries[0]), disabled: selectedEntries.length !== 1 },
       ]
@@ -276,7 +335,17 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
       {path && (
         <nav aria-label={f.pathLabel} className="files__crumbs">
           {breadcrumbs(path).map((c) => (
-            <button key={c.path} type="button" onClick={() => void load(c.path)}>{c.name}</button>
+            <button
+              key={c.path}
+              type="button"
+              className={dropTarget === c.path ? "is-drop-target" : undefined}
+              onClick={() => void load(c.path)}
+              onDragOver={(ev) => overTarget(c.path, ev)}
+              onDragLeave={() => setDropTarget(null)}
+              onDrop={(ev) => void dropInto(c.path, ev)}
+            >
+              {c.name}
+            </button>
           ))}
         </nav>
       )}
@@ -321,7 +390,12 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
             <tr
               key={entry.path}
               aria-selected={selected.includes(entry.path)}
-              className={selected.includes(entry.path) ? "is-selected" : undefined}
+              className={[selected.includes(entry.path) ? "is-selected" : "", dropTarget === entry.path ? "is-drop-target" : ""].filter(Boolean).join(" ") || undefined}
+              draggable={renaming !== entry.path}
+              onDragStart={(ev) => startDrag(entry, ev)}
+              onDragOver={entry.isDir ? (ev) => overTarget(entry.path, ev) : undefined}
+              onDragLeave={entry.isDir ? () => setDropTarget(null) : undefined}
+              onDrop={entry.isDir ? (ev) => void dropInto(entry.path, ev) : undefined}
               onClick={(ev) => select(entry, ev)}
               onDoubleClick={() => open(entry)}
               onContextMenu={(ev) => {
@@ -336,7 +410,11 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
             >
               <td>
                 <span aria-hidden="true">{entry.isDir ? "📁 " : entry.isSymlink ? "🔗 " : "📄 "}</span>
-                {entry.name}
+                {renaming === entry.path ? (
+                  <InlineRename initial={entry.name} isDir={entry.isDir} onSubmit={(n) => void submitRename(entry, n)} onCancel={() => setRenaming(null)} />
+                ) : (
+                  entry.name
+                )}
               </td>
               <td>{entry.isDir ? "" : formatSize(entry.size)}</td>
               <td>{formatModified(entry.modified, f.dateLocale)}</td>
@@ -350,9 +428,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
       {prompt && (
         <div className="overlay">
           <PromptDialog
-            title={prompt.kind === "mkdir" ? f.newFolder : f.rename}
+            title={f.newFolder}
             label={f.newName}
-            initial={prompt.kind === "rename" ? baseName(prompt.entry.path) : ""}
             onSubmit={(name) => void submitPrompt(name)}
             onCancel={() => setPrompt(null)}
           />

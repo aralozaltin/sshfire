@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FileBrowser } from "./FileBrowser";
 import type { ClipboardItem } from "../files/fileOps";
@@ -281,4 +281,125 @@ test("dragging a column edge resizes that column and remembers it", async () => 
   fireEvent.mouseUp(window);
   expect(cols()).toEqual(["280px", "120px", "150px", "100px"]);
   expect(JSON.parse(localStorage.getItem("ssh-istemci.fileColumns")!)).toEqual([280, 120, 150, 100]);
+});
+
+function dt(initial: Record<string, string> = {}) {
+  const store = { ...initial };
+  return {
+    store,
+    setData: (k: string, v: string) => { store[k] = v; },
+    getData: (k: string) => store[k] ?? "",
+    get types() { return Object.keys(store); },
+    effectAllowed: "all",
+    dropEffect: "none",
+  };
+}
+const MIME = "application/x-ssh-istemci-files";
+function dragRows(from: HTMLElement, to: HTMLElement, mods: { ctrlKey?: boolean } = {}) {
+  const t = dt();
+  // jsdom'da DragEvent yok; değiştirici tuşları olaya elle yazıyoruz.
+  const withMods = (e: Event) => {
+    Object.defineProperty(e, "ctrlKey", { value: !!mods.ctrlKey });
+    return e;
+  };
+  fireEvent.dragStart(from, { dataTransfer: t });
+  fireEvent(to, withMods(createEvent.dragOver(to, { dataTransfer: t })));
+  fireEvent(to, withMods(createEvent.drop(to, { dataTransfer: t })));
+  return t;
+}
+
+const dndListing = {
+  "/home/u": [folder("docs"), folder("arsiv"), file("rapor.txt"), file("notlar.md")],
+  "/home/u/docs": [file("a.txt", "/home/u/docs"), file("rapor.txt", "/home/u/docs")],
+  "/home/u/arsiv": [] as FileEntry[],
+};
+
+test("dragging a file onto a folder moves it there", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  dragRows(row("notlar.md"), row("arsiv"));
+  await vi.waitFor(() => expect(api.sftpRename).toHaveBeenCalledWith("t1", "/home/u/notlar.md", "/home/u/arsiv/notlar.md"));
+});
+
+test("holding Ctrl while dropping copies instead of moving", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  dragRows(row("notlar.md"), row("arsiv"), { ctrlKey: true });
+  await vi.waitFor(() => expect(api.sftpCopy).toHaveBeenCalledWith("t1", "/home/u/notlar.md", "/home/u/arsiv/notlar.md"));
+  expect(api.sftpRename).not.toHaveBeenCalled();
+});
+
+test("dragging one of several selected rows moves the whole selection", async () => {
+  const user = userEvent.setup();
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  await user.click(row("rapor.txt"));
+  await user.keyboard("{Control>}");
+  await user.click(row("notlar.md"));
+  await user.keyboard("{/Control}");
+  dragRows(row("notlar.md"), row("arsiv"));
+  await vi.waitFor(() => expect(api.sftpRename).toHaveBeenCalledTimes(2));
+  expect(api.sftpRename).toHaveBeenCalledWith("t1", "/home/u/rapor.txt", "/home/u/arsiv/rapor.txt");
+  expect(api.sftpRename).toHaveBeenCalledWith("t1", "/home/u/notlar.md", "/home/u/arsiv/notlar.md");
+});
+
+test("a name clash at the destination gets a (kopya) name instead of overwriting", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  dragRows(row("rapor.txt"), row("docs"));
+  await vi.waitFor(() => expect(api.sftpRename).toHaveBeenCalledWith("t1", "/home/u/rapor.txt", "/home/u/docs/rapor (kopya).txt"));
+});
+
+test("a folder cannot be dropped onto itself", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  dragRows(row("docs"), row("docs"));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(api.sftpRename).not.toHaveBeenCalled();
+  expect(api.sftpCopy).not.toHaveBeenCalled();
+});
+
+test("dropping on a file row does nothing", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  dragRows(row("notlar.md"), row("rapor.txt"));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(api.sftpRename).not.toHaveBeenCalled();
+});
+
+test("dropping on a breadcrumb moves the item to that directory", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await userEvent.dblClick(await screen.findByText("docs"));
+  await screen.findByText("a.txt");
+  dragRows(row("a.txt"), within(screen.getByRole("navigation", { name: "Yol" })).getByRole("button", { name: "u" }));
+  await vi.waitFor(() => expect(api.sftpRename).toHaveBeenCalledWith("t1", "/home/u/docs/a.txt", "/home/u/a.txt"));
+});
+
+test("items dragged from another connection are refused with an explanation", async () => {
+  const { api } = setup({ api: fakeApi(dndListing) });
+  await screen.findByText("rapor.txt");
+  const foreign = dt({ [MIME]: JSON.stringify({ connectionKey: "baska", entries: [{ path: "/x", isDir: false }] }) });
+  fireEvent.dragOver(row("arsiv"), { dataTransfer: foreign });
+  fireEvent.drop(row("arsiv"), { dataTransfer: foreign });
+  expect(await screen.findByText(/Sunucular arası kopyalama/)).toBeInTheDocument();
+  expect(api.sftpRename).not.toHaveBeenCalled();
+});
+
+test("rename happens inline in the row and Escape cancels it", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  await userEvent.keyboard("{F2}");
+  expect(within(row("rapor.txt")).getByLabelText("Yeni ad")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByLabelText("Yeni ad")).not.toBeInTheDocument();
+  expect(api.sftpRename).not.toHaveBeenCalled();
+});
+
+test("renaming to the same name does nothing", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  await userEvent.keyboard("{F2}{Enter}");
+  expect(api.sftpRename).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText("Yeni ad")).not.toBeInTheDocument();
 });
