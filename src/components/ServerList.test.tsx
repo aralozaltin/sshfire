@@ -39,11 +39,29 @@ test("search filters by name, host and folder", async () => {
   expect(screen.getByText("Eşleşen sunucu yok")).toBeInTheDocument();
 });
 
-test("clicking a server calls onConnect with its id", async () => {
+test("double clicking a server calls onConnect with its id", async () => {
   const onConnect = vi.fn();
   render(<ServerList sessions={sessions} {...props} onConnect={onConnect} />);
-  await userEvent.click(screen.getByRole("button", { name: /^Prod API root@10\.0\.0\.1/ }));
+  await userEvent.dblClick(screen.getByRole("button", { name: /^Prod API root@10\.0\.0\.1/ }));
   expect(onConnect).toHaveBeenCalledWith("2");
+});
+
+test("a single click only selects the server and does not connect", async () => {
+  const onConnect = vi.fn();
+  render(<ServerList sessions={sessions} {...props} onConnect={onConnect} />);
+  const row = screen.getByRole("button", { name: /^Prod API root@10\.0\.0\.1/ });
+  await userEvent.click(row);
+  expect(onConnect).not.toHaveBeenCalled();
+  expect(row).toHaveAttribute("aria-pressed", "true");
+});
+
+test("pressing Enter on a focused server connects", async () => {
+  const onConnect = vi.fn();
+  render(<ServerList sessions={sessions} {...props} onConnect={onConnect} />);
+  screen.getByRole("button", { name: /^Serbest root@/ }).focus();
+  await userEvent.keyboard("{Enter}");
+  expect(onConnect).toHaveBeenCalledWith("3");
+  expect(onConnect).toHaveBeenCalledTimes(1);
 });
 
 test("edit and delete buttons call their handlers with the id", async () => {

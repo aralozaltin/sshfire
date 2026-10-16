@@ -17,6 +17,7 @@ function matches(s: Session, q: string): boolean {
 
 export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: ServerListProps) {
   const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const q = query.trim().toLowerCase();
 
   const groups = useMemo(() => {
@@ -56,8 +57,20 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd }: Ser
           <h3>{folder}</h3>
           <ul>
             {items.map((s) => (
-              <li key={s.id}>
-                <button type="button" className="server-list__connect" onClick={() => onConnect(s.id)}>
+              <li key={s.id} className={selectedId === s.id ? "is-selected" : undefined}>
+                <button
+                  type="button"
+                  className="server-list__connect"
+                  aria-pressed={selectedId === s.id}
+                  onClick={() => setSelectedId(s.id)}
+                  onDoubleClick={() => onConnect(s.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      onConnect(s.id);
+                    }
+                  }}
+                >
                   <span className="server-list__name">{s.name}</span>{" "}
                   <span className="server-list__host">{s.user}@{s.host}{s.port !== 22 ? `:${s.port}` : ""}</span>
                 </button>

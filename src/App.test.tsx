@@ -43,7 +43,7 @@ test("renders the servers navigation with saved sessions", async () => {
 test("clicking a server opens a connected terminal tab", async () => {
   const { api } = fakeApi();
   render(<App api={api} createTerm={fakeTerm} />);
-  await userEvent.click(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
   expect(await screen.findByRole("tab", { name: /Test 3.81/ })).toBeInTheDocument();
   expect(api.connect).toHaveBeenCalledWith("1", 80, 24, expect.any(Function));
 });
@@ -82,7 +82,7 @@ test("a startup warning from a corrupt file is shown", async () => {
 test("closing a tab removes it", async () => {
   const { api } = fakeApi();
   render(<App api={api} createTerm={fakeTerm} />);
-  await userEvent.click(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
   await userEvent.click(await screen.findByRole("button", { name: "Test 3.81 kapat" }));
   expect(screen.queryByRole("tab")).not.toBeInTheDocument();
 });

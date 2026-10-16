@@ -30,7 +30,7 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .server-list__group h3::before { content: "▾ "; color: var(--muted); }
 .server-list ul { list-style: none; margin: 0; padding: 0; }
 .server-list li { display: flex; align-items: center; }
-.server-list li:hover { background: var(--select); }
+.server-list li:hover, .server-list li.is-selected { background: var(--select); }
 .server-list__connect { flex: 1; min-width: 0; display: flex; gap: 6px; align-items: baseline; text-align: left; background: none; border: 0; padding: 2px 6px 2px 20px; white-space: nowrap; overflow: hidden; }
 .server-list__connect:hover { background: none; }
 .server-list__name { font-weight: 600; }
