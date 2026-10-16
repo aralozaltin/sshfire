@@ -2,5 +2,7 @@ pub mod fsutil;
 pub mod known_hosts;
 pub mod metrics;
 pub mod secrets;
+pub mod sftp;
+pub mod shellquote;
 pub mod sessions;
 pub mod ssh;

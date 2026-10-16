@@ -31,6 +31,24 @@ pub enum SshError {
     Other(String),
 }
 
+impl std::fmt::Display for SshError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SshError::HostKeyRejected => write!(f, "host key rejected"),
+            SshError::HostKeyChanged { previous, current } => {
+                write!(f, "host key changed (saved {previous}, received {current})")
+            }
+            SshError::AuthFailed => write!(f, "authentication failed"),
+            SshError::Unreachable(m) => write!(f, "unreachable: {m}"),
+            SshError::Secret(_) => write!(f, "key store error"),
+            SshError::Key(m) => write!(f, "key file error: {m}"),
+            SshError::Other(m) => write!(f, "{m}"),
+        }
+    }
+}
+
+impl std::error::Error for SshError {}
+
 #[derive(Debug, PartialEq)]
 pub enum ShellEvent {
     Data(Vec<u8>),
@@ -214,6 +232,13 @@ impl SshConnection {
             ))),
             None => Err(SshError::Other("connection closed before the command finished".into())),
         }
+    }
+
+    pub(crate) async fn open_sftp_channel(&self) -> Result<russh::Channel<client::Msg>, SshError> {
+        let other = |e: russh::Error| SshError::Other(e.to_string());
+        let channel = self.handle.channel_open_session().await.map_err(other)?;
+        channel.request_subsystem(true, "sftp").await.map_err(other)?;
+        Ok(channel)
     }
 
     pub async fn open_shell(&self, cols: u16, rows: u16) -> Result<ShellChannel, SshError> {
