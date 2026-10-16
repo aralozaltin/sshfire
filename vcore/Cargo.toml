@@ -4,10 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-trait = "0.1.92"
 keyring = "4.2.0"
+russh = "0.64.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+tokio = { version = "1.53.3", features = ["full"] }
 uuid = { version = "1.28.0", features = ["v4"] }
 
 [dev-dependencies]
+async-trait = "0.1.92"
 tempfile = "3.27.0"

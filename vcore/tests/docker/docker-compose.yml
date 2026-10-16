@@ -1,0 +1,17 @@
+services:
+  sshd:
+    image: linuxserver/openssh-server:latest
+    container_name: ssh-istemci-test-sshd
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - PASSWORD_ACCESS=true
+      - USER_NAME=tester
+      - USER_PASSWORD=test-pass-123
+      - SUDO_ACCESS=false
+      - PUBLIC_KEY_FILE=/keys/test_key.pub
+    volumes:
+      - ./.keys:/keys:ro
+    ports:
+      - "127.0.0.1:2222:2222"
