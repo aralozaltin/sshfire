@@ -32,6 +32,8 @@ export const en: Messages = {
     errPort: "Port must be between 1 and 65535",
     errUser: "User cannot be empty",
     errKeyPath: "Key file path cannot be empty",
+    jump: "Jump host",
+    jumpNone: "None (connect directly)",
   },
   tabs: { label: "Open connections", close: "close", empty: "Pick a server on the left" },
   terminal: {

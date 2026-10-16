@@ -19,6 +19,7 @@ export interface NewSession {
   folder: string | null;
   auth: Auth;
   tunnels?: TunnelSpec[];
+  jump?: string | null;
 }
 
 export interface Session extends NewSession {

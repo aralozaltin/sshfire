@@ -301,6 +301,7 @@ test("importing from ssh config adds the chosen hosts with key files and a folde
         { alias: "prod", hostName: "10.0.0.5", user: "deploy", port: 2222, identityFile: "/Users/aral/.ssh/prod", proxyJump: null },
         { alias: "web", hostName: "web.example.com", user: null, port: null, identityFile: null, proxyJump: null },
         { alias: "Test 3.81", hostName: "192.168.3.81", user: "root", port: 22, identityFile: null, proxyJump: null },
+        { alias: "inner", hostName: "10.9.9.9", user: "root", port: 22, identityFile: null, proxyJump: "deploy@Test 3.81:22" },
       ],
     })),
   };
@@ -310,8 +311,8 @@ test("importing from ssh config adds the chosen hosts with key files and a folde
   await userEvent.click(screen.getByRole("button", { name: "SSH config'den al" }));
   expect(await screen.findByText("deploy@10.0.0.5:2222")).toBeInTheDocument();
   expect(screen.getByText("zaten var")).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "2 sunucuyu içe aktar" }));
-  await vi.waitFor(() => expect(api.addSession).toHaveBeenCalledTimes(2));
+  await userEvent.click(screen.getByRole("button", { name: "3 sunucuyu içe aktar" }));
+  await vi.waitFor(() => expect(api.addSession).toHaveBeenCalledTimes(3));
   expect(api.addSession).toHaveBeenCalledWith(
     { name: "prod", host: "10.0.0.5", port: 2222, user: "deploy", folder: "ssh config", auth: { type: "key_file", path: "/Users/aral/.ssh/prod" } },
     undefined,
@@ -320,6 +321,7 @@ test("importing from ssh config adds the chosen hosts with key files and a folde
     { name: "web", host: "web.example.com", port: 22, user: "aral", folder: "ssh config", auth: { type: "password" } },
     undefined,
   );
+  await vi.waitFor(() => expect(api.updateSession).toHaveBeenCalledWith(expect.objectContaining({ name: "inner", jump: "1" }), undefined));
 });
 
 test("the tunnels tab saves a new tunnel on the session and starts it on the active connection", async () => {

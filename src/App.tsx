@@ -205,6 +205,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
             user,
             port,
             identityFile: h.identityFile,
+            proxyJump: h.proxyJump,
             exists: sessions.some((s) => s.host === h.hostName && s.port === port && s.user === user),
           };
         }),
@@ -217,8 +218,9 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   async function runImport(chosen: ImportCandidate[]) {
     setImportCandidates(null);
     try {
+      const byAlias = new Map<string, Session>(sessions.map((x) => [x.name, x]));
       for (const c of chosen) {
-        await api.addSession(
+        const added = await api.addSession(
           {
             name: c.alias,
             host: c.host,
@@ -229,6 +231,13 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           },
           undefined,
         );
+        byAlias.set(c.alias, added);
+      }
+      for (const c of chosen) {
+        const hop = c.proxyJump?.split(",")[0]?.trim().replace(/^[^@]*@/, "").replace(/:\d+$/, "");
+        const jumpSession = hop ? byAlias.get(hop) : undefined;
+        const me = byAlias.get(c.alias);
+        if (me && jumpSession && jumpSession.id !== me.id) await api.updateSession({ ...me, jump: jumpSession.id }, undefined);
       }
       await reload();
     } catch (e) {
@@ -385,6 +394,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           <ServerDialog
             key={dialog.mode === "edit" ? dialog.id : "new"}
             initial={editing}
+            others={sessions}
             onSave={save}
             onCancel={() => setDialog(null)}
           />

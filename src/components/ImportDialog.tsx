@@ -7,6 +7,7 @@ export interface ImportCandidate {
   user: string;
   port: number;
   identityFile: string | null;
+  proxyJump?: string | null;
   exists: boolean;
 }
 

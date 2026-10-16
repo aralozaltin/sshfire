@@ -30,6 +30,8 @@ export const tr = {
     errPort: "Port 1-65535 arasında olmalı",
     errUser: "Kullanıcı boş olamaz",
     errKeyPath: "Anahtar dosyası yolu boş olamaz",
+    jump: "Atlama sunucusu",
+    jumpNone: "Yok (doğrudan bağlan)",
   },
   tabs: { label: "Açık bağlantılar", close: "kapat", empty: "Soldan bir sunucu seç" },
   terminal: {

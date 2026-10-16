@@ -71,6 +71,46 @@ test("key file auth asks for a key path instead of a password", async () => {
   );
 });
 
+const others: Session[] = [
+  { id: "7", name: "Bastion", host: "b.example.com", port: 22, user: "jump", folder: null, auth: { type: "password" } },
+  { id: "9", name: "Prod API", host: "10.0.0.1", port: 2200, user: "deploy", folder: "Prod", auth: { type: "password" } },
+];
+
+test("a jump host can be chosen from the other saved servers", async () => {
+  const onSave = vi.fn();
+  render(<ServerDialog others={others} onSave={onSave} onCancel={() => {}} />);
+  const select = screen.getByLabelText("Atlama sunucusu") as HTMLSelectElement;
+  expect(select.value).toBe("");
+  await userEvent.selectOptions(select, "7");
+  await userEvent.type(screen.getByLabelText("Ad"), "Ic");
+  await userEvent.type(screen.getByLabelText("Adres"), "10.1.1.1");
+  await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].jump).toBe("7");
+});
+
+test("the server being edited is not offered as its own jump host, and clearing the choice sends null", async () => {
+  const onSave = vi.fn();
+  const withJump: Session = { ...existing, jump: "7" };
+  render(<ServerDialog initial={withJump} others={[...others, existing]} onSave={onSave} onCancel={() => {}} />);
+  const select = screen.getByLabelText("Atlama sunucusu") as HTMLSelectElement;
+  expect(select.value).toBe("7");
+  expect(screen.queryByRole("option", { name: "Prod API" })).not.toBeInTheDocument();
+  await userEvent.selectOptions(select, "");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].jump).toBeNull();
+});
+
+test("without a jump host the saved object does not mention one", async () => {
+  const onSave = vi.fn();
+  render(<ServerDialog others={others} onSave={onSave} onCancel={() => {}} />);
+  await userEvent.type(screen.getByLabelText("Ad"), "x");
+  await userEvent.type(screen.getByLabelText("Adres"), "h");
+  await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect("jump" in onSave.mock.calls[0][0]).toBe(false);
+});
+
 test("editing a server keeps its saved tunnels", async () => {
   const onSave = vi.fn();
   const withTunnels: Session = { ...existing, tunnels: [{ kind: "dynamic", listen_port: 1080 }] };

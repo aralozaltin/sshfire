@@ -4,11 +4,12 @@ import { useT } from "../i18n";
 
 export interface ServerDialogProps {
   initial?: Session;
+  others?: Session[];
   onSave: (session: NewSession | Session, password?: string) => void;
   onCancel: () => void;
 }
 
-export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
+export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerDialogProps) {
   const t = useT();
   const d = t.dialog;
   const [name, setName] = useState(initial?.name ?? "");
@@ -18,6 +19,7 @@ export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
   const [folder, setFolder] = useState(initial?.folder ?? "");
   const [authType, setAuthType] = useState<Auth["type"]>(initial?.auth.type ?? "password");
   const [keyPath, setKeyPath] = useState(initial?.auth.type === "key_file" ? initial.auth.path : "");
+  const [jump, setJump] = useState(initial?.jump ?? "");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -42,6 +44,7 @@ export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
       folder: folder.trim() ? folder.trim() : null,
       auth,
       ...(initial?.tunnels ? { tunnels: initial.tunnels } : {}),
+      ...(jump ? { jump } : initial?.jump ? { jump: null } : {}),
     };
     const pw = authType === "password" && password ? password : undefined;
     onSave(initial ? { ...base, id: initial.id } : base, pw);
@@ -64,6 +67,17 @@ export function ServerDialog({ initial, onSave, onCancel }: ServerDialogProps) {
         <select value={authType} onChange={(e) => setAuthType(e.target.value as Auth["type"])}>
           <option value="password">{d.authPassword}</option>
           <option value="key_file">{d.authKey}</option>
+        </select>
+      </label>
+      <label>
+        {d.jump}
+        <select value={jump} onChange={(e) => setJump(e.target.value)}>
+          <option value="">{d.jumpNone}</option>
+          {others
+            .filter((o) => o.id !== initial?.id)
+            .map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
         </select>
       </label>
       {authType === "password" ? (
