@@ -4860,7 +4860,7 @@ dependencies = [
 
 [[package]]
 name = "ssh-istemci"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-trait",
  "portable-pty",
@@ -5918,7 +5918,7 @@ dependencies = [
 
 [[package]]
 name = "vcore"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-trait",
  "keyring",
