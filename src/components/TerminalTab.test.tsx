@@ -1,4 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TerminalTab } from "./TerminalTab";
 import type { ShellApi, TermLike } from "../terminal/shellSession";
 
@@ -111,4 +112,22 @@ test("the shell directory is reported and watching stops on unmount", async () =
   expect(onCwd).toHaveBeenCalledWith("/var/log");
   unmount();
   await vi.waitFor(() => expect(cwdStop).toHaveBeenCalledWith("t1"));
+});
+
+test("a find request from the terminal opens the search bar and searches the terminal", async () => {
+  const { term, api } = setup();
+  let request: () => void = () => {};
+  const find = vi.fn(() => true);
+  const clearFind = vi.fn();
+  const richTerm = { ...term, find, clearFind, onFindRequest: (cb: () => void) => { request = cb; } };
+  render(<TerminalTab sessionId="s1" api={api} createTerm={() => richTerm as unknown as typeof term} />);
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  act(() => request());
+  const box = await screen.findByRole("searchbox", { name: "Terminalde ara" });
+  await userEvent.type(box, "err{Enter}");
+  expect(find).toHaveBeenLastCalledWith("err", true);
+  await userEvent.keyboard("{Escape}");
+  expect(clearFind).toHaveBeenCalled();
+  expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
 });

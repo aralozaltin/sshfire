@@ -165,6 +165,7 @@ export const tr = {
     describeDynamic: (listen: number) => `SOCKS5 127.0.0.1:${listen}`,
     empty: "Bu sunucu için tanımlı tünel yok.",
   },
+  find: { label: "Terminalde ara", placeholder: "Ara…", next: "Sonraki", prev: "Önceki", close: "Aramayı kapat" },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

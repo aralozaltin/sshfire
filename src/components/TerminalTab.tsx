@@ -4,6 +4,7 @@ import { errorText, useT } from "../i18n";
 import type { Messages } from "../locales/tr";
 import type { Metrics } from "../metrics/types";
 import { MetricsBar } from "./MetricsBar";
+import { FindBar } from "./FindBar";
 import type { MultiExecHub } from "../terminal/multiExec";
 
 function closeReasonText(t: Messages, reason: string): string {
@@ -29,6 +30,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const sessionRef = useRef<ShellSession | null>(null);
@@ -36,6 +38,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   useEffect(() => {
     const term = createTerm(hostRef.current as HTMLElement);
     termRef.current = term;
+    term.onFindRequest?.(() => setFindOpen(true));
     const session = new ShellSession(api, term, () => {
       onStatusChange?.(session.status);
       rerender();
@@ -81,6 +84,16 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const status = s?.status ?? "connecting";
   return (
     <div className="shell-pane" hidden={!visible}>
+      {findOpen && (
+        <FindBar
+          onFind={(q, forward) => termRef.current?.find?.(q, forward)}
+          onClose={() => {
+            setFindOpen(false);
+            termRef.current?.clearFind?.();
+            termRef.current?.focus();
+          }}
+        />
+      )}
       <div ref={hostRef} data-testid="terminal-host" className="terminal__host" />
       {status !== "closed" && (
         <span className="sr-only" data-status={status}>

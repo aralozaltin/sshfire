@@ -10,6 +10,9 @@ export interface TermLike {
   fit(): void;
   focus(): void;
   setTheme?(dark: boolean): void;
+  find?(query: string, forward: boolean): boolean;
+  clearFind?(): void;
+  onFindRequest?(cb: () => void): void;
   dispose(): void;
 }
 

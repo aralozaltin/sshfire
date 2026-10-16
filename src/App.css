@@ -197,3 +197,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .tunnels__form { display: grid; gap: 4px; padding: 4px; border-top: 1px solid var(--line); }
 .tunnels__form label { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 6px; }
 .tunnels__error { color: var(--danger); margin: 0; }
+
+.findbar { display: flex; gap: 4px; padding: 3px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.findbar input { flex: 1; }

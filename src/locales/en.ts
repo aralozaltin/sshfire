@@ -167,6 +167,7 @@ export const en: Messages = {
     describeDynamic: (listen: number) => `SOCKS5 127.0.0.1:${listen}`,
     empty: "No tunnels are defined for this server.",
   },
+  find: { label: "Find in terminal", placeholder: "Find…", next: "Next", prev: "Previous", close: "Close search" },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",
