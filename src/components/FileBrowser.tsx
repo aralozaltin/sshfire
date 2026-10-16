@@ -7,6 +7,7 @@ import { ContextMenu, type MenuItem } from "./ContextMenu";
 import { DEFAULT_COLUMNS, loadColumns, resizeColumn, saveColumns } from "../files/columns";
 import { EditorDialog } from "./EditorDialog";
 import { FileInfoDialog } from "./FileInfoDialog";
+import { PermissionsDialog } from "./PermissionsDialog";
 import { InlineRename } from "./InlineRename";
 import { PromptDialog } from "./PromptDialog";
 
@@ -40,6 +41,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [prompt, setPrompt] = useState<PromptState>(null);
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
+  const [chmodTarget, setChmodTarget] = useState<FileEntry | null>(null);
   const [follow, setFollow] = useState(true);
   const lastFollowed = useRef<string | null>(followPath ?? null);
   const [editing, setEditing] = useState<{ entry: FileEntry; content: string } | null>(null);
@@ -337,6 +339,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
         { label: t.remove, onClick: () => setConfirming(selectedEntries) },
+        { label: f.chmod, onClick: () => selectedEntries[0] && setChmodTarget(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isSymlink },
         { label: f.info, onClick: () => selectedEntries[0] && setInfo(selectedEntries[0]), disabled: selectedEntries.length !== 1 },
       ]
     : [
@@ -494,6 +497,19 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
               void load(path);
             }}
             onClose={() => setEditing(null)}
+          />
+        </div>
+      )}
+      {chmodTarget && tabId && (
+        <div className="overlay">
+          <PermissionsDialog
+            entry={chmodTarget}
+            onClose={() => setChmodTarget(null)}
+            onApply={(mode) => {
+              const target = chmodTarget;
+              setChmodTarget(null);
+              void run(() => api.sftpChmod(tabId, target.path, mode));
+            }}
           />
         </div>
       )}

@@ -185,6 +185,12 @@ impl SftpClient {
         }
     }
 
+    /// Dosya veya klasörün izin bitlerini (örn. 0o755) ayarlar.
+    pub async fn chmod(&self, path: &str, mode: u32) -> Result<(), SftpError> {
+        let attrs = russh_sftp::protocol::FileAttributes { permissions: Some(mode & 0o7777), ..Default::default() };
+        self.session.set_metadata(path.to_string(), attrs).await.map_err(map_err)
+    }
+
     pub async fn remove(&self, path: &str, recursive: bool) -> Result<(), SftpError> {
         let md = self.session.symlink_metadata(path.to_string()).await.map_err(map_err)?;
         if !md.is_dir() {

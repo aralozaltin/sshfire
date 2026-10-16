@@ -44,6 +44,7 @@ export const sftpMkdir = (tabId: string, path: string) => invoke<void>("sftp_mkd
 export const sftpRename = (tabId: string, from: string, to: string) => invoke<void>("sftp_rename", { tabId, from, to });
 export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
   invoke<void>("sftp_remove", { tabId, path, recursive });
+export const sftpChmod = (tabId: string, path: string, mode: number) => invoke<void>("sftp_chmod", { tabId, path, mode });
 export const sftpCopy = (tabId: string, from: string, to: string) => invoke<void>("sftp_copy", { tabId, from, to });
 export const sftpReadText = (tabId: string, path: string) => invoke<string>("sftp_read_text", { tabId, path });
 export const sftpWriteText = (tabId: string, path: string, content: string) =>
@@ -207,6 +208,7 @@ export const realApi = {
   sftpMkdir,
   sftpRename,
   sftpRemove,
+  sftpChmod,
   sftpCopy,
   sftpReadText,
   sftpWriteText,

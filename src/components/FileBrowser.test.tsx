@@ -27,6 +27,7 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpMkdir: vi.fn(async () => {}),
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
+    sftpChmod: vi.fn(async () => {}),
     sftpCopy: vi.fn(async () => {}),
     sftpReadText: vi.fn(async (_t: string, _p: string) => "merhaba dünya\n"),
     sftpWriteText: vi.fn(async (_t: string, _p: string, _c: string) => {}),
@@ -491,4 +492,37 @@ test("the context menu and Enter both open the editor for a file", async () => {
   await userEvent.click(row("notlar.md"));
   await userEvent.keyboard("{Enter}");
   await vi.waitFor(() => expect(api.sftpReadText).toHaveBeenCalledWith("t1", "/home/u/notlar.md"));
+});
+
+test("the permissions dialog edits rwx boxes and the octal field together and applies chmod", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "İzinleri değiştir" }));
+  const dialog = screen.getByRole("dialog", { name: "İzinleri değiştir" });
+  const octal = within(dialog).getByLabelText("Sekizlik");
+  expect(octal).toHaveValue("644");
+  expect(within(dialog).getByRole("checkbox", { name: "Sahip: Yazma" })).toBeChecked();
+  expect(within(dialog).getByRole("checkbox", { name: "Sahip: Çalıştırma" })).not.toBeChecked();
+  await userEvent.click(within(dialog).getByRole("checkbox", { name: "Sahip: Çalıştırma" }));
+  await userEvent.click(within(dialog).getByRole("checkbox", { name: "Grup: Çalıştırma" }));
+  await userEvent.click(within(dialog).getByRole("checkbox", { name: "Diğer: Çalıştırma" }));
+  expect(octal).toHaveValue("755");
+  await userEvent.clear(octal);
+  await userEvent.type(octal, "600");
+  expect(within(dialog).getByRole("checkbox", { name: "Grup: Okuma" })).not.toBeChecked();
+  await userEvent.click(within(dialog).getByRole("button", { name: "Uygula" }));
+  expect(api.sftpChmod).toHaveBeenCalledWith("t1", "/home/u/rapor.txt", 0o600);
+  expect(screen.queryByRole("dialog", { name: "İzinleri değiştir" })).not.toBeInTheDocument();
+});
+
+test("an invalid octal value disables apply", async () => {
+  setup();
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  fireEvent.contextMenu(row("rapor.txt"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "İzinleri değiştir" }));
+  const dialog = screen.getByRole("dialog", { name: "İzinleri değiştir" });
+  await userEvent.clear(within(dialog).getByLabelText("Sekizlik"));
+  await userEvent.type(within(dialog).getByLabelText("Sekizlik"), "999");
+  expect(within(dialog).getByRole("button", { name: "Uygula" })).toBeDisabled();
 });

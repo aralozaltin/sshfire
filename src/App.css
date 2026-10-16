@@ -257,3 +257,11 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .shell-pane:hover .terminal__rec, .terminal__rec--on, .terminal__rec:focus-visible { opacity: 1; }
 .terminal__rec--on { color: #ef4444; font-weight: 600; }
 .terminal__rec:hover { background: rgba(255, 255, 255, 0.1); }
+
+.permissions { min-width: 300px; }
+.permissions__path { margin: 0 10px 6px; opacity: 0.7; word-break: break-all; font-size: 12px; }
+.permissions__grid { display: flex; gap: 8px; margin: 0 10px; }
+.permissions__grid fieldset { flex: 1; display: grid; gap: 2px; border: 1px solid var(--line, rgba(128,128,128,.3)); border-radius: 6px; padding: 4px 8px 6px; }
+.permissions__grid label { display: flex; gap: 6px; align-items: center; }
+.permissions__octal { display: flex; gap: 8px; align-items: center; margin: 8px 10px 0; }
+.permissions__octal input { width: 64px; font-family: monospace; }

@@ -51,6 +51,11 @@ pub async fn sftp_rename(state: State<'_, AppState>, tab_id: String, from: Strin
 }
 
 #[tauri::command]
+pub async fn sftp_chmod(state: State<'_, AppState>, tab_id: String, path: String, mode: u32) -> Result<(), AppError> {
+    client(&state, &tab_id).await?.chmod(&path, mode).await.map_err(|e| AppError::from(&e))
+}
+
+#[tauri::command]
 pub async fn sftp_remove(state: State<'_, AppState>, tab_id: String, path: String, recursive: bool) -> Result<(), AppError> {
     client(&state, &tab_id).await?.remove(&path, recursive).await.map_err(|e| AppError::from(&e))
 }

@@ -256,3 +256,15 @@ async fn write_file_replaces_content_creates_new_files_and_keeps_the_mode() {
     assert_eq!(e.sftp.read_file(&created, 1024).await.unwrap(), b"ilk");
     e.cleanup().await;
 }
+
+#[tokio::test]
+async fn chmod_changes_the_permission_bits() {
+    if !server_up() { return; }
+    let e = env().await;
+    let f = format!("{}/c.sh", e.base);
+    e.sftp.write_file(&f, b"echo hi").await.unwrap();
+    e.sftp.chmod(&f, 0o750).await.unwrap();
+    assert_eq!(e.sftp.stat(&f).await.unwrap().permissions, Some(0o750));
+    assert_eq!(e.sftp.chmod(&format!("{}/yok", e.base), 0o644).await.unwrap_err(), SftpError::NotFound);
+    e.cleanup().await;
+}
