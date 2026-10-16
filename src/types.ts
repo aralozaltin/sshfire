@@ -1,4 +1,4 @@
-export type Auth = { type: "password" } | { type: "key_file"; path: string };
+export type Auth = { type: "password" } | { type: "key_file"; path: string } | { type: "agent" } | { type: "interactive" };
 
 export type TunnelSpec =
   | { kind: "local"; listen_port: number; dest_host: string; dest_port: number }

@@ -36,7 +36,8 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    const auth: Auth = authType === "key_file" ? { type: "key_file", path: keyPath.trim() } : { type: "password" };
+    const auth: Auth =
+      authType === "key_file" ? { type: "key_file", path: keyPath.trim() } : authType === "agent" ? { type: "agent" } : authType === "interactive" ? { type: "interactive" } : { type: "password" };
     const base: NewSession = {
       name: name.trim(),
       host: host.trim(),
@@ -69,6 +70,8 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
         <select value={authType} onChange={(e) => setAuthType(e.target.value as Auth["type"])}>
           <option value="password">{d.authPassword}</option>
           <option value="key_file">{d.authKey}</option>
+          <option value="agent">{d.authAgent}</option>
+          <option value="interactive">{d.authInteractive}</option>
         </select>
       </label>
       <label>
@@ -97,12 +100,12 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-      ) : (
+      ) : authType === "key_file" ? (
         <>
           <label>{d.keyPath}<input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} /></label>
           {errors.keyPath && <p role="alert">{errors.keyPath}</p>}
         </>
-      )}
+      ) : null}
       <div className="server-dialog__actions">
         <button type="button" onClick={onCancel}>{d.cancel}</button>
         <button type="submit">{d.save}</button>

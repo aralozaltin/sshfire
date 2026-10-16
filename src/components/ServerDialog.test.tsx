@@ -148,3 +148,20 @@ test("without a startup command the saved object does not mention one", async ()
   await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
   expect("startup" in onSave.mock.calls[0][0]).toBe(false);
 });
+
+test("the SSH agent and prompted authentication can be chosen and need no password or key path", async () => {
+  const onSave = vi.fn();
+  render(<ServerDialog onSave={onSave} onCancel={() => {}} />);
+  await userEvent.type(screen.getByLabelText("Ad"), "x");
+  await userEvent.type(screen.getByLabelText("Adres"), "h");
+  await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  await userEvent.selectOptions(screen.getByLabelText("Kimlik doğrulama"), "agent");
+  expect(screen.queryByLabelText("Parola")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Anahtar dosyası yolu")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].auth).toEqual({ type: "agent" });
+  onSave.mockClear();
+  await userEvent.selectOptions(screen.getByLabelText("Kimlik doğrulama"), "interactive");
+  await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+  expect(onSave.mock.calls[0][0].auth).toEqual({ type: "interactive" });
+});

@@ -15,7 +15,8 @@ function fakeTerm(): TermLike {
 function fakeApi(over: Partial<AppApi> = {}) {
   let sessions = [existing];
   let hostKeyCb: (e: { requestId: string; host: string; port: number; fingerprint: string }) => void = () => {};
-  let passwordCb: (e: { requestId: string; host: string; user: string }) => void = () => {};
+  let passwordCb: (e: { requestId: string; host: string; user: string; kind?: "password" | "passphrase" }) => void = () => {};
+  let authCb: (e: { requestId: string; host: string; user: string; name: string; instructions: string; prompts: { text: string; echo: boolean }[] }) => void = () => {};
   const api = {
     listSessions: vi.fn(async () => sessions),
     startupWarning: vi.fn(async () => [] as { code: string; backup: string }[]),
@@ -28,6 +29,8 @@ function fakeApi(over: Partial<AppApi> = {}) {
     shellAck: vi.fn(async () => {}),
     shellClose: vi.fn(async () => {}),
     answerHostKey: vi.fn(async () => {}),
+    answerAuth: vi.fn(async () => {}),
+    onAuthPrompt: vi.fn(async (cb) => { authCb = cb; return () => {}; }),
     answerPassword: vi.fn(async () => {}),
     onPasswordPrompt: vi.fn(async (cb) => { passwordCb = cb; return () => {}; }),
     onHostKeyPrompt: vi.fn(async (cb) => { hostKeyCb = cb; return () => {}; }),
@@ -41,7 +44,7 @@ function fakeApi(over: Partial<AppApi> = {}) {
     tunnelList: vi.fn(async () => []),
     ...over,
   } as unknown as AppApi;
-  return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)), promptPassword: (e: Parameters<typeof passwordCb>[0]) => act(() => passwordCb(e)) };
+  return { api, promptHostKey: (e: Parameters<typeof hostKeyCb>[0]) => act(() => hostKeyCb(e)), promptPassword: (e: Parameters<typeof passwordCb>[0]) => act(() => passwordCb(e)), promptAuth: (e: Parameters<typeof authCb>[0]) => act(() => authCb(e)) };
 }
 
 test("renders the servers navigation with saved sessions", async () => {
@@ -552,4 +555,22 @@ test("a local terminal does not steal the sidebar tab", async () => {
   await vi.waitFor(() => expect(api.connect).toHaveBeenCalledWith("__local__", 80, 24, expect.any(Function)));
   await new Promise((r) => setTimeout(r, 50));
   expect(screen.getByRole("tab", { name: "Sunucular" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("a keyboard-interactive question from the server is answered through the dialog", async () => {
+  const { api, promptAuth } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  promptAuth({ requestId: "k1", host: "10.0.0.9", user: "deploy", name: "", instructions: "", prompts: [{ text: "Verification code: ", echo: false }] });
+  await userEvent.type(await screen.findByLabelText("Verification code:"), "424242{Enter}");
+  expect(api.answerAuth).toHaveBeenCalledWith("k1", ["424242"]);
+  expect(screen.queryByLabelText("Verification code:")).not.toBeInTheDocument();
+});
+
+test("a passphrase prompt shows the key-file wording", async () => {
+  const { api, promptPassword } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  promptPassword({ requestId: "p9", host: "h", user: "u", kind: "passphrase" });
+  expect(await screen.findByText("Anahtar parolası gerekli")).toBeInTheDocument();
 });

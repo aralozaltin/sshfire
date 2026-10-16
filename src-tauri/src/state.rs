@@ -45,6 +45,7 @@ pub struct AppState {
     pub hosts: Arc<Mutex<KnownHosts>>,
     pub tabs: Mutex<HashMap<String, Tab>>,
     pub pending_prompts: Arc<Mutex<HashMap<String, oneshot::Sender<bool>>>>,
+    pub pending_auth: Arc<Mutex<HashMap<String, oneshot::Sender<Option<Vec<String>>>>>>,
     pub pending_passwords: Arc<Mutex<HashMap<String, oneshot::Sender<Option<PasswordReply>>>>>,
     pub startup_warnings: Vec<StartupWarning>,
     pub transfers: Arc<crate::transfers::Registry>,

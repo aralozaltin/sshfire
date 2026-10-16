@@ -7,6 +7,7 @@ import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
 import { PasswordDialog, type PasswordRequest } from "./components/PasswordDialog";
 import { ImportDialog, type ImportCandidate } from "./components/ImportDialog";
+import { AuthPromptDialog, type AuthPromptRequest } from "./components/AuthPromptDialog";
 import { createXterm } from "./terminal/xterm";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { FileBrowser } from "./components/FileBrowser";
@@ -82,6 +83,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
   const [importCandidates, setImportCandidates] = useState<ImportCandidate[] | null>(null);
+  const [authRequest, setAuthRequest] = useState<AuthPromptRequest | null>(null);
   const [passwordRequest, setPasswordRequest] = useState<PasswordRequest | null>(null);
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +155,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     const keep = (fn: () => void) => (cancelled ? fn() : offs.push(fn));
     void api.onHostKeyPrompt((e) => setHostKey(e)).then(keep);
     void api.onPasswordPrompt((e) => setPasswordRequest(e)).then(keep);
+    void api.onAuthPrompt((e) => setAuthRequest(e)).then(keep);
     return () => {
       cancelled = true;
       offs.forEach((off) => off());
@@ -308,6 +311,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     } catch (e) {
       setError(errorText(t, e));
     }
+  }
+
+  function answerAuth(requestId: string, answers: string[] | null) {
+    void api.answerAuth(requestId, answers);
+    setAuthRequest(null);
   }
 
   function answerPassword(requestId: string, password: string | null, remember: boolean) {
@@ -561,6 +569,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
       {importCandidates && (
         <div className="overlay">
           <ImportDialog candidates={importCandidates} onImport={(c) => void runImport(c)} onCancel={() => setImportCandidates(null)} />
+        </div>
+      )}
+      {authRequest && (
+        <div className="overlay">
+          <AuthPromptDialog request={authRequest} onAnswer={answerAuth} />
         </div>
       )}
       {passwordRequest && (

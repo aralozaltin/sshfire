@@ -40,6 +40,10 @@ impl From<&SshError> for AppError {
             SshError::Unreachable(m) => AppError::with_detail("unreachable", m.clone()),
             SshError::Secret(s) => AppError::from(s),
             SshError::Key(m) => AppError::with_detail("key_unreadable", m.clone()),
+            SshError::PassphraseRequired => AppError::code("passphrase_required"),
+            SshError::WrongPassphrase => AppError::code("wrong_passphrase"),
+            SshError::AgentUnavailable(m) => AppError::with_detail("agent_unavailable", m.clone()),
+            SshError::AuthCancelled => AppError::code("auth_cancelled"),
             SshError::Other(m) => AppError::with_detail("ssh_other", m.clone()),
         }
     }
@@ -99,6 +103,15 @@ mod tests {
         assert_eq!((e.code, e.detail.as_deref()), ("unreachable", Some("timeout")));
         let e = AppError::from(&SshError::Key("bad".into()));
         assert_eq!((e.code, e.detail.as_deref()), ("key_unreadable", Some("bad")));
+    }
+
+    #[test]
+    fn new_auth_errors_map_to_stable_codes() {
+        assert_eq!(AppError::from(&SshError::PassphraseRequired).code, "passphrase_required");
+        assert_eq!(AppError::from(&SshError::WrongPassphrase).code, "wrong_passphrase");
+        assert_eq!(AppError::from(&SshError::AuthCancelled).code, "auth_cancelled");
+        let e = AppError::from(&SshError::AgentUnavailable("no socket".into()));
+        assert_eq!((e.code, e.detail.as_deref()), ("agent_unavailable", Some("no socket")));
     }
 
     #[test]

@@ -59,3 +59,11 @@ test("errorText falls back to plain strings and unknown codes without throwing",
   expect(errorText(en, { code: "from_the_future", detail: "x" })).toContain("x");
   expect(errorText(en, undefined)).toBe(en.errors.unknown);
 });
+
+test("the new authentication error codes are translated in both languages", () => {
+  expect(errorText(tr, { code: "wrong_passphrase" })).toBe("Anahtar parolası yanlış.");
+  expect(errorText(en, { code: "wrong_passphrase" })).toBe("The key passphrase is wrong.");
+  expect(errorText(en, { code: "agent_unavailable", detail: "no socket" })).toContain("no socket");
+  expect(errorText(tr, { code: "auth_cancelled" })).toBe("Doğrulamadan vazgeçildi.");
+  expect(errorText(en, { code: "passphrase_required" })).toContain("passphrase");
+});

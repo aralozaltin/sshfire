@@ -32,3 +32,11 @@ test("cancel answers with null", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
   expect(onAnswer).toHaveBeenCalledWith("r1", null, false);
 });
+
+test("in passphrase mode the dialog talks about the key file, not a password", () => {
+  render(<PasswordDialog request={{ ...request, kind: "passphrase" }} onAnswer={() => {}} />);
+  expect(screen.getByText("Anahtar parolası gerekli")).toBeInTheDocument();
+  expect(screen.getByText("deploy@10.0.0.5 için anahtar dosyasının parolasını gir.")).toBeInTheDocument();
+  expect(screen.getByLabelText("Anahtar parolası")).toHaveAttribute("type", "password");
+  expect(screen.getByRole("checkbox", { name: /Anahtar parolasını hatırla/ })).toBeInTheDocument();
+});

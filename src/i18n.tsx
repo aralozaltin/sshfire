@@ -84,6 +84,10 @@ export function errorText(t: Messages, e: unknown): string {
     case "file_too_large": return t.errors.fileTooLarge;
     case "not_text": return t.errors.notText;
     case "password_cancelled": return t.errors.passwordCancelled;
+    case "wrong_passphrase": return t.errors.wrongPassphrase;
+    case "passphrase_required": return t.errors.passphraseRequired;
+    case "agent_unavailable": return t.errors.agentUnavailable(d);
+    case "auth_cancelled": return t.errors.authCancelled;
     case "port_in_use": return t.errors.portInUse;
     case "local_shell": return t.errors.localShell(d);
     case "invalid_tunnel": return t.errors.invalidTunnel(d);

@@ -11,11 +11,31 @@ use tauri::{AppHandle, Emitter, State};
 use vcore::known_hosts::HostKeyStatus;
 use vcore::secrets::{Secret, SecretStore};
 use vcore::sessions::{NewSession, Session};
-use vcore::ssh::{HostKeyDecision, HostKeyPrompt, ShellEvent, SshConnection};
+use vcore::ssh::{AuthPromptItem, HostKeyDecision, HostKeyPrompt, ShellEvent, SshConnection};
 
 struct TauriPrompt {
     app: AppHandle,
     pending: Arc<std::sync::Mutex<std::collections::HashMap<String, tokio::sync::oneshot::Sender<bool>>>>,
+    pending_auth: Arc<std::sync::Mutex<std::collections::HashMap<String, tokio::sync::oneshot::Sender<Option<Vec<String>>>>>>,
+    host: String,
+    user: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct AuthPromptEvent {
+    request_id: String,
+    host: String,
+    user: String,
+    name: String,
+    instructions: String,
+    prompts: Vec<AuthPromptView>,
+}
+
+#[derive(Serialize, Clone)]
+struct AuthPromptView {
+    text: String,
+    echo: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -50,6 +70,34 @@ impl HostKeyPrompt for TauriPrompt {
             _ => HostKeyDecision::Reject,
         }
     }
+
+    async fn interactive(&self, name: &str, instructions: &str, prompts: &[AuthPromptItem]) -> Option<Vec<String>> {
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.pending_auth.lock().unwrap().insert(request_id.clone(), tx);
+        let event = AuthPromptEvent {
+            request_id: request_id.clone(),
+            host: self.host.clone(),
+            user: self.user.clone(),
+            name: name.into(),
+            instructions: instructions.into(),
+            prompts: prompts.iter().map(|p| AuthPromptView { text: p.text.clone(), echo: p.echo }).collect(),
+        };
+        if self.app.emit("auth-prompt", event).is_err() {
+            self.pending_auth.lock().unwrap().remove(&request_id);
+            return None;
+        }
+        let answer = tokio::time::timeout(Duration::from_secs(300), rx).await;
+        self.pending_auth.lock().unwrap().remove(&request_id);
+        answer.ok().and_then(|r| r.ok()).flatten()
+    }
+}
+
+#[tauri::command]
+pub fn auth_answer(state: State<'_, AppState>, request_id: String, answers: Option<Vec<String>>) {
+    if let Some(tx) = state.pending_auth.lock().unwrap().remove(&request_id) {
+        let _ = tx.send(answers);
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -58,13 +106,14 @@ struct PasswordPromptEvent {
     request_id: String,
     host: String,
     user: String,
+    kind: &'static str,
 }
 
-async fn ask_password(app: &AppHandle, state: &AppState, session: &Session) -> Option<PasswordReply> {
+async fn ask_password(app: &AppHandle, state: &AppState, session: &Session, kind: &'static str) -> Option<PasswordReply> {
     let request_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = tokio::sync::oneshot::channel();
     state.pending_passwords.lock().unwrap().insert(request_id.clone(), tx);
-    let event = PasswordPromptEvent { request_id: request_id.clone(), host: session.host.clone(), user: session.user.clone() };
+    let event = PasswordPromptEvent { request_id: request_id.clone(), host: session.host.clone(), user: session.user.clone(), kind };
     if app.emit("password-prompt", event).is_err() {
         state.pending_passwords.lock().unwrap().remove(&request_id);
         return None;
@@ -142,13 +191,35 @@ pub async fn connect(
         .jump_chain(&session_id)
         .map(|c| c.into_iter().cloned().collect())
         .ok_or_else(|| AppError::code("session_not_found"))?;
-    let prompt = Arc::new(TauriPrompt { app: app.clone(), pending: state.pending_prompts.clone() });
     let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
     let mut previous: Option<Arc<SshConnection>> = None;
     for hop in &chain {
+        let prompt = Arc::new(TauriPrompt {
+            app: app.clone(),
+            pending: state.pending_prompts.clone(),
+            pending_auth: state.pending_auth.clone(),
+            host: hop.host.clone(),
+            user: hop.user.clone(),
+        });
+        // Anahtar dosyası parolayla korunuyorsa ve kayıtlı değilse bağlanmadan önce sor.
+        if let vcore::sessions::Auth::KeyFile { path } = &hop.auth {
+            let account = vcore::secrets::passphrase_account(&hop.id);
+            if vcore::ssh::key_needs_passphrase(path) == Ok(true) && !matches!(secrets.load_once(&account), Ok(true)) {
+                match ask_password(&app, &state, hop, "passphrase").await {
+                    Some(reply) => {
+                        let secret = Secret::new(reply.password);
+                        secrets.remember_in_memory(&account, &secret);
+                        if reply.remember {
+                            state.secrets.set(&account, &secret).map_err(|e| AppError::from(&e))?;
+                        }
+                    }
+                    None => return Err(AppError::code("password_cancelled")),
+                }
+            }
+        }
         // Keychain'e parola başına yalnızca bir kez dokunulur; sonrası bellekten gelir.
         if matches!(hop.auth, vcore::sessions::Auth::Password) && !matches!(secrets.load_once(&hop.id), Ok(true)) {
-            match ask_password(&app, &state, hop).await {
+            match ask_password(&app, &state, hop, "password").await {
                 Some(reply) => {
                     let secret = Secret::new(reply.password);
                     secrets.remember_in_memory(&hop.id, &secret);
@@ -163,8 +234,13 @@ pub async fn connect(
             None => SshConnection::connect(hop, &secrets, state.hosts.clone(), prompt.clone()).await,
             Some(jump) => SshConnection::connect_via(jump, hop, &secrets, state.hosts.clone(), prompt.clone()).await,
         };
-        if matches!(connected, Err(vcore::ssh::SshError::AuthFailed)) {
-            secrets.forget(&hop.id);
+        match &connected {
+            Err(vcore::ssh::SshError::AuthFailed) => secrets.forget(&hop.id),
+            // Yanlış anahtar parolası kayıtlı kalırsa her bağlantı başarısız olur; sil ki yeniden sorulsun.
+            Err(vcore::ssh::SshError::WrongPassphrase) => {
+                let _ = secrets.delete(&vcore::secrets::passphrase_account(&hop.id));
+            }
+            _ => {}
         }
         previous = Some(Arc::new(connected.map_err(|e| AppError::from(&e))?));
     }

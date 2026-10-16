@@ -113,7 +113,20 @@ export interface PasswordPromptEvent {
   requestId: string;
   host: string;
   user: string;
+  kind?: "password" | "passphrase";
 }
+export const answerAuth = (requestId: string, answers: string[] | null) => invoke<void>("auth_answer", { requestId, answers });
+
+export interface AuthPromptEvent {
+  requestId: string;
+  host: string;
+  user: string;
+  name: string;
+  instructions: string;
+  prompts: { text: string; echo: boolean }[];
+}
+export const onAuthPrompt = (cb: (e: AuthPromptEvent) => void) => listen<AuthPromptEvent>("auth-prompt", (e) => cb(e.payload));
+
 export const onPasswordPrompt = (cb: (e: PasswordPromptEvent) => void) =>
   listen<PasswordPromptEvent>("password-prompt", (e) => cb(e.payload));
 
@@ -171,6 +184,8 @@ export const realApi = {
   tunnelStart,
   tunnelStop,
   tunnelList,
+  answerAuth,
+  onAuthPrompt: async (cb: (e: AuthPromptEvent) => void) => (await onAuthPrompt(cb)) as () => void,
   answerPassword,
   onPasswordPrompt: async (cb: (e: PasswordPromptEvent) => void) => (await onPasswordPrompt(cb)) as () => void,
   answerHostKey,

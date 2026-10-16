@@ -53,6 +53,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         local_tabs: Mutex::new(HashMap::new()),
         pending_prompts: Arc::new(Mutex::new(HashMap::new())),
         pending_passwords: Arc::new(Mutex::new(HashMap::new())),
+        pending_auth: Arc::new(Mutex::new(HashMap::new())),
         startup_warnings: warnings,
         transfers: Arc::new(transfers::Registry::default()),
     })
@@ -81,6 +82,7 @@ pub fn run() {
             commands::local_connect,
             commands::hostkey_answer,
             commands::password_answer,
+            commands::auth_answer,
             commands::shell_write,
             commands::shell_resize,
             commands::shell_ack,
