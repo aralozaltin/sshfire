@@ -51,3 +51,15 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Tema: Sistem/Açık/Koyu; sistem ayarı değişince "Sistem" modu anında uyuyor; terminal renkleri de değişiyor
 - [ ] Dil: Türkçe/English; İngilizcede çevrilmemiş metin kalmamış; hata mesajları seçilen dilde
 - [ ] Windows: yukarıdakilerin hepsi, ayrıca sürükle-bırak ve yol ayracı (`C:\...`) doğru
+
+## Aşama 2b: izleme, sürükle-bırak, boyutlandırma (elle)
+
+- [ ] Terminalde `cd /var/log` yazınca ~1-2 sn içinde Dosyalar paneli o klasöre geçiyor; "Terminali izle" kapalıyken geçmiyor, açınca terminalin klasörüne atlıyor
+- [ ] Başka sunucu sekmesine geçince panel o sekmenin terminal klasörünü gösteriyor
+- [ ] Linux olmayan sunucuda izleme sessizce devre dışı (panel ev klasöründe kalıyor), hata yok
+- [ ] Panel içinde sürükle-bırak: dosya/çoklu seçim klasör satırına ya da yol çubuğundaki bir klasöre bırakılınca taşınıyor; Ctrl (Windows) / Option (Mac) basılıyken kopyalanıyor
+- [ ] Aynı adlı dosya olan klasöre bırakınca `ad (kopya)` oluyor; klasör kendi içine bırakılamıyor
+- [ ] F2 / sağ tık → Yeniden adlandır satır içinde (uzantı seçili değil), Enter onaylar, Esc iptal eder
+- [ ] Sol panel genişliği ayırıcıdan sürüklenerek (ya da ok tuşlarıyla) değişiyor, çift tık varsayılana döner, yeniden açınca hatırlanıyor
+- [ ] Dosya tablosunda sütun kenarları sürüklenerek boyutlanıyor, çift tık varsayılana döner
+- [ ] Metrik çubuğu terminalin altında görünüyor (daha önce xterm ile CSS sınıfı çakıştığı için örtülüyordu)
