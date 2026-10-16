@@ -86,8 +86,10 @@ test("export and import-file buttons appear when their handlers are given and ca
   const onExport = vi.fn();
   const onImportFile = vi.fn();
   render(<ServerList sessions={sessions} {...props} onExport={onExport} onImportFile={onImportFile} />);
-  await userEvent.click(screen.getByRole("button", { name: "Dışa aktar" }));
-  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dışa aktar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dosyadan al" }));
   expect(onExport).toHaveBeenCalled();
   expect(onImportFile).toHaveBeenCalled();
 });
@@ -97,4 +99,17 @@ test("the file import is also offered on the empty state so a fresh install can 
   render(<ServerList sessions={[]} {...props} onImportFile={onImportFile} />);
   await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
   expect(onImportFile).toHaveBeenCalled();
+});
+
+test("the add button is a compact icon button with an accessible name and the extra actions live in a menu", async () => {
+  render(<ServerList sessions={sessions} {...props} onExport={() => {}} onImportFile={() => {}} onImport={() => {}} />);
+  expect(screen.getByRole("button", { name: "Sunucu ekle" })).toHaveTextContent("+");
+  expect(screen.queryByRole("button", { name: "Dışa aktar" })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  expect(screen.getAllByRole("menuitem").map((m) => m.textContent)).toEqual(["SSH config'den al", "Dosyadan al", "Dışa aktar"]);
+});
+
+test("there is no actions menu when no extra handlers are given", () => {
+  render(<ServerList sessions={sessions} {...props} />);
+  expect(screen.queryByRole("button", { name: "Diğer işlemler" })).not.toBeInTheDocument();
 });

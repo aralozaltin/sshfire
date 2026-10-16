@@ -235,3 +235,12 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .metric--crit .metric__value { color: var(--danger); }
 .metric__down { color: #3a8f5c; }
 .metric__up { color: #c77d2b; }
+
+.icon-button { min-width: 26px; padding: 2px 6px; font-weight: 700; }
+.settings { position: relative; }
+.settings__panel { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 20; display: grid; gap: 6px; padding: 8px; min-width: 220px; background: var(--surface); border: 1px solid var(--line); box-shadow: 2px 2px 8px rgba(0,0,0,.3); }
+.app__footer { display: flex; align-items: center; justify-content: flex-start; }
+
+.files__bar { align-items: center; flex-wrap: nowrap; }
+.files__sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+.files__follow { margin-left: auto; font-size: 11px; color: var(--muted); }

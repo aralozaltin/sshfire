@@ -123,6 +123,7 @@ test("choosing the dark theme sets data-theme and remembers it", async () => {
   const { api } = fakeApi();
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
   await userEvent.selectOptions(screen.getByLabelText("Tema"), "dark");
   expect(document.documentElement.dataset.theme).toBe("dark");
   expect(localStorage.getItem("ssh-istemci.theme")).toBe("dark");
@@ -132,6 +133,7 @@ test("choosing English switches the visible labels and remembers it", async () =
   const { api } = fakeApi();
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
   await userEvent.selectOptions(screen.getByLabelText("Dil"), "en");
   expect(screen.getByRole("navigation", { name: "Servers" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Add server" })).toBeInTheDocument();
@@ -145,6 +147,7 @@ test("backend errors are shown in the chosen language", async () => {
   const { api } = fakeApi({ addSession: vi.fn(async () => { throw { code: "invalid_session", detail: "host empty" }; }) } as Partial<AppApi>);
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
   await userEvent.selectOptions(screen.getByLabelText("Dil"), "en");
   await userEvent.click(screen.getByRole("button", { name: "Add server" }));
   await userEvent.type(screen.getByLabelText("Name"), "x");
@@ -234,6 +237,11 @@ test("the files panel follows the directory the terminal reports", async () => {
   await vi.waitFor(() => expect(extra.sftpList).toHaveBeenCalledWith("tab-1", "/etc"));
 });
 
+async function connectAgain() {
+  await userEvent.click(screen.getByRole("tab", { name: "Sunucular" }));
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+}
+
 test("MultiExec sends what is typed in one terminal to the other selected terminal", async () => {
   const terms: { type: (t: string) => void }[] = [];
   const createTerm = () => {
@@ -244,9 +252,8 @@ test("MultiExec sends what is typed in one terminal to the other selected termin
   let n = 0;
   const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
   render(<App api={api} createTerm={createTerm} />);
-  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
-  await userEvent.dblClick(server);
-  await userEvent.dblClick(server);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await connectAgain();
   await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
   await userEvent.click(await screen.findByRole("button", { name: "MultiExec" }));
   terms[0].type("uptime\r");
@@ -264,9 +271,8 @@ test("without MultiExec typing stays in its own terminal", async () => {
   let n = 0;
   const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
   render(<App api={api} createTerm={createTerm} />);
-  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
-  await userEvent.dblClick(server);
-  await userEvent.dblClick(server);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await connectAgain();
   await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
   terms[0].type("ls\r");
   const ids = (api.shellWrite as unknown as { mock: { calls: [string, Uint8Array][] } }).mock.calls.map(([id]) => id);
@@ -310,7 +316,8 @@ test("importing from ssh config adds the chosen hosts with key files and a folde
   const { api } = fakeApi(extra as unknown as Partial<AppApi>);
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
-  await userEvent.click(screen.getByRole("button", { name: "SSH config'den al" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "SSH config'den al" }));
   expect(await screen.findByText("deploy@10.0.0.5:2222")).toBeInTheDocument();
   expect(screen.getByText("zaten var")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "3 sunucuyu içe aktar" }));
@@ -419,7 +426,8 @@ test("exporting tells the user where the file was saved and cancelling says noth
   const { api } = fakeApi();
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
-  await userEvent.click(screen.getByRole("button", { name: "Dışa aktar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dışa aktar" }));
   expect(await screen.findByText("Sunucu listesi kaydedildi: /tmp/yedek.json")).toBeInTheDocument();
 });
 
@@ -428,7 +436,8 @@ test("importing from a file reloads the list and reports what happened", async (
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
   const before = (api.listSessions as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
-  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dosyadan al" }));
   expect(await screen.findByText("2 sunucu eklendi, 1 tanesi zaten vardı.")).toBeInTheDocument();
   expect((api.listSessions as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBeGreaterThan(before);
 });
@@ -437,7 +446,8 @@ test("cancelling the import file dialog changes nothing", async () => {
   const { api } = fakeApi({ importSessions: vi.fn(async () => null) } as Partial<AppApi>);
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
-  await userEvent.click(screen.getByRole("button", { name: "Dosyadan al" }));
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dosyadan al" }));
   await new Promise((r) => setTimeout(r, 30));
   expect(screen.queryByText(/sunucu eklendi/)).not.toBeInTheDocument();
 });
@@ -446,9 +456,8 @@ async function openTwoTabs() {
   let n = 0;
   const { api } = fakeApi({ connect: vi.fn(async () => `tab-${++n}`) } as Partial<AppApi>);
   const view = render(<App api={api} createTerm={fakeTerm} />);
-  const server = await screen.findByRole("button", { name: /^Test 3\.81 root@/ });
-  await userEvent.dblClick(server);
-  await userEvent.dblClick(server);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await connectAgain();
   await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
   return { api, container: view.container };
 }
@@ -511,4 +520,36 @@ test("the local terminal button opens a local tab and keeps files, metrics and t
   expect(api.metricsStart).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole("tab", { name: "Dosyalar" }));
   expect(screen.getByText(/Bir sunucuya bağlan/)).toBeInTheDocument();
+});
+
+test("the settings button opens a small panel with theme and language", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  expect(screen.queryByLabelText("Tema")).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
+  expect(screen.getByLabelText("Tema")).toBeInTheDocument();
+  expect(screen.getByLabelText("Dil")).toBeInTheDocument();
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByLabelText("Tema")).not.toBeInTheDocument();
+});
+
+test("when a server connection opens the Files tab is shown automatically, once", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await vi.waitFor(() => expect(screen.getByRole("tab", { name: "Dosyalar" })).toHaveAttribute("aria-selected", "true"));
+  await userEvent.click(screen.getByRole("tab", { name: "Sunucular" }));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.getByRole("tab", { name: "Sunucular" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("a local terminal does not steal the sidebar tab", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Yerel terminal" }));
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledWith("__local__", 80, 24, expect.any(Function)));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.getByRole("tab", { name: "Sunucular" })).toHaveAttribute("aria-selected", "true");
 });

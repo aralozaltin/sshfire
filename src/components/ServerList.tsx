@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ContextMenu } from "./ContextMenu";
 import type { Session } from "../types";
 import { useT } from "../i18n";
 
@@ -22,6 +23,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
   const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const q = query.trim().toLowerCase();
 
   const groups = useMemo(() => {
@@ -55,14 +57,34 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="button" onClick={onAdd}>{t.add}</button>
+        <button type="button" className="icon-button" aria-label={t.add} title={t.add} onClick={onAdd}>+</button>
+        {(onImport || onExport || onImportFile) && (
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t.chrome.more}
+            title={t.chrome.more}
+            aria-haspopup="menu"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenu({ x: r.left, y: r.bottom });
+            }}
+          >
+            ⋯
+          </button>
+        )}
       </div>
-      {(onImport || onExport || onImportFile) && (
-        <div className="server-list__import">
-          {onImport && <button type="button" onClick={onImport}>{t.importConfig.button}</button>}
-          {onImportFile && <button type="button" onClick={onImportFile}>{t.sessionsIo.importFile}</button>}
-          {onExport && <button type="button" onClick={onExport}>{t.sessionsIo.export}</button>}
-        </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            ...(onImport ? [{ label: t.importConfig.button, onClick: onImport }] : []),
+            ...(onImportFile ? [{ label: t.sessionsIo.importFile, onClick: onImportFile }] : []),
+            ...(onExport ? [{ label: t.sessionsIo.export, onClick: onExport }] : []),
+          ]}
+        />
       )}
       {groups.length === 0 && <p className="server-list__none">{t.noResults}</p>}
       {groups.map(([folder, items]) => (

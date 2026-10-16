@@ -194,6 +194,7 @@ export const tr = {
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
   localTerminal: { button: "Yerel terminal", title: "Yerel" },
+  chrome: { settings: "Ayarlar", more: "Diğer işlemler", add: "Sunucu ekle" },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

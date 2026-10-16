@@ -348,10 +348,13 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   return (
     <div className="files">
       <div className="files__bar">
-        <button type="button" onClick={() => path && void load(parentPath(path))} disabled={!path || path === "/"}>{f.up}</button>
-        <button type="button" onClick={() => void load(path)}>{f.refresh}</button>
-        <button type="button" onClick={() => setPrompt({ kind: "mkdir" })}>{f.newFolder}</button>
-        <label className="files__follow">
+        <button type="button" className="icon-button" aria-label={f.up} title={f.up} onClick={() => path && void load(parentPath(path))} disabled={!path || path === "/"}>↑</button>
+        <button type="button" className="icon-button" aria-label={f.refresh} title={f.refresh} onClick={() => void load(path)}>⟳</button>
+        <button type="button" className="icon-button" aria-label={f.newFolder} title={f.newFolder} onClick={() => setPrompt({ kind: "mkdir" })}>＋📁</button>
+        <span className="files__sep" aria-hidden="true" />
+        <button type="button" className="icon-button" aria-label={t.transfer.upload} title={t.transfer.upload} onClick={() => void pickAndUpload()}>⬆</button>
+        <button type="button" className="icon-button" aria-label={t.transfer.download} title={t.transfer.download} disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>⬇</button>
+        <label className="files__follow" title={f.followTerminal}>
           <input
             type="checkbox"
             checked={follow}
@@ -365,10 +368,6 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
           />
           {f.followTerminal}
         </label>
-        <button type="button" onClick={() => void pickAndUpload()}>{t.transfer.upload}</button>
-        <button type="button" disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>
-          {t.transfer.download}
-        </button>
       </div>
       {path && (
         <nav aria-label={f.pathLabel} className="files__crumbs">

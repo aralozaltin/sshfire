@@ -196,6 +196,7 @@ export const en: Messages = {
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
   localTerminal: { button: "Local terminal", title: "Local" },
+  chrome: { settings: "Settings", more: "More actions", add: "Add server" },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

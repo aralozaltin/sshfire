@@ -27,6 +27,7 @@ import type { TermLike } from "./terminal/shellSession";
 import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, type TunnelSpec } from "./types";
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
+import { SettingsMenu } from "./components/SettingsMenu";
 import { Splitter } from "./components/Splitter";
 import { loadSidebarWidth, saveSidebarWidth } from "./layout/sidebarWidth";
 import "./App.css";
@@ -91,6 +92,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
   const hub = useRef(new MultiExecHub()).current;
+  const autoOpened = useRef(new Set<string>());
+  const tabsRef = useRef<OpenTab[]>([]);
   const [tabMenu, setTabMenu] = useState<{ key: string; x: number; y: number } | null>(null);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [layout, setLayout] = useState<TerminalLayout>("single");
@@ -203,7 +206,14 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     setActiveKey(fresh.key);
   }
 
+  tabsRef.current = tabs;
+
   function setStatus(key: string, status: TabInfo["status"]) {
+    if (status === "open" && !autoOpened.current.has(key)) {
+      autoOpened.current.add(key);
+      const tab = tabsRef.current.find((x) => x.key === key);
+      if (tab && tab.sessionId !== LOCAL_SESSION_ID) setSidebarTab("files");
+    }
     setTabs((t) => t.map((x) => (x.key === key && x.status !== status ? { ...x, status } : x)));
   }
 
@@ -440,8 +450,10 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
         />
         <TransferPanel transfers={transfers} onCancel={(id) => void api.transferCancel(id)} onDismiss={dismiss} />
         <div className="app__footer">
-          <ThemeToggle mode={themeMode} onChange={changeTheme} />
-          <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
+          <SettingsMenu>
+            <ThemeToggle mode={themeMode} onChange={changeTheme} />
+            <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
+          </SettingsMenu>
         </div>
       </aside>
       <Splitter width={sidebarWidth} onChange={resizeSidebar} />
