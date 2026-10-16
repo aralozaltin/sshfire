@@ -232,3 +232,20 @@ async fn server_side_exit_emits_closed_event() {
         }
     }
 }
+
+#[tokio::test]
+async fn writer_handle_writes_while_another_task_reads() {
+    if !server_up() { return; }
+    let dir = tempfile::tempdir().unwrap();
+    let secrets = MemorySecrets::default();
+    secrets.set("s1", &Secret::new(PASSWORD)).unwrap();
+    let conn = SshConnection::connect(&session(Auth::Password), &secrets, hosts(&dir), TestPrompt::new(HostKeyDecision::Trust))
+        .await
+        .unwrap();
+    let mut shell = conn.open_shell(80, 24).await.unwrap();
+    let writer = shell.writer();
+    let reader = tokio::spawn(async move { read_until(&mut shell, "writer-ok").await });
+    writer.write(b"echo writer-$((1+1))ok | sed s/2//\n").await.unwrap();
+    let out = reader.await.unwrap();
+    assert!(out.contains("writer-ok"));
+}

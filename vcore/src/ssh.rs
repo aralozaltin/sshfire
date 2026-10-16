@@ -42,12 +42,12 @@ enum Cmd {
     Resize(u16, u16),
 }
 
-pub struct ShellChannel {
+#[derive(Clone)]
+pub struct ShellWriter {
     cmds: mpsc::Sender<Cmd>,
-    events: mpsc::Receiver<ShellEvent>,
 }
 
-impl ShellChannel {
+impl ShellWriter {
     pub async fn write(&self, data: &[u8]) -> Result<(), SshError> {
         self.send(Cmd::Write(data.to_vec())).await
     }
@@ -56,12 +56,31 @@ impl ShellChannel {
         self.send(Cmd::Resize(cols, rows)).await
     }
 
-    pub async fn read(&mut self) -> Option<ShellEvent> {
-        self.events.recv().await
-    }
-
     async fn send(&self, cmd: Cmd) -> Result<(), SshError> {
         self.cmds.send(cmd).await.map_err(|_| SshError::Other("kabuk kapalı".into()))
+    }
+}
+
+pub struct ShellChannel {
+    writer: ShellWriter,
+    events: mpsc::Receiver<ShellEvent>,
+}
+
+impl ShellChannel {
+    pub fn writer(&self) -> ShellWriter {
+        self.writer.clone()
+    }
+
+    pub async fn write(&self, data: &[u8]) -> Result<(), SshError> {
+        self.writer.write(data).await
+    }
+
+    pub async fn resize(&self, cols: u16, rows: u16) -> Result<(), SshError> {
+        self.writer.resize(cols, rows).await
+    }
+
+    pub async fn read(&mut self) -> Option<ShellEvent> {
+        self.events.recv().await
     }
 }
 
@@ -213,6 +232,6 @@ impl SshConnection {
             }
             let _ = ev_tx.send(ShellEvent::Closed { reason }).await;
         });
-        Ok(ShellChannel { cmds: cmd_tx, events: ev_rx })
+        Ok(ShellChannel { writer: ShellWriter { cmds: cmd_tx }, events: ev_rx })
     }
 }

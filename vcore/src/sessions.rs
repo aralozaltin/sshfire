@@ -154,6 +154,8 @@ impl SessionStore {
     }
 }
 
+impl std::error::Error for StoreError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

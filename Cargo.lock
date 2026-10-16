@@ -4403,10 +4403,13 @@ dependencies = [
 name = "ssh-istemci"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "tokio",
+ "uuid",
  "vcore",
 ]
 

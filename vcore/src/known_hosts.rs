@@ -88,6 +88,8 @@ impl KnownHosts {
     }
 }
 
+impl std::error::Error for KnownHostsError {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
