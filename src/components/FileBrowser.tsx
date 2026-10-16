@@ -4,6 +4,7 @@ import { baseName, breadcrumbs, joinPath, localBaseName, parentPath, planPaste, 
 import { formatMode, formatModified, formatSize } from "../files/format";
 import type { FileEntry, FilesApi } from "../files/types";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
+import { loadColumns, resizeColumn, saveColumns } from "../files/columns";
 import { FileInfoDialog } from "./FileInfoDialog";
 import { PromptDialog } from "./PromptDialog";
 
@@ -35,6 +36,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
   const requestId = useRef(0);
+  const [columns, setColumns] = useState<number[]>(loadColumns);
+  const columnDrag = useRef<{ index: number; startX: number; startWidths: number[] } | null>(null);
   const live = useRef({ path, entries, load: (_p: string | null) => Promise.resolve() });
 
   const load = useCallback(
@@ -63,6 +66,35 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   );
 
   live.current = { path, entries, load };
+
+  useEffect(() => {
+    const move = (e: globalThis.MouseEvent) => {
+      const d = columnDrag.current;
+      if (d) setColumns(resizeColumn(d.startWidths, d.index, e.clientX - d.startX));
+    };
+    const up = () => {
+      if (!columnDrag.current) return;
+      columnDrag.current = null;
+      document.body.classList.remove("is-resizing");
+      setColumns((cur) => {
+        saveColumns(cur);
+        return cur;
+      });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+  }, []);
+
+  function startColumnDrag(index: number, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    columnDrag.current = { index, startX: e.clientX, startWidths: columns };
+    document.body.classList.add("is-resizing");
+  }
 
   async function uploadPaths(paths: string[]) {
     const { path: dir, entries: current } = live.current;
@@ -254,6 +286,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
       <table
         aria-label={f.tableLabel}
         className="files__table"
+        style={{ width: `${columns.reduce((a, b) => a + b, 0)}px` }}
         tabIndex={0}
         onKeyDown={onKeyDown}
         onContextMenu={(e) => {
@@ -261,12 +294,26 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
           setMenu({ x: e.clientX, y: e.clientY, onRow: false });
         }}
       >
+        <colgroup>
+          {columns.map((w, i) => (
+            <col key={i} style={{ width: `${w}px` }} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
-            <th scope="col">{f.colName}</th>
-            <th scope="col">{f.colSize}</th>
-            <th scope="col">{f.colModified}</th>
-            <th scope="col">{f.colPermissions}</th>
+            {[f.colName, f.colSize, f.colModified, f.colPermissions].map((label, i) => (
+              <th key={label} scope="col" aria-label={label}>
+                {label}
+                <span
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t.layout.columnResize(label)}
+                  className="col-resizer"
+                  onMouseDown={(e) => startColumnDrag(i, e)}
+                  onDoubleClick={() => setColumns((cur) => { const next = resizeColumn(cur, i, [280, 80, 150, 100][i] - cur[i]); saveColumns(next); return next; })}
+                />
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>

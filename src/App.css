@@ -115,10 +115,10 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .files__crumbs button { border: 0; background: none; padding: 1px 4px; }
 .files__crumbs button + button::before { content: "› "; color: var(--muted); }
 .files__hint { color: var(--muted); padding: 12px 10px; margin: 0; }
-.files__table { width: 100%; border-collapse: collapse; table-layout: fixed; outline: none; }
+.files { overflow: auto; }
+.files__table { min-width: 100%; border-collapse: collapse; table-layout: fixed; outline: none; }
 .files__table:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
-.files__table th { position: sticky; top: 0; text-align: left; font-weight: 600; padding: 2px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
-.files__table th:nth-child(1) { width: 46%; }
+.files__table th { overflow: hidden; top: 0; text-align: left; font-weight: 600; padding: 2px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
 .files__table td { padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; user-select: none; }
 .files__table tbody tr:hover { background: var(--select); }
 .files__table tr.is-selected { background: var(--select); outline: 1px solid var(--accent); outline-offset: -1px; }
@@ -151,3 +151,7 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .splitter { cursor: col-resize; background: var(--line); width: 5px; }
 .splitter:hover, .splitter:focus-visible, body.is-resizing .splitter { background: var(--accent); outline: none; }
 body.is-resizing { cursor: col-resize; user-select: none; }
+
+.files__table th { position: sticky; }
+.col-resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 5px; cursor: col-resize; }
+.col-resizer:hover { background: var(--accent); }

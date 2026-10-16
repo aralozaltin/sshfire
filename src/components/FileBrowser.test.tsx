@@ -269,3 +269,16 @@ test("a finished upload refreshes the listing", async () => {
   await act(async () => hooks.transfer({ transferId: "z", direction: "upload", name: "x", done: 1, total: 1, state: "done" }));
   expect(api.sftpList.mock.calls.length).toBe(before + 1);
 });
+
+test("dragging a column edge resizes that column and remembers it", async () => {
+  const { container } = setup();
+  await screen.findByText("rapor.txt");
+  const cols = () => [...container.querySelectorAll("col")].map((c) => (c as HTMLElement).style.width);
+  expect(cols()).toEqual(["280px", "80px", "150px", "100px"]);
+  const handle = screen.getByRole("separator", { name: "Boyut sütun genişliği" });
+  fireEvent.mouseDown(handle, { clientX: 400 });
+  fireEvent.mouseMove(window, { clientX: 440 });
+  fireEvent.mouseUp(window);
+  expect(cols()).toEqual(["280px", "120px", "150px", "100px"]);
+  expect(JSON.parse(localStorage.getItem("ssh-istemci.fileColumns")!)).toEqual([280, 120, 150, 100]);
+});
