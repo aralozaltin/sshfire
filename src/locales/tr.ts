@@ -89,6 +89,17 @@ export const tr = {
     typeLink: "Bağlantı",
     close: "Kapat",
   },
+  transfer: {
+    upload: "Yükle",
+    download: "İndir",
+    cancel: "İptal et",
+    uploading: "Yükleniyor",
+    downloading: "İndiriliyor",
+    done: "Tamamlandı",
+    cancelled: "İptal edildi",
+    percent: (n: number) => `%${n}`,
+    panelLabel: "Aktarımlar",
+  },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

@@ -10,6 +10,8 @@ export interface FileEntry {
   group: string | null;
 }
 
+import type { TransferEvent } from "./transfers";
+
 export interface FilesApi {
   sftpHome(tabId: string): Promise<string>;
   sftpList(tabId: string, path: string): Promise<FileEntry[]>;
@@ -17,4 +19,9 @@ export interface FilesApi {
   sftpRename(tabId: string, from: string, to: string): Promise<void>;
   sftpRemove(tabId: string, path: string, recursive: boolean): Promise<void>;
   sftpCopy(tabId: string, from: string, to: string): Promise<void>;
+  sftpUpload(tabId: string, items: { local: string; remote: string }[]): Promise<string[]>;
+  sftpDownload(tabId: string, remotePaths: string[]): Promise<string[]>;
+  pickFiles(): Promise<string[]>;
+  onFilesDropped(cb: (paths: string[]) => void): Promise<() => void>;
+  onTransferProgress(cb: (e: TransferEvent) => void): Promise<() => void>;
 }

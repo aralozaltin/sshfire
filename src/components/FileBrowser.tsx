@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { errorText, useT } from "../i18n";
-import { baseName, breadcrumbs, joinPath, parentPath, planPaste, type ClipboardItem } from "../files/fileOps";
+import { baseName, breadcrumbs, joinPath, localBaseName, parentPath, planPaste, uniqueName, type ClipboardItem } from "../files/fileOps";
 import { formatMode, formatModified, formatSize } from "../files/format";
 import type { FileEntry, FilesApi } from "../files/types";
 import { ContextMenu, type MenuItem } from "./ContextMenu";
@@ -35,6 +35,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [confirming, setConfirming] = useState<FileEntry[] | null>(null);
   const [info, setInfo] = useState<FileEntry | null>(null);
   const requestId = useRef(0);
+  const live = useRef({ path, entries, load: (_p: string | null) => Promise.resolve() });
 
   const load = useCallback(
     async (target: string | null) => {
@@ -60,6 +61,58 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [tabId, api],
   );
+
+  live.current = { path, entries, load };
+
+  async function uploadPaths(paths: string[]) {
+    const { path: dir, entries: current } = live.current;
+    if (!tabId || !dir || paths.length === 0) return;
+    const taken = new Set(current.map((e) => e.name));
+    const items = paths.map((local) => {
+      const name = uniqueName(localBaseName(local), taken, f.copySuffix);
+      taken.add(name);
+      return { local, remote: joinPath(dir, name) };
+    });
+    try {
+      await api.sftpUpload(tabId, items);
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  async function pickAndUpload() {
+    try {
+      await uploadPaths(await api.pickFiles());
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  async function downloadSelection(items: FileEntry[]) {
+    if (!tabId || items.length === 0) return;
+    try {
+      await api.sftpDownload(tabId, items.map((i) => i.path));
+    } catch (e) {
+      setError(e);
+    }
+  }
+
+  useEffect(() => {
+    if (!tabId) return;
+    let cancelled = false;
+    const offs: (() => void)[] = [];
+    void api.onFilesDropped((paths) => void uploadPaths(paths)).then((off) => (cancelled ? off() : offs.push(off)));
+    void api
+      .onTransferProgress((e) => {
+        if (e.direction === "upload" && e.state === "done") void live.current.load(live.current.path);
+      })
+      .then((off) => (cancelled ? off() : offs.push(off)));
+    return () => {
+      cancelled = true;
+      offs.forEach((off) => off());
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabId, api]);
 
   useEffect(() => {
     if (tabId) void load(initialPath ?? null);
@@ -166,6 +219,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.copy, onClick: () => copySelection("copy") },
         { label: f.cut, onClick: () => copySelection("cut") },
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
+        { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
         { label: f.rename, onClick: () => selectedEntries[0] && setPrompt({ kind: "rename", entry: selectedEntries[0] }), disabled: selectedEntries.length !== 1 },
         { label: t.remove, onClick: () => setConfirming(selectedEntries) },
         { label: f.info, onClick: () => selectedEntries[0] && setInfo(selectedEntries[0]), disabled: selectedEntries.length !== 1 },
@@ -182,6 +236,10 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         <button type="button" onClick={() => path && void load(parentPath(path))} disabled={!path || path === "/"}>{f.up}</button>
         <button type="button" onClick={() => void load(path)}>{f.refresh}</button>
         <button type="button" onClick={() => setPrompt({ kind: "mkdir" })}>{f.newFolder}</button>
+        <button type="button" onClick={() => void pickAndUpload()}>{t.transfer.upload}</button>
+        <button type="button" disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>
+          {t.transfer.download}
+        </button>
       </div>
       {path && (
         <nav aria-label={f.pathLabel} className="files__crumbs">

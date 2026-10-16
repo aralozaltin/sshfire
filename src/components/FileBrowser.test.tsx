@@ -1,13 +1,16 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FileBrowser } from "./FileBrowser";
 import type { ClipboardItem } from "../files/fileOps";
 import type { FileEntry, FilesApi } from "../files/types";
+import type { TransferEvent } from "../files/transfers";
 
 const file = (name: string, dir = "/home/u", over: Partial<FileEntry> = {}): FileEntry => ({
   name, path: `${dir}/${name}`, isDir: false, isSymlink: false, size: 1536, modified: 1792142400, permissions: 0o644, owner: "u", group: "g", ...over,
 });
 const folder = (name: string, dir = "/home/u") => file(name, dir, { isDir: true, size: 4096, permissions: 0o755 });
+
+const hooks: { drop: (p: string[]) => void; transfer: (e: TransferEvent) => void } = { drop: () => {}, transfer: () => {} };
 
 function fakeApi(listing: Record<string, FileEntry[]> = {}) {
   const lists: Record<string, FileEntry[]> = {
@@ -25,6 +28,11 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
     sftpCopy: vi.fn(async () => {}),
+    sftpUpload: vi.fn(async () => ["x"]),
+    sftpDownload: vi.fn(async () => ["y"]),
+    pickFiles: vi.fn(async () => [] as string[]),
+    onFilesDropped: vi.fn(async (cb: (p: string[]) => void) => { hooks.drop = cb; return () => {}; }),
+    onTransferProgress: vi.fn(async (cb: (e: TransferEvent) => void) => { hooks.transfer = cb; return () => {}; }),
   } satisfies FilesApi;
 }
 
@@ -203,4 +211,61 @@ test("an empty folder says so", async () => {
   const api = fakeApi({ "/home/u": [] });
   setup({ api });
   expect(await screen.findByText("Klasör boş")).toBeInTheDocument();
+});
+
+test("the upload button picks files and uploads them with unique remote names", async () => {
+  const api = fakeApi();
+  api.pickFiles = vi.fn(async () => ["/Users/u/yeni.txt", "/Users/u/rapor.txt"]);
+  setup({ api });
+  await screen.findByText("rapor.txt");
+  await userEvent.click(screen.getByRole("button", { name: "Yükle" }));
+  expect(api.sftpUpload).toHaveBeenCalledWith("t1", [
+    { local: "/Users/u/yeni.txt", remote: "/home/u/yeni.txt" },
+    { local: "/Users/u/rapor.txt", remote: "/home/u/rapor (kopya).txt" },
+  ]);
+});
+
+test("cancelling the file picker uploads nothing", async () => {
+  const { api } = setup();
+  await screen.findByText("rapor.txt");
+  await userEvent.click(screen.getByRole("button", { name: "Yükle" }));
+  expect(api.sftpUpload).not.toHaveBeenCalled();
+});
+
+test("files dropped from the OS are uploaded into the current directory", async () => {
+  const { api } = setup();
+  await screen.findByText("rapor.txt");
+  await vi.waitFor(() => expect(api.onFilesDropped).toHaveBeenCalled());
+  await act(async () => hooks.drop(["C:\\Users\\u\\foto.png", "/Users/u/klasor/"]));
+  expect(api.sftpUpload).toHaveBeenCalledWith("t1", [
+    { local: "C:\\Users\\u\\foto.png", remote: "/home/u/foto.png" },
+    { local: "/Users/u/klasor/", remote: "/home/u/klasor" },
+  ]);
+});
+
+test("the download button downloads the selected items and is disabled without selection", async () => {
+  const { api } = setup();
+  await screen.findByText("rapor.txt");
+  const button = screen.getByRole("button", { name: "İndir" });
+  expect(button).toBeDisabled();
+  await userEvent.click(row("rapor.txt"));
+  await userEvent.click(button);
+  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"]);
+});
+
+test("the context menu offers download", async () => {
+  const { api } = setup();
+  await userEvent.click(await screen.findByText("docs"));
+  fireEvent.contextMenu(row("docs"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "İndir" }));
+  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/docs"]);
+});
+
+test("a finished upload refreshes the listing", async () => {
+  const { api } = setup();
+  await screen.findByText("rapor.txt");
+  await vi.waitFor(() => expect(api.onTransferProgress).toHaveBeenCalled());
+  const before = api.sftpList.mock.calls.length;
+  await act(async () => hooks.transfer({ transferId: "z", direction: "upload", name: "x", done: 1, total: 1, state: "done" }));
+  expect(api.sftpList.mock.calls.length).toBe(before + 1);
 });

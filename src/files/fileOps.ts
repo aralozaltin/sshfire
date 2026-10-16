@@ -29,6 +29,11 @@ export function baseName(path: string): string {
   return trimmed.slice(trimmed.lastIndexOf("/") + 1) || "/";
 }
 
+export function localBaseName(path: string): string {
+  const trimmed = path.replace(/[\\/]+$/, "");
+  return trimmed.slice(Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\")) + 1);
+}
+
 export function breadcrumbs(path: string): { name: string; path: string }[] {
   const out = [{ name: "/", path: "/" }];
   let acc = "";

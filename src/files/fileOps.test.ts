@@ -1,4 +1,4 @@
-import { breadcrumbs, joinPath, parentPath, planPaste, uniqueName, type ClipboardItem } from "./fileOps";
+import { breadcrumbs, joinPath, localBaseName, parentPath, planPaste, uniqueName, type ClipboardItem } from "./fileOps";
 
 const label = (n: number) => (n === 1 ? "kopya" : `kopya ${n}`);
 
@@ -68,4 +68,11 @@ test("a folder cannot be pasted into itself or its own subfolder", () => {
 
 test("pasting across connections is reported as unsupported", () => {
   expect(planPaste(clip("copy", [["/a/x", false]]), "/h", new Set(), false, label)).toEqual([{ op: "unsupported" }]);
+});
+
+test("localBaseName handles unix and windows paths and trailing separators", () => {
+  expect(localBaseName("/Users/u/foto.png")).toBe("foto.png");
+  expect(localBaseName("C:\\Users\\u\\foto.png")).toBe("foto.png");
+  expect(localBaseName("/Users/u/klasor/")).toBe("klasor");
+  expect(localBaseName("\\\\sunucu\\paylasim\\x.txt")).toBe("x.txt");
 });

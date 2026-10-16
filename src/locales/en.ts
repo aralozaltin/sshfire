@@ -91,6 +91,17 @@ export const en: Messages = {
     typeLink: "Link",
     close: "Close",
   },
+  transfer: {
+    upload: "Upload",
+    download: "Download",
+    cancel: "Cancel",
+    uploading: "Uploading",
+    downloading: "Downloading",
+    done: "Done",
+    cancelled: "Cancelled",
+    percent: (n: number) => `${n}%`,
+    panelLabel: "Transfers",
+  },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

@@ -1,5 +1,8 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { NewSession, Session } from "./types";
 
@@ -37,6 +40,26 @@ export const sftpRename = (tabId: string, from: string, to: string) => invoke<vo
 export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
   invoke<void>("sftp_remove", { tabId, path, recursive });
 export const sftpCopy = (tabId: string, from: string, to: string) => invoke<void>("sftp_copy", { tabId, from, to });
+export const sftpUpload = (tabId: string, items: { local: string; remote: string }[]) =>
+  invoke<string[]>("sftp_upload", { tabId, items });
+export const sftpDownload = (tabId: string, remotePaths: string[]) =>
+  invoke<string[]>("sftp_download", { tabId, remotePaths, localDir: null });
+export const transferCancel = (transferId: string) => invoke<boolean>("transfer_cancel", { transferId });
+
+export async function pickFiles(): Promise<string[]> {
+  const picked = await openDialog({ multiple: true, directory: false });
+  if (picked == null) return [];
+  return Array.isArray(picked) ? picked : [picked];
+}
+
+export const onFilesDropped = async (cb: (paths: string[]) => void): Promise<() => void> =>
+  getCurrentWebview().onDragDropEvent((e) => {
+    if (e.payload.type === "drop") cb(e.payload.paths);
+  });
+
+export const onTransferProgress = async (cb: (e: TransferEvent) => void): Promise<() => void> =>
+  listen<TransferEvent>("transfer-progress", (e) => cb(e.payload));
+
 export const answerHostKey = (requestId: string, trust: boolean) =>
   invoke<void>("hostkey_answer", { requestId, trust });
 
@@ -73,6 +96,12 @@ export const realApi = {
   sftpRename,
   sftpRemove,
   sftpCopy,
+  sftpUpload,
+  sftpDownload,
+  transferCancel,
+  pickFiles,
+  onFilesDropped,
+  onTransferProgress,
   answerHostKey,
   onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
   onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,
