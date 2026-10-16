@@ -32,10 +32,10 @@ test("storage failures never throw", () => {
   expect(() => saveLastCheck(1)).not.toThrow();
 });
 
-test("a check is due when automatic checking is on and the last one was more than a day ago or never", () => {
+test("a check is due when automatic checking is on and the last one was over an hour ago or never", () => {
   expect(shouldCheckNow(true, null, 1000)).toBe(true);
-  expect(shouldCheckNow(true, 0, 25 * HOUR)).toBe(true);
-  expect(shouldCheckNow(true, 0, 23 * HOUR)).toBe(false);
+  expect(shouldCheckNow(true, 0, 1.5 * HOUR)).toBe(true);
+  expect(shouldCheckNow(true, 0, 0.5 * HOUR)).toBe(false);
   expect(shouldCheckNow(false, null, 1000)).toBe(false);
   expect(shouldCheckNow(true, 5000, 1000)).toBe(true);
 });
