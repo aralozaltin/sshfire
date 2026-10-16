@@ -77,8 +77,8 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .server-list__connect:hover { background: none; }
 .server-list__name { font-weight: 600; }
 .server-list__host { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.server-list li > button:not(.server-list__connect) { visibility: hidden; border: 0; background: none; padding: 0 5px; }
-.server-list li:hover > button:not(.server-list__connect) { visibility: visible; }
+.server-list__group li > button:not(.server-list__connect) { visibility: hidden; border: 0; background: none; padding: 0 5px; }
+.server-list__group li:hover > button:not(.server-list__connect) { visibility: visible; }
 .server-list__none, .server-list--empty { padding: 16px 10px; color: var(--muted); }
 .server-list--empty h2 { font-size: 13px; margin: 0 0 4px; color: var(--fg); }
 
@@ -122,7 +122,7 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .files__table td { padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; user-select: none; }
 .files__table tbody tr:hover { background: var(--select); }
 .files__table tr.is-selected { background: var(--select); outline: 1px solid var(--accent); outline-offset: -1px; }
-.context-menu { position: fixed; z-index: 20; list-style: none; margin: 0; padding: 2px; min-width: 160px; background: var(--surface); border: 1px solid var(--line); box-shadow: 2px 2px 6px rgba(0,0,0,.3); }
+.context-menu { position: fixed; color: var(--fg); z-index: 20; list-style: none; margin: 0; padding: 2px; min-width: 160px; background: var(--surface); border: 1px solid var(--line); box-shadow: 2px 2px 6px rgba(0,0,0,.3); }
 .context-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 3px 10px; }
 .context-menu button:hover:not(:disabled) { background: var(--select); }
 .context-menu button:disabled { color: var(--muted); }
