@@ -24,22 +24,25 @@ export function TunnelPanel({ tunnels, running, connected, hasSession, onStart, 
   const [destPort, setDestPort] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
 
-  const describe = (s: TunnelSpec) => (s.kind === "local" ? tn.describeLocal(s.listen_port, s.dest_host, s.dest_port) : tn.describeDynamic(s.listen_port));
+  const describe = (s: TunnelSpec) =>
+    s.kind === "local" ? tn.describeLocal(s.listen_port, s.dest_host, s.dest_port)
+    : s.kind === "remote" ? tn.describeRemote(s.listen_port, s.dest_host, s.dest_port)
+    : tn.describeDynamic(s.listen_port);
   const runningFor = (s: TunnelSpec) => running.find((r) => same(r.spec, s));
 
   function add() {
     const next: string[] = [];
     if (!validPort(listen)) next.push(tn.errPort);
-    if (kind === "local") {
+    if (kind !== "dynamic") {
       if (!destHost.trim()) next.push(tn.errDestHost);
       if (!validPort(destPort)) next.push(tn.errDestPort);
     }
     setErrors(next);
     if (next.length > 0) return;
     const spec: TunnelSpec =
-      kind === "local"
-        ? { kind: "local", listen_port: Number(listen), dest_host: destHost.trim(), dest_port: Number(destPort) }
-        : { kind: "dynamic", listen_port: Number(listen) };
+      kind === "dynamic"
+        ? { kind: "dynamic", listen_port: Number(listen) }
+        : { kind, listen_port: Number(listen), dest_host: destHost.trim(), dest_port: Number(destPort) };
     onChange([...tunnels, spec]);
     setListen("");
     setDestHost("");
@@ -86,13 +89,14 @@ export function TunnelPanel({ tunnels, running, connected, hasSession, onStart, 
             <select value={kind} onChange={(e) => setKind(e.target.value as TunnelSpec["kind"])}>
               <option value="local">{tn.kindLocal}</option>
               <option value="dynamic">{tn.kindDynamic}</option>
+              <option value="remote">{tn.kindRemote}</option>
             </select>
           </label>
           <label>
-            {tn.listenPort}
+            {kind === "remote" ? tn.remotePort : tn.listenPort}
             <input inputMode="numeric" value={listen} onChange={(e) => setListen(e.target.value)} />
           </label>
-          {kind === "local" && (
+          {kind !== "dynamic" && (
             <>
               <label>
                 {tn.destHost}

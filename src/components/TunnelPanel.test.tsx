@@ -80,3 +80,16 @@ test("a SOCKS tunnel only needs a local port", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Ekle" }));
   expect(props.onChange).toHaveBeenCalledWith([{ kind: "dynamic", listen_port: 1081 }]);
 });
+
+test("a remote tunnel is described from the server's point of view and can be added", async () => {
+  const remote: TunnelSpec = { kind: "remote", listen_port: 9000, dest_host: "localhost", dest_port: 3000 };
+  const props = setup({ tunnels: [remote] });
+  expect(screen.getByText("sunucu:9000 → localhost:3000")).toBeInTheDocument();
+  await userEvent.selectOptions(screen.getByLabelText("Tür"), "remote");
+  expect(screen.getByLabelText("Sunucu portu")).toBeInTheDocument();
+  await userEvent.type(screen.getByLabelText("Sunucu portu"), "9100");
+  await userEvent.type(screen.getByLabelText("Hedef adres"), "127.0.0.1");
+  await userEvent.type(screen.getByLabelText("Hedef port"), "8000");
+  await userEvent.click(screen.getByRole("button", { name: "Ekle" }));
+  expect(props.onChange).toHaveBeenCalledWith([remote, { kind: "remote", listen_port: 9100, dest_host: "127.0.0.1", dest_port: 8000 }]);
+});

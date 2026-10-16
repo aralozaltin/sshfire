@@ -5,6 +5,8 @@ use async_trait::async_trait;
 use russh::client;
 use russh::keys::{HashAlg, PrivateKeyWithHashAlg, PublicKeyOrCertificate};
 use russh::ChannelMsg;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -147,7 +149,11 @@ impl ShellChannel {
     }
 }
 
+/// Sunucudaki uzak tünel portu -> bu bilgisayardaki hedef (host, port) ve bağlantı sayacı.
+type Forwards = Arc<Mutex<HashMap<u32, (String, u16, Arc<AtomicU64>)>>>;
+
 struct Handler {
+    forwards: Forwards,
     host: String,
     port: u16,
     hosts: Arc<Mutex<KnownHosts>>,
@@ -164,6 +170,30 @@ impl Handler {
 
 impl client::Handler for Handler {
     type Error = russh::Error;
+
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: russh::Channel<client::Msg>,
+        _connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        reply: client::ChannelOpenHandle,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        let target = self.forwards.lock().unwrap().get(&connected_port).cloned();
+        // Kayıtlı olmayan porta gelen kanal, `reply` düşerken reddedilir.
+        let Some((host, port, counter)) = target else { return Ok(()) };
+        reply.accept().await;
+        counter.fetch_add(1, Ordering::SeqCst);
+        tokio::spawn(async move {
+            if let Ok(mut local) = tokio::net::TcpStream::connect((host.as_str(), port)).await {
+                let mut remote = channel.into_stream();
+                let _ = tokio::io::copy_bidirectional(&mut local, &mut remote).await;
+            }
+        });
+        Ok(())
+    }
 
     async fn check_server_key(&mut self, key: &PublicKeyOrCertificate) -> Result<bool, Self::Error> {
         let PublicKeyOrCertificate::PublicKey { key, .. } = key else {
@@ -194,6 +224,7 @@ impl client::Handler for Handler {
 
 pub struct SshConnection {
     handle: client::Handle<Handler>,
+    forwards: Forwards,
     // Atlama sunucusu bağlantısı; bu bağlantı yaşadığı sürece açık kalmalı.
     _jump: Option<Arc<SshConnection>>,
 }
@@ -207,7 +238,9 @@ impl SshConnection {
     ) -> Result<SshConnection, SshError> {
         let auth_prompt = prompt.clone();
         let failure = Arc::new(Mutex::new(None));
+        let forwards = Forwards::default();
         let handler = Handler {
+            forwards: forwards.clone(),
             host: session.host.clone(),
             port: session.port,
             hosts,
@@ -228,7 +261,7 @@ impl SshConnection {
             }
         };
         Self::authenticate(&mut handle, session, secrets, &*auth_prompt).await?;
-        Ok(SshConnection { handle, _jump: None })
+        Ok(SshConnection { handle, forwards, _jump: None })
     }
 
     async fn authenticate(
@@ -333,7 +366,8 @@ impl SshConnection {
             .map_err(|e| SshError::Unreachable(e.to_string()))?;
         let auth_prompt = prompt.clone();
         let failure = Arc::new(Mutex::new(None));
-        let handler = Handler { host: session.host.clone(), port: session.port, hosts, prompt, failure: failure.clone() };
+        let forwards = Forwards::default();
+        let handler = Handler { forwards: forwards.clone(), host: session.host.clone(), port: session.port, hosts, prompt, failure: failure.clone() };
         let config = Arc::new(client::Config {
             keepalive_interval: Some(Duration::from_secs(30)),
             keepalive_max: 3,
@@ -347,7 +381,7 @@ impl SshConnection {
             }
         };
         Self::authenticate(&mut handle, session, secrets, &*auth_prompt).await?;
-        Ok(SshConnection { handle, _jump: Some(jump.clone()) })
+        Ok(SshConnection { handle, forwards, _jump: Some(jump.clone()) })
     }
 
     pub async fn exec(&self, command: &str) -> Result<String, SshError> {
@@ -405,7 +439,9 @@ impl SshConnection {
 
     pub async fn start_tunnel(self: &Arc<Self>, spec: &crate::tunnel::TunnelSpec) -> Result<crate::tunnel::TunnelHandle, crate::tunnel::TunnelError> {
         use crate::tunnel::{TunnelError, TunnelHandle};
-        use std::sync::atomic::{AtomicU64, Ordering};
+        if let crate::tunnel::TunnelSpec::Remote { listen_port, dest_host, dest_port } = spec {
+            return self.start_remote_tunnel(*listen_port, dest_host, *dest_port).await;
+        }
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", spec.listen_port())).await.map_err(|e| {
             if e.kind() == std::io::ErrorKind::AddrInUse {
                 TunnelError::PortInUse
@@ -428,6 +464,34 @@ impl SshConnection {
         Ok(TunnelHandle::new(task, local_port, connections))
     }
 
+    async fn start_remote_tunnel(self: &Arc<Self>, listen_port: u16, dest_host: &str, dest_port: u16) -> Result<crate::tunnel::TunnelHandle, crate::tunnel::TunnelError> {
+        use crate::tunnel::{TunnelError, TunnelHandle};
+        let bound = self
+            .handle
+            .tcpip_forward("127.0.0.1", u32::from(listen_port))
+            .await
+            .map_err(|e| match e {
+                russh::Error::RequestDenied => TunnelError::Other("the server refused the remote forward (port in use or forwarding disabled)".into()),
+                other => TunnelError::Other(other.to_string()),
+            })?;
+        // İstenen port 0 değilse sunucu 0 döndürür.
+        let bound = if bound == 0 { u32::from(listen_port) } else { bound };
+        let connections = Arc::new(AtomicU64::new(0));
+        self.forwards.lock().unwrap().insert(bound, (dest_host.to_string(), dest_port, connections.clone()));
+        let (conn, forwards) = (self.clone(), self.forwards.clone());
+        let task = tokio::spawn(std::future::pending::<()>());
+        let handle = TunnelHandle::new(task, bound as u16, connections).with_cleanup(move || {
+            forwards.lock().unwrap().remove(&bound);
+            let conn = conn.clone();
+            if let Ok(rt) = tokio::runtime::Handle::try_current() {
+                rt.spawn(async move {
+                    let _ = conn.handle.cancel_tcpip_forward("127.0.0.1", bound).await;
+                });
+            }
+        });
+        Ok(handle)
+    }
+
     async fn open_direct(&self, host: &str, port: u16, peer: std::net::SocketAddr) -> Result<russh::ChannelStream<client::Msg>, russh::Error> {
         let channel = self
             .handle
@@ -444,6 +508,7 @@ impl SshConnection {
                 let mut stream = self.open_direct(dest_host, *dest_port, peer).await.map_err(std::io::Error::other)?;
                 tokio::io::copy_bidirectional(&mut socket, &mut stream).await?;
             }
+            TunnelSpec::Remote { .. } => {}
             TunnelSpec::Dynamic { .. } => {
                 let mut buf: Vec<u8> = Vec::new();
                 let mut chunk = [0u8; 256];

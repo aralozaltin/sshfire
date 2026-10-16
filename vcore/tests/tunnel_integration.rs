@@ -116,3 +116,26 @@ async fn a_busy_port_is_reported_and_stopping_frees_it() {
     tokio::time::sleep(Duration::from_millis(200)).await;
     assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_ok(), "port should be free after stop");
 }
+
+#[tokio::test]
+async fn a_remote_tunnel_lets_the_server_reach_a_service_on_this_machine() {
+    if !server_up() { return; }
+    let (_d, conn) = connected().await;
+    let local = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let local_port = local.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        while let Ok((mut s, _)) = local.accept().await {
+            let _ = s.write_all(b"PONG").await;
+        }
+    });
+    let tunnel = conn.start_tunnel(&TunnelSpec::Remote { listen_port: 0, dest_host: "127.0.0.1".into(), dest_port: local_port }).await.unwrap();
+    assert_ne!(tunnel.local_port, 0, "the port chosen by the server is reported");
+    let out = conn.exec(&format!("nc -w 3 127.0.0.1 {}", tunnel.local_port)).await.unwrap();
+    assert_eq!(out, "PONG");
+    assert!(tunnel.connections.load(Ordering::SeqCst) >= 1);
+    let port = tunnel.local_port;
+    drop(tunnel);
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let after = conn.exec(&format!("nc -w 2 127.0.0.1 {port} </dev/null >/dev/null 2>&1 && echo open || echo closed")).await.unwrap();
+    assert_eq!(after.trim(), "closed", "dropping the tunnel cancels the server-side listener");
+}

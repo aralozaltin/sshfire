@@ -9,12 +9,14 @@ pub enum TunnelSpec {
     Local { listen_port: u16, dest_host: String, dest_port: u16 },
     /// ssh -D: yerel porta SOCKS5 vekil sunucusu açar.
     Dynamic { listen_port: u16 },
+    /// ssh -R: sunucudaki porta gelen bağlantıyı bu bilgisayardaki hedefe iletir (`listen_port` sunucu tarafındadır).
+    Remote { listen_port: u16, dest_host: String, dest_port: u16 },
 }
 
 impl TunnelSpec {
     pub fn listen_port(&self) -> u16 {
         match self {
-            TunnelSpec::Local { listen_port, .. } | TunnelSpec::Dynamic { listen_port } => *listen_port,
+            TunnelSpec::Local { listen_port, .. } | TunnelSpec::Dynamic { listen_port } | TunnelSpec::Remote { listen_port, .. } => *listen_port,
         }
     }
 
@@ -23,7 +25,7 @@ impl TunnelSpec {
         if self.listen_port() == 0 {
             return Err("listen port must be between 1 and 65535".into());
         }
-        if let TunnelSpec::Local { dest_host, dest_port, .. } = self {
+        if let TunnelSpec::Local { dest_host, dest_port, .. } | TunnelSpec::Remote { dest_host, dest_port, .. } = self {
             if dest_host.trim().is_empty() {
                 return Err("destination host is empty".into());
             }
@@ -124,23 +126,34 @@ impl std::error::Error for TunnelError {}
 
 pub struct TunnelHandle {
     task: tokio::task::JoinHandle<()>,
+    /// Yerel/dinamik tünelde dinlenen yerel port, uzak tünelde sunucunun açtığı port.
     pub local_port: u16,
     pub connections: Arc<AtomicU64>,
+    cleanup: Option<Box<dyn Fn() + Send + Sync>>,
 }
 
 impl TunnelHandle {
     pub(crate) fn new(task: tokio::task::JoinHandle<()>, local_port: u16, connections: Arc<AtomicU64>) -> TunnelHandle {
-        TunnelHandle { task, local_port, connections }
+        TunnelHandle { task, local_port, connections, cleanup: None }
+    }
+
+    /// Durdurulurken (ya da düşerken) bir kez çalışacak temizlik ekler; uzak tünel sunucudaki dinleyiciyi bununla kapatır.
+    pub(crate) fn with_cleanup(mut self, cleanup: impl Fn() + Send + Sync + 'static) -> TunnelHandle {
+        self.cleanup = Some(Box::new(cleanup));
+        self
     }
 
     pub fn stop(&self) {
         self.task.abort();
+        if let Some(cleanup) = &self.cleanup {
+            cleanup();
+        }
     }
 }
 
 impl Drop for TunnelHandle {
     fn drop(&mut self) {
-        self.task.abort();
+        self.stop();
     }
 }
 
@@ -155,6 +168,9 @@ mod tests {
         assert!(TunnelSpec::Dynamic { listen_port: 0 }.validate().is_err());
         assert!(TunnelSpec::Local { listen_port: 8080, dest_host: "  ".into(), dest_port: 5432 }.validate().is_err());
         assert!(TunnelSpec::Local { listen_port: 8080, dest_host: "h".into(), dest_port: 0 }.validate().is_err());
+        assert!(TunnelSpec::Remote { listen_port: 9000, dest_host: "localhost".into(), dest_port: 3000 }.validate().is_ok());
+        assert!(TunnelSpec::Remote { listen_port: 9000, dest_host: "".into(), dest_port: 3000 }.validate().is_err());
+        assert!(TunnelSpec::Remote { listen_port: 0, dest_host: "h".into(), dest_port: 3000 }.validate().is_err());
     }
 
     #[test]
