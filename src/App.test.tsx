@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import type { AppApi } from "./api";
@@ -190,4 +190,16 @@ test("connecting starts metrics for the new terminal", async () => {
   render(<App api={api} createTerm={fakeTerm} />);
   await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
   await vi.waitFor(() => expect(extra.metricsStart).toHaveBeenCalledWith("tab-1", expect.any(Function)));
+});
+
+test("dragging the splitter resizes the sidebar and remembers the width", async () => {
+  const { api } = fakeApi();
+  const { container } = render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  const bar = screen.getByRole("separator", { name: "Kenar çubuğu genişliği" });
+  fireEvent.mouseDown(bar, { clientX: 250 });
+  fireEvent.mouseMove(window, { clientX: 340 });
+  fireEvent.mouseUp(window);
+  expect((container.querySelector(".app") as HTMLElement).style.gridTemplateColumns).toBe("340px 5px 1fr");
+  expect(localStorage.getItem("ssh-istemci.sidebarWidth")).toBe("340");
 });

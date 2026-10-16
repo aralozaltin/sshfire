@@ -111,6 +111,7 @@ export const en: Messages = {
     network: "Network",
     units: { d: "d", h: "h", m: "m" },
   },
+  layout: { sidebarResize: "Sidebar width", columnResize: (name: string) => `${name} column width` },
   language: { label: "Language", system: "System", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Server key rejected.",

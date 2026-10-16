@@ -109,6 +109,7 @@ export const tr = {
     network: "Ağ",
     units: { d: "g", h: "s", m: "dk" },
   },
+  layout: { sidebarResize: "Kenar çubuğu genişliği", columnResize: (name: string) => `${name} sütun genişliği` },
   language: { label: "Dil", system: "Sistem", tr: "Türkçe", en: "English" },
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",

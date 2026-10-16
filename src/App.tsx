@@ -17,6 +17,8 @@ import type { TermLike } from "./terminal/shellSession";
 import type { NewSession, Session } from "./types";
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
+import { Splitter } from "./components/Splitter";
+import { loadSidebarWidth, saveSidebarWidth } from "./layout/sidebarWidth";
 import "./App.css";
 
 interface OpenTab {
@@ -71,6 +73,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [warnings, setWarnings] = useState<StartupWarning[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("servers");
   const [backendIds, setBackendIds] = useState<Record<string, string>>({});
   const [filePaths, setFilePaths] = useState<Record<string, string>>({});
@@ -93,6 +96,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+
+  function resizeSidebar(w: number) {
+    setSidebarWidth(w);
+    saveSidebarWidth(w);
+  }
 
   function changeTheme(mode: ThemeMode) {
     setThemeMode(mode);
@@ -174,7 +182,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const editing = dialog?.mode === "edit" ? sessions.find((s) => s.id === dialog.id) : undefined;
 
   return (
-    <div className="app">
+    <div className="app" style={{ gridTemplateColumns: `${sidebarWidth}px 5px 1fr` }}>
       <aside className="app__sidebar">
         <Sidebar
           active={sidebarTab}
@@ -209,6 +217,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
         </div>
       </aside>
+      <Splitter width={sidebarWidth} onChange={resizeSidebar} />
       <main className="app__main">
         {warnings.map((w) => (
           <div key={w.code} role="alert" className="banner banner--warn">
