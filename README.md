@@ -35,7 +35,13 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 **Interface**
 - Light and dark theme, English and Turkish, resizable sidebar and columns
 
-## Layouts
+## Screenshots
+
+**Servers organised in folders, with a live metrics bar under the terminal**
+
+![Server list with folders next to a terminal](docs/screenshots/servers.png)
+
+**Side-by-side terminals**
 
 ![Side-by-side terminals with live metrics](docs/screenshots/split.png)
 
