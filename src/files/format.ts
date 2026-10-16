@@ -27,5 +27,5 @@ export function formatOctal(mode: number): string {
 
 export function formatModified(unixSecs: number | null, locale: string): string {
   if (unixSecs == null) return "—";
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(unixSecs * 1000));
+  return new Intl.DateTimeFormat(locale, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(unixSecs * 1000));
 }
