@@ -678,3 +678,16 @@ test("the automatic check switch is saved", async () => {
   await userEvent.click(box);
   expect(localStorage.getItem("ssh-istemci.autoUpdate")).toBe("false");
 });
+
+test("a server shows a green online dot while its tab is connected and loses it when the tab closes", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  expect(screen.queryByRole("img", { name: "Bağlı" })).not.toBeInTheDocument();
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await screen.findByText(/.*/, { selector: "[data-status='open']" });
+  await userEvent.click(screen.getByRole("tab", { name: "Sunucular" }));
+  const dot = await screen.findByRole("img", { name: "Bağlı" });
+  expect(dot.closest("li")).toHaveTextContent("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: /Test 3.81 kapat/ }));
+  await vi.waitFor(() => expect(screen.queryByRole("img", { name: "Bağlı" })).not.toBeInTheDocument());
+});

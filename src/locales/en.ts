@@ -64,6 +64,7 @@ export const en: Messages = {
     reject: "Reject",
   },
   theme: { label: "Theme", system: "System", light: "Light", dark: "Dark" },
+  connectedLabel: "Connected",
   startupWarning: "Warning",
   confirmDelete: { title: "Confirm delete", body: (name: string) => `Delete ${name}? Its saved password is removed too.` },
   files: {

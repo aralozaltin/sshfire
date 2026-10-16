@@ -119,3 +119,15 @@ test("a server with a color label shows a dot in that color", () => {
   expect(screen.getByTestId("color-dot-1")).toHaveStyle({ backgroundColor: "#ef4444" });
   expect(screen.queryByTestId("color-dot-2")).not.toBeInTheDocument();
 });
+
+test("connected servers get a green online dot with an accessible label", () => {
+  render(<ServerList sessions={sessions} connectedIds={["2"]} {...props} />);
+  const row = screen.getByText("Prod API").closest("li")!;
+  expect(within(row).getByRole("img", { name: "Bağlı" })).toBeInTheDocument();
+  expect(screen.getAllByRole("img", { name: "Bağlı" })).toHaveLength(1);
+});
+
+test("no server shows the online dot when nothing is connected", () => {
+  render(<ServerList sessions={sessions} {...props} />);
+  expect(screen.queryByRole("img", { name: "Bağlı" })).not.toBeInTheDocument();
+});

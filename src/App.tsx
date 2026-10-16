@@ -474,6 +474,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
             <nav aria-label={t.servers}>
               <ServerList
                 sessions={sessions}
+                connectedIds={[...new Set(tabs.filter((x) => x.status === "open").map((x) => x.sessionId))]}
                 onConnect={openTab}
                 onEdit={(id) => setDialog({ mode: "edit", id })}
                 onDelete={setDeleting}

@@ -63,6 +63,7 @@ export const tr = {
   },
   theme: { label: "Tema", system: "Sistem", light: "Açık", dark: "Koyu" },
   startupWarning: "Uyarı",
+  connectedLabel: "Bağlı",
   confirmDelete: { title: "Silme onayı", body: (name: string) => `${name} silinsin mi? Kayıtlı parolası da silinir.` },
   files: {
     dateLocale: "tr-TR",

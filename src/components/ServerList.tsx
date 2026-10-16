@@ -5,6 +5,8 @@ import { useT } from "../i18n";
 
 export interface ServerListProps {
   sessions: Session[];
+  /** Açık ve bağlı bir sekmesi olan sunucuların kimlikleri. */
+  connectedIds?: string[];
   onConnect: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -19,7 +21,7 @@ function matches(s: Session, q: string): boolean {
   return [s.name, s.host, s.folder ?? ""].some((v) => v.toLowerCase().includes(q));
 }
 
-export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImport, onExport, onImportFile }: ServerListProps) {
+export function ServerList({ sessions, connectedIds = [], onConnect, onEdit, onDelete, onAdd, onImport, onExport, onImportFile }: ServerListProps) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -110,6 +112,7 @@ export function ServerList({ sessions, onConnect, onEdit, onDelete, onAdd, onImp
                   <span className="server-list__name">{s.name}</span>{" "}
                   <span className="server-list__host">{s.user}@{s.host}{s.port !== 22 ? `:${s.port}` : ""}</span>
                 </button>
+                {connectedIds.includes(s.id) && <span role="img" aria-label={t.connectedLabel} title={t.connectedLabel} className="server-list__online" />}
                 <button type="button" aria-label={`${s.name} ${t.edit.toLowerCase()}`} onClick={() => onEdit(s.id)}>✎</button>
                 <button type="button" aria-label={`${s.name} ${t.remove.toLowerCase()}`} onClick={() => onDelete(s.id)}>✕</button>
               </li>
