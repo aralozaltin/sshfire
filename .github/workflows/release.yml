@@ -13,6 +13,8 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      # Each job merges its platforms into latest.json; parallel jobs overwrite each other.
+      max-parallel: 1
       matrix:
         include:
           - platform: macos-latest
