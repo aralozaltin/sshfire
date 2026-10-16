@@ -12,6 +12,9 @@ function closeReasonText(t: Messages, reason: string): string {
   return m ? t.terminal.exitCode(Number(m[1])) : reason;
 }
 
+export const MAX_RETRIES = 5;
+const retryDelayMs = (attempt: number) => Math.min(30000, 3000 * 2 ** attempt);
+
 export interface TerminalTabProps {
   sessionId: string;
   api: ShellApi;
@@ -19,7 +22,9 @@ export interface TerminalTabProps {
   visible?: boolean;
   dark?: boolean;
   onStatusChange?: (status: "connecting" | "open" | "closed") => void;
-  onReconnect?: () => void;
+  onReconnect?: (auto?: boolean) => void;
+  /** Kopma sonrası kaçıncı otomatik yeniden bağlanma serisinde olduğumuz (0 = seri yok). */
+  retryAttempt?: number;
   onTabId?: (tabId: string) => void;
   onCwd?: (cwd: string) => void;
   hub?: MultiExecHub;
@@ -31,12 +36,14 @@ export interface TerminalTabProps {
   name?: string;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand, name }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand, name, retryAttempt = 0 }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
   const [findOpen, setFindOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [retryCancelled, setRetryCancelled] = useState(false);
+  const wasOpen = useRef(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const sessionRef = useRef<ShellSession | null>(null);
@@ -46,6 +53,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     termRef.current = term;
     term.onFindRequest?.(() => setFindOpen(true));
     const session = new ShellSession(api, term, () => {
+      if (session.status === "open") wasOpen.current = true;
       onStatusChange?.(session.status);
       rerender();
     });
@@ -104,6 +112,22 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
 
   const s = sessionRef.current;
   const status = s?.status ?? "connecting";
+  const errorCode = (s?.error as { code?: string } | null | undefined)?.code;
+  const dropped = !!s && !s.error && !/^exit:/.test(s.closeReason ?? "exit:");
+  const retrying =
+    status === "closed" &&
+    !local &&
+    !!onReconnect &&
+    !retryCancelled &&
+    retryAttempt < MAX_RETRIES &&
+    (dropped ? wasOpen.current || retryAttempt > 0 : retryAttempt > 0 && errorCode === "unreachable");
+
+  useEffect(() => {
+    if (!retrying) return;
+    const timer = setTimeout(() => onReconnect?.(true), retryDelayMs(retryAttempt));
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [retrying]);
   return (
     <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane}>
       {findOpen && (
@@ -138,7 +162,14 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
         <div role="status" className="terminal__banner">
           {s?.error ? <strong>{errorText(t, s.error)}</strong> : <strong>{t.terminal.disconnected}</strong>}
           {s?.closeReason && <span> {closeReasonText(t, s.closeReason)}</span>}
-          {onReconnect && <button type="button" onClick={onReconnect}>{t.terminal.reconnect}</button>}
+          {retrying ? (
+            <>
+              <span> {t.terminal.retrying(retryAttempt + 1, MAX_RETRIES)}</span>
+              <button type="button" onClick={() => setRetryCancelled(true)}>{t.terminal.cancelRetry}</button>
+            </>
+          ) : (
+            onReconnect && <button type="button" onClick={() => onReconnect()}>{t.terminal.reconnect}</button>
+          )}
         </div>
       )}
     </div>

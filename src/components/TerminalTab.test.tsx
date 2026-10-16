@@ -192,3 +192,83 @@ test("there is no record button when the api cannot log", async () => {
   await screen.findByText(/.*/, { selector: "[data-status='open']" });
   expect(screen.queryByRole("button", { name: "Oturumu kaydet" })).not.toBeInTheDocument();
 });
+
+describe("automatic reconnect", () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
+  afterEach(() => vi.useRealTimers());
+
+  const opened = async (props: Partial<React.ComponentProps<typeof TerminalTab>> = {}, opts: { reject?: string | object } = {}) => {
+    const h = setup(opts as { reject?: string });
+    const onReconnect = vi.fn();
+    render(<TerminalTab sessionId="s1" api={h.api} createTerm={() => h.term} onReconnect={onReconnect} {...props} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    return { ...h, onReconnect };
+  };
+
+  test("a dropped connection reconnects by itself after a short wait and says so", async () => {
+    const { emitClosed, onReconnect } = await opened();
+    emitClosed("connection lost");
+    expect(screen.getByRole("status")).toHaveTextContent("Yeniden bağlanılıyor (1/5)");
+    expect(onReconnect).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    expect(onReconnect).toHaveBeenCalledWith(true);
+  });
+
+  test("the wait grows with each failed attempt", async () => {
+    const { emitClosed, onReconnect } = await opened({ retryAttempt: 2 });
+    emitClosed("connection lost");
+    await act(async () => { await vi.advanceTimersByTimeAsync(11000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(onReconnect).toHaveBeenCalledWith(true);
+  });
+
+  test("a shell the user exited on purpose is not reconnected", async () => {
+    const { emitClosed, onReconnect } = await opened();
+    emitClosed("exit:0");
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Yeniden bağlan" })).toBeInTheDocument();
+  });
+
+  test("cancel stops the countdown and leaves the manual button", async () => {
+    const { emitClosed, onReconnect } = await opened();
+    emitClosed("connection lost");
+    await act(async () => { screen.getByRole("button", { name: "Vazgeç" }).click(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Yeniden bağlan" })).toBeInTheDocument();
+  });
+
+  test("it gives up after five attempts", async () => {
+    const { emitClosed, onReconnect } = await opened({ retryAttempt: 5 });
+    emitClosed("connection lost");
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  test("a first connection that fails is reported, not retried", async () => {
+    const { onReconnect } = await opened({}, { reject: { code: "unreachable" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  test("during a retry series an unreachable server is tried again, a wrong password is not", async () => {
+    const a = await opened({ retryAttempt: 1 }, { reject: { code: "unreachable" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+    expect(a.onReconnect).toHaveBeenCalledWith(true);
+  });
+
+  test("a wrong password during a retry series stops the series", async () => {
+    const { onReconnect } = await opened({ retryAttempt: 1 }, { reject: { code: "auth_failed" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  test("local terminals never reconnect", async () => {
+    const { emitClosed, onReconnect } = await opened({ local: true });
+    emitClosed("connection lost");
+    await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+});

@@ -51,6 +51,8 @@ export const en: Messages = {
     connecting: "Connecting…",
     connected: "Connected",
     disconnected: "Disconnected",
+    retrying: (n: number, max: number) => `Reconnecting (${n}/${max})…`,
+    cancelRetry: "Cancel",
     reconnect: "Reconnect",
     exitCode: (code: number) => `Exit code ${code}`,
     startLog: "Record session",

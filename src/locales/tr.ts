@@ -50,6 +50,8 @@ export const tr = {
     connected: "Bağlandı",
     disconnected: "Bağlantı kesildi",
     reconnect: "Yeniden bağlan",
+    retrying: (n: number, max: number) => `Yeniden bağlanılıyor (${n}/${max})…`,
+    cancelRetry: "Vazgeç",
     exitCode: (code: number) => `Çıkış kodu ${code}`,
     failed: "Bağlantı kurulamadı",
     startLog: "Oturumu kaydet",

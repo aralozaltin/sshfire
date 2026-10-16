@@ -43,6 +43,7 @@ interface OpenTab {
   sessionId: string;
   title: string;
   status: TabInfo["status"];
+  retry?: number;
 }
 
 type DialogState = { mode: "add" } | { mode: "edit"; id: string } | null;
@@ -215,10 +216,10 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     });
   }
 
-  function reconnect(key: string) {
+  function reconnect(key: string, auto = false) {
     const old = tabs.find((x) => x.key === key);
     if (!old) return;
-    const fresh = { ...old, key: nextKey(), status: "connecting" as const };
+    const fresh = { ...old, key: nextKey(), status: "connecting" as const, retry: auto ? (old.retry ?? 0) + 1 : 0 };
     setTabs((t) => t.map((x) => (x.key === key ? fresh : x)));
     setActiveKey(fresh.key);
   }
@@ -231,7 +232,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
       const tab = tabsRef.current.find((x) => x.key === key);
       if (tab && tab.sessionId !== LOCAL_SESSION_ID) setSidebarTab("files");
     }
-    setTabs((t) => t.map((x) => (x.key === key && x.status !== status ? { ...x, status } : x)));
+    setTabs((t) => t.map((x) => (x.key === key && (x.status !== status || (status === "open" && x.retry)) ? { ...x, status, ...(status === "open" ? { retry: 0 } : {}) } : x)));
   }
 
   async function save(session: NewSession | Session, password?: string) {
@@ -594,7 +595,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               onFocusPane={() => setActiveKey(t.key)}
               dark={resolvedTheme === "dark"}
               onStatusChange={(st) => setStatus(t.key, st)}
-              onReconnect={() => reconnect(t.key)}
+              retryAttempt={t.retry ?? 0}
+              onReconnect={(auto) => reconnect(t.key, auto === true)}
               onTabId={(id) => setBackendIds((cur) => ({ ...cur, [t.key]: id }))}
               onCwd={(cwd) => setCwds((cur) => ({ ...cur, [t.key]: cwd }))}
             />
