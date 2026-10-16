@@ -3,6 +3,7 @@ mod commands;
 mod cwd_task;
 mod sftp_commands;
 mod ssh_config_import;
+mod local_pty;
 mod metrics_task;
 mod overlay_secrets;
 mod state;
@@ -44,6 +45,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         secrets: Arc::new(KeyringSecrets::new(KEYCHAIN_SERVICE)),
         hosts: Arc::new(Mutex::new(hosts)),
         tabs: Mutex::new(HashMap::new()),
+        local_tabs: Mutex::new(HashMap::new()),
         pending_prompts: Arc::new(Mutex::new(HashMap::new())),
         pending_passwords: Arc::new(Mutex::new(HashMap::new())),
         startup_warnings: warnings,
@@ -70,6 +72,7 @@ pub fn run() {
             commands::sessions_export,
             commands::sessions_import,
             commands::connect,
+            commands::local_connect,
             commands::hostkey_answer,
             commands::password_answer,
             commands::shell_write,

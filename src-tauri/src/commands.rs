@@ -1,6 +1,6 @@
 use crate::app_error::AppError;
 use crate::overlay_secrets::OverlaySecrets;
-use crate::state::{AppState, PasswordReply, StartupWarning, Tab};
+use crate::state::{AppState, LocalTab, PasswordReply, StartupWarning, Tab};
 use crate::stream::{HIGH_WATER, LOW_WATER, Throttle};
 use async_trait::async_trait;
 use serde::Serialize;
@@ -199,6 +199,36 @@ pub async fn connect(
 }
 
 #[tauri::command]
+pub async fn local_connect(app: AppHandle, state: State<'_, AppState>, cols: u16, rows: u16, on_data: Channel<InvokeResponseBody>) -> Result<String, AppError> {
+    let pty = Arc::new(
+        crate::local_pty::LocalPty::spawn(&crate::local_pty::default_shell(), cols, rows).map_err(|m| AppError::with_detail("local_shell", m))?,
+    );
+    let tab_id = uuid::Uuid::new_v4().to_string();
+    let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
+    let task = tauri::async_runtime::spawn({
+        let (app, tab_id, throttle, pty) = (app.clone(), tab_id.clone(), throttle.clone(), pty.clone());
+        async move {
+            loop {
+                throttle.wait_ready().await;
+                let chunk = pty.output.lock().await.recv().await;
+                match chunk {
+                    Some(bytes) => {
+                        throttle.on_sent(bytes.len());
+                        if on_data.send(InvokeResponseBody::Raw(bytes)).is_err() {
+                            return;
+                        }
+                    }
+                    None => break,
+                }
+            }
+            let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason: None });
+        }
+    });
+    state.local_tabs.lock().unwrap().insert(tab_id.clone(), LocalTab { pty, throttle, task });
+    Ok(tab_id)
+}
+
+#[tauri::command]
 pub fn hostkey_answer(state: State<'_, AppState>, request_id: String, trust: bool) {
     if let Some(tx) = state.pending_prompts.lock().unwrap().remove(&request_id) {
         let _ = tx.send(trust);
@@ -211,18 +241,30 @@ fn tab_writer(state: &AppState, tab_id: &str) -> Result<vcore::ssh::ShellWriter,
 
 #[tauri::command]
 pub async fn shell_write(state: State<'_, AppState>, tab_id: String, data: Vec<u8>) -> Result<(), AppError> {
+    let local = state.local_tabs.lock().unwrap().get(&tab_id).map(|t| t.pty.clone());
+    if let Some(pty) = local {
+        return pty.write(&data).map_err(|m| AppError::with_detail("local_shell", m));
+    }
     let w = tab_writer(&state, &tab_id)?;
     w.write(&data).await.map_err(|e| AppError::from(&e))
 }
 
 #[tauri::command]
 pub async fn shell_resize(state: State<'_, AppState>, tab_id: String, cols: u16, rows: u16) -> Result<(), AppError> {
+    let local = state.local_tabs.lock().unwrap().get(&tab_id).map(|t| t.pty.clone());
+    if let Some(pty) = local {
+        return pty.resize(cols, rows).map_err(|m| AppError::with_detail("local_shell", m));
+    }
     let w = tab_writer(&state, &tab_id)?;
     w.resize(cols, rows).await.map_err(|e| AppError::from(&e))
 }
 
 #[tauri::command]
 pub fn shell_ack(state: State<'_, AppState>, tab_id: String, bytes: usize) {
+    if let Some(tab) = state.local_tabs.lock().unwrap().get(&tab_id) {
+        tab.throttle.ack(bytes);
+        return;
+    }
     if let Some(tab) = state.tabs.lock().unwrap().get(&tab_id) {
         tab.throttle.ack(bytes);
     }
@@ -230,6 +272,11 @@ pub fn shell_ack(state: State<'_, AppState>, tab_id: String, bytes: usize) {
 
 #[tauri::command]
 pub fn shell_close(state: State<'_, AppState>, tab_id: String) {
+    if let Some(tab) = state.local_tabs.lock().unwrap().remove(&tab_id) {
+        tab.task.abort();
+        tab.pty.kill();
+        return;
+    }
     if let Some(tab) = state.tabs.lock().unwrap().remove(&tab_id) {
         tab.task.abort();
         if let Some(m) = tab.metrics_task {

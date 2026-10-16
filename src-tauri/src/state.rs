@@ -31,7 +31,14 @@ pub struct Tab {
     pub task: tauri::async_runtime::JoinHandle<()>,
 }
 
+pub struct LocalTab {
+    pub pty: Arc<crate::local_pty::LocalPty>,
+    pub throttle: Arc<Throttle>,
+    pub task: tauri::async_runtime::JoinHandle<()>,
+}
+
 pub struct AppState {
+    pub local_tabs: Mutex<HashMap<String, LocalTab>>,
     pub store: Mutex<SessionStore>,
     pub secrets: Arc<dyn SecretStore>,
     pub hosts: Arc<Mutex<KnownHosts>>,

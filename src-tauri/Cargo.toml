@@ -26,6 +26,7 @@ tokio = { version = "1.53.3", features = ["sync", "time", "macros", "rt"] }
 async-trait = "0.1.92"
 uuid = { version = "1.28.0", features = ["v4"] }
 tauri-plugin-dialog = "2.8.3"
+portable-pty = "0.9.0"
 
 [dev-dependencies]
 tempfile = "3.27.0"
