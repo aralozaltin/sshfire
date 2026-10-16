@@ -77,6 +77,11 @@ export function errorText(t: Messages, e: unknown): string {
     case "tab_not_found": return t.errors.tabNotFound;
     case "invalid_session": return t.errors.invalidSession(d);
     case "store_error": return t.errors.storeError(d);
+    case "file_not_found": return t.errors.fileNotFound;
+    case "permission_denied": return t.errors.permissionDenied;
+    case "already_exists": return t.errors.alreadyExists;
+    case "cancelled": return t.errors.cancelled;
+    case "sftp_other": return t.errors.sftpOther(d);
     default: return t.errors.unknownCode(e.code, d);
   }
 }

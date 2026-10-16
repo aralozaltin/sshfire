@@ -1,5 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import type { FileEntry } from "./files/types";
 import type { NewSession, Session } from "./types";
 
 export const listSessions = () => invoke<Session[]>("sessions_list");
@@ -29,6 +30,13 @@ export const shellResize = (tabId: string, cols: number, rows: number) =>
   invoke<void>("shell_resize", { tabId, cols, rows });
 export const shellAck = (tabId: string, bytes: number) => invoke<void>("shell_ack", { tabId, bytes });
 export const shellClose = (tabId: string) => invoke<void>("shell_close", { tabId });
+export const sftpHome = (tabId: string) => invoke<string>("sftp_home", { tabId });
+export const sftpList = (tabId: string, path: string) => invoke<FileEntry[]>("sftp_list", { tabId, path });
+export const sftpMkdir = (tabId: string, path: string) => invoke<void>("sftp_mkdir", { tabId, path });
+export const sftpRename = (tabId: string, from: string, to: string) => invoke<void>("sftp_rename", { tabId, from, to });
+export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
+  invoke<void>("sftp_remove", { tabId, path, recursive });
+export const sftpCopy = (tabId: string, from: string, to: string) => invoke<void>("sftp_copy", { tabId, from, to });
 export const answerHostKey = (requestId: string, trust: boolean) =>
   invoke<void>("hostkey_answer", { requestId, trust });
 
@@ -59,6 +67,12 @@ export const realApi = {
   shellResize,
   shellAck,
   shellClose,
+  sftpHome,
+  sftpList,
+  sftpMkdir,
+  sftpRename,
+  sftpRemove,
+  sftpCopy,
   answerHostKey,
   onHostKeyPrompt: async (cb: (e: HostKeyPromptEvent) => void) => (await onHostKeyPrompt(cb)) as () => void,
   onShellClosed: async (cb: (e: ShellClosedEvent) => void) => (await onShellClosed(cb)) as () => void,

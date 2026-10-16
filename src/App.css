@@ -109,3 +109,25 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .server-dialog__actions, .hostkey-dialog__actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px; }
 .server-dialog__actions button, .hostkey-dialog__actions button { min-width: 72px; }
 .hostkey-dialog__fp { word-break: break-all; background: var(--surface); border: 1px solid var(--line); padding: 4px; }
+
+.files { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.files__bar { display: flex; gap: 4px; padding: 4px; background: var(--chrome); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.files__crumbs { display: flex; flex-wrap: wrap; padding: 2px 4px; background: var(--surface); border-bottom: 1px solid var(--chrome-dark); }
+.files__crumbs button { border: 0; background: none; padding: 1px 4px; }
+.files__crumbs button + button::before { content: "› "; color: var(--muted); }
+.files__hint { color: var(--muted); padding: 12px 10px; margin: 0; }
+.files__table { width: 100%; border-collapse: collapse; table-layout: fixed; outline: none; }
+.files__table:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.files__table th { position: sticky; top: 0; text-align: left; font-weight: 600; padding: 2px 6px; background: var(--chrome); border-bottom: 1px solid var(--line); }
+.files__table th:nth-child(1) { width: 46%; }
+.files__table td { padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; user-select: none; }
+.files__table tbody tr:hover { background: var(--select); }
+.files__table tr.is-selected { background: var(--select); outline: 1px solid var(--accent); outline-offset: -1px; }
+.context-menu { position: fixed; z-index: 20; list-style: none; margin: 0; padding: 2px; min-width: 160px; background: var(--surface); border: 1px solid var(--line); box-shadow: 2px 2px 6px rgba(0,0,0,.3); }
+.context-menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 3px 10px; }
+.context-menu button:hover:not(:disabled) { background: var(--select); }
+.context-menu button:disabled { color: var(--muted); }
+.file-info dl { margin: 0 10px; display: grid; gap: 2px; }
+.file-info dl > div { display: grid; grid-template-columns: 90px 1fr; gap: 6px; }
+.file-info dt { color: var(--muted); }
+.file-info dd { margin: 0; word-break: break-all; }
