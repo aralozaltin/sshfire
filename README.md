@@ -16,21 +16,24 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - Jump hosts (bastions), host key verification (trust on first use, refuses changed keys)
 - Passwords and key passphrases live in the OS key store (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in files
 - Import hosts from `~/.ssh/config` (including `ProxyJump`), export and import the server list as JSON (passwords are never exported)
-- Optional command to run on connect, local terminal tab
+- Optional command to run on connect, color labels for servers (shown in the list and on tabs), local terminal tab
 
 **Terminal**
 - Tabs plus side-by-side, stacked and grid layouts
 - Copy/paste, zoom, search, clickable links (Cmd/Ctrl + click, http/https only)
 - MultiExec (type once, send to several tabs), macros you can write or record
 - Live metrics bar: CPU, memory, disk, load, uptime, network (Linux servers)
+- Record a session to a plain-text log file
+- Color schemes: Dracula, Nord, Solarized Dark, Tokyo Night, Gruvbox
 
 **Files**
 - SFTP panel that follows the shell's working directory
 - Copy, cut, paste, drag-and-drop move/copy, inline rename, upload/download with progress and cancel, drag files in from the OS
-- Built-in text editor for remote files (Ctrl/Cmd+S saves)
+- Built-in text editor for remote files (Ctrl/Cmd+S saves), or open a file in your default editor and have it uploaded back on every save
+- Change permissions (rwx boxes or octal), filter the listing by name
 
 **Tunnels**
-- Local (`-L`) and SOCKS5 dynamic (`-D`) port forwarding, saved per server
+- Local (`-L`), SOCKS5 dynamic (`-D`) and remote (`-R`) port forwarding, saved per server
 
 **Interface**
 - Light and dark theme, English and Turkish, resizable sidebar and columns
