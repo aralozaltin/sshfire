@@ -178,3 +178,66 @@ test("a color label can be picked and cleared again", async () => {
   await userEvent.click(screen.getAllByRole("button", { name: "Kaydet" })[1]);
   expect(onSave).toHaveBeenLastCalledWith({ ...existing, color: null }, undefined);
 });
+
+describe("folder picker", () => {
+  const others: Session[] = [
+    { id: "1", name: "a", host: "h1", port: 22, user: "u", folder: "Test", auth: { type: "password" } },
+    { id: "2", name: "b", host: "h2", port: 22, user: "u", folder: "Prod", auth: { type: "password" } },
+    { id: "3", name: "c", host: "h3", port: 22, user: "u", folder: "Prod", auth: { type: "password" } },
+    { id: "4", name: "d", host: "h4", port: 22, user: "u", folder: null, auth: { type: "password" } },
+  ];
+
+  const fill = async () => {
+    await userEvent.type(screen.getByLabelText("Ad"), "x");
+    await userEvent.type(screen.getByLabelText("Adres"), "h");
+    await userEvent.type(screen.getByLabelText("Kullanıcı"), "u");
+  };
+
+  test("existing folders are offered once each, sorted, with a no-folder choice", () => {
+    render(<ServerDialog others={others} onSave={() => {}} onCancel={() => {}} />);
+    const options = screen.getAllByRole("option").filter((o) => (o.closest("select") as HTMLSelectElement).getAttribute("aria-label") === "Klasör");
+    expect(options.map((o) => o.textContent)).toEqual(["Klasörsüz", "Prod", "Test", "Yeni klasör…"]);
+  });
+
+  test("picking an existing folder saves it", async () => {
+    const onSave = vi.fn();
+    render(<ServerDialog others={others} onSave={onSave} onCancel={() => {}} />);
+    await fill();
+    await userEvent.selectOptions(screen.getByLabelText("Klasör"), "Prod");
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ folder: "Prod" }), undefined);
+  });
+
+  test("choosing a new folder reveals a text field for its name", async () => {
+    const onSave = vi.fn();
+    render(<ServerDialog others={others} onSave={onSave} onCancel={() => {}} />);
+    await fill();
+    expect(screen.queryByLabelText("Yeni klasör adı")).not.toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Klasör"), "Yeni klasör…");
+    await userEvent.type(screen.getByLabelText("Yeni klasör adı"), "Staging");
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ folder: "Staging" }), undefined);
+  });
+
+  test("the no-folder choice saves null", async () => {
+    const onSave = vi.fn();
+    render(<ServerDialog others={others} onSave={onSave} onCancel={() => {}} />);
+    await fill();
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ folder: null }), undefined);
+  });
+
+  test("editing a server preselects its current folder", () => {
+    render(<ServerDialog initial={{ ...others[1], id: "9" }} others={others} onSave={() => {}} onCancel={() => {}} />);
+    expect(screen.getByLabelText("Klasör")).toHaveValue("Prod");
+  });
+
+  test("with no folders yet a plain text field is shown", async () => {
+    const onSave = vi.fn();
+    render(<ServerDialog onSave={onSave} onCancel={() => {}} />);
+    await fill();
+    await userEvent.type(screen.getByLabelText("Klasör"), "Yeni");
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ folder: "Yeni" }), undefined);
+  });
+});

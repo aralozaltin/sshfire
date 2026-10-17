@@ -9,6 +9,8 @@ export interface ServerDialogProps {
   onCancel: () => void;
 }
 
+const NEW_FOLDER = "__new__";
+
 const COLORS = [
   ["#ef4444", "colorRed"],
   ["#f97316", "colorOrange"],
@@ -25,7 +27,9 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
   const [host, setHost] = useState(initial?.host ?? "");
   const [port, setPort] = useState(String(initial?.port ?? 22));
   const [user, setUser] = useState(initial?.user ?? "");
+  const folders = [...new Set([...others.map((o) => o.folder), initial?.folder].filter((f): f is string => !!f))].sort((a, b) => a.localeCompare(b));
   const [folder, setFolder] = useState(initial?.folder ?? "");
+  const [newFolder, setNewFolder] = useState(false);
   const [authType, setAuthType] = useState<Auth["type"]>(initial?.auth.type ?? "password");
   const [keyPath, setKeyPath] = useState(initial?.auth.type === "key_file" ? initial.auth.path : "");
   const [color, setColor] = useState(initial?.color ?? "");
@@ -75,7 +79,36 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
       {errors.port && <p role="alert">{errors.port}</p>}
       <label>{d.user}<input value={user} onChange={(e) => setUser(e.target.value)} /></label>
       {errors.user && <p role="alert">{errors.user}</p>}
-      <label>{d.folder}<input value={folder} onChange={(e) => setFolder(e.target.value)} /></label>
+      {folders.length === 0 ? (
+        <label>{d.folder}<input value={folder} onChange={(e) => setFolder(e.target.value)} /></label>
+      ) : (
+        <>
+          <label>
+            {d.folder}
+            <select
+              aria-label={d.folder}
+              value={newFolder ? NEW_FOLDER : folder}
+              onChange={(e) => {
+                const v = e.target.value;
+                setNewFolder(v === NEW_FOLDER);
+                setFolder(v === NEW_FOLDER ? "" : v);
+              }}
+            >
+              <option value="">{d.folderNone}</option>
+              {folders.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+              <option value={NEW_FOLDER}>{d.folderNew}</option>
+            </select>
+          </label>
+          {newFolder && (
+            <label>
+              {d.folderName}
+              <input autoFocus value={folder} onChange={(e) => setFolder(e.target.value)} />
+            </label>
+          )}
+        </>
+      )}
       <label>
         {d.auth}
         <select value={authType} onChange={(e) => setAuthType(e.target.value as Auth["type"])}>
