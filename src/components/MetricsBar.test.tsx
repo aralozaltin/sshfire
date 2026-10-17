@@ -75,3 +75,31 @@ test("network speeds show separate download and upload parts", () => {
   expect(net.querySelector(".metric__down")).toHaveTextContent("↓ 1.2 MB/s");
   expect(net.querySelector(".metric__up")).toHaveTextContent("↑ 40 KB/s");
 });
+
+describe("hover details", () => {
+  test("every metric explains itself in a tooltip", () => {
+    render(<MetricsBar metrics={base} />);
+    expect(screen.getByLabelText("İşlemci")).toHaveAttribute("title", "İşlemci kullanımı: %12");
+    expect(screen.getByLabelText("Bellek")).toHaveAttribute("title", "Bellek: 3.0 GB / 16 GB (%19), boş 13 GB. Takas: 0 B / 2.0 GB");
+    expect(screen.getByLabelText("Disk")).toHaveAttribute("title", "Disk: 40 GB / 200 GB (%20), boş 160 GB");
+    expect(screen.getByLabelText("Yük")).toHaveAttribute("title", "Yük ortalaması. 1 dk: 0.42, 5 dk: 0.31, 15 dk: 0.25");
+    expect(screen.getByLabelText("Açık kalma")).toHaveAttribute("title", "Açık kalma: 3 gün 4 saat 0 dk");
+    expect(screen.getByLabelText("Ağ")).toHaveAttribute("title", "İndirme: 1.2 MB/s, yükleme: 40 KB/s");
+  });
+
+  test("a server without swap says so", () => {
+    render(<MetricsBar metrics={{ ...base, swapTotal: 0 }} />);
+    expect(screen.getByLabelText("Bellek").getAttribute("title")).toContain("Takas yok");
+  });
+
+  test("before the first sample the tooltips explain the dashes instead of showing numbers", () => {
+    render(<MetricsBar metrics={{ ...base, cpuPercent: null, netRxBps: null, netTxBps: null }} />);
+    expect(screen.getByLabelText("İşlemci")).toHaveAttribute("title", "İşlemci: ilk ölçüm bekleniyor");
+    expect(screen.getByLabelText("Ağ")).toHaveAttribute("title", "Ağ: ilk ölçüm bekleniyor");
+  });
+
+  test("without metrics there is no tooltip to show", () => {
+    render(<MetricsBar metrics={null} />);
+    expect(screen.getByLabelText("İşlemci")).not.toHaveAttribute("title");
+  });
+});
