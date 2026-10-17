@@ -277,7 +277,7 @@ pub async fn connect(
             let _ = app.emit("shell-closed", ShellClosedEvent { tab_id, reason });
         }
     });
-    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { log, conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, tunnels: Default::default(), cwd_task: None, throttle, task });
+    state.tabs.lock().unwrap().insert(tab_id.clone(), Tab { log, conn, sftp: Arc::new(tokio::sync::OnceCell::new()), writer, metrics_task: None, tty, tunnels: Default::default(), cwd_task: None, cwd_nudge: Default::default(), throttle, task });
     Ok(tab_id)
 }
 
@@ -329,6 +329,11 @@ pub async fn shell_write(state: State<'_, AppState>, tab_id: String, data: Vec<u
     let local = state.local_tabs.lock().unwrap().get(&tab_id).map(|t| t.pty.clone());
     if let Some(pty) = local {
         return pty.write(&data).map_err(|m| AppError::with_detail("local_shell", m));
+    }
+    if crate::cwd_task::wants_nudge(&data) {
+        if let Some(tab) = state.tabs.lock().unwrap().get(&tab_id) {
+            tab.cwd_nudge.notify_one();
+        }
     }
     let w = tab_writer(&state, &tab_id)?;
     w.write(&data).await.map_err(|e| AppError::from(&e))
@@ -419,6 +424,7 @@ pub fn cwd_start(state: State<'_, AppState>, tab_id: String, on_cwd: Channel<Str
         old.abort();
     }
     let conn = tab.conn.clone();
+    let nudge = tab.cwd_nudge.clone();
     tab.cwd_task = Some(tauri::async_runtime::spawn(async move {
         let mut last: Option<String> = None;
         loop {
@@ -428,7 +434,10 @@ pub fn cwd_start(state: State<'_, AppState>, tab_id: String, on_cwd: Channel<Str
                     return;
                 }
             }
-            tokio::time::sleep(Duration::from_millis(1500)).await;
+            tokio::select! {
+                _ = tokio::time::sleep(crate::cwd_task::CWD_INTERVAL) => {}
+                _ = nudge.notified() => tokio::time::sleep(crate::cwd_task::CWD_NUDGE_DELAY).await,
+            }
         }
     }));
     Ok(())

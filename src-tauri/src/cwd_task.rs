@@ -1,3 +1,13 @@
+/// Terminal dizinini yoklama aralığı.
+pub const CWD_INTERVAL: std::time::Duration = std::time::Duration::from_millis(700);
+/// Enter'a basıldıktan sonra komutun çalışıp bitmesi için beklenen süre; sonra hemen yoklanır.
+pub const CWD_NUDGE_DELAY: std::time::Duration = std::time::Duration::from_millis(200);
+
+/// Kullanıcı Enter'a bastıysa (komut çalıştırmış olabilir) dizin yoklamasını öne almak için true.
+pub fn wants_nudge(data: &[u8]) -> bool {
+    data.iter().any(|b| *b == b'\r' || *b == b'\n')
+}
+
 /// Yoklama sonucunu önceki değerle karşılaştırır: yalnızca değişen (ya da ilk) dizini döndürür.
 /// Okunamayan yoklama (`None`) son bilinen değeri korur ve olay üretmez.
 pub fn cwd_changed(last: &mut Option<String>, now: Option<String>) -> Option<String> {
@@ -12,6 +22,22 @@ pub fn cwd_changed(last: &mut Option<String>, now: Option<String>) -> Option<Str
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pressing_enter_triggers_an_early_poll_but_ordinary_typing_does_not() {
+        assert!(wants_nudge(b"cd /var/log\r"));
+        assert!(wants_nudge(b"\n"));
+        assert!(wants_nudge(b"ls\rcd ..\r"));
+        assert!(!wants_nudge(b"cd /va"));
+        assert!(!wants_nudge(b"\x1b[A"));
+        assert!(!wants_nudge(b""));
+    }
+
+    #[test]
+    fn the_early_poll_waits_less_than_the_regular_interval_and_both_are_under_a_second() {
+        assert!(CWD_NUDGE_DELAY < CWD_INTERVAL);
+        assert!(CWD_INTERVAL <= std::time::Duration::from_secs(1));
+    }
 
     #[test]
     fn the_first_value_and_every_change_are_reported() {

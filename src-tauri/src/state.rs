@@ -28,6 +28,8 @@ pub struct Tab {
     pub tty: Option<u32>,
     pub tunnels: std::collections::HashMap<String, (vcore::tunnel::TunnelSpec, vcore::tunnel::TunnelHandle)>,
     pub cwd_task: Option<tauri::async_runtime::JoinHandle<()>>,
+    /// Enter'a basılınca terminal dizini yoklamasını erkene çeker.
+    pub cwd_nudge: Arc<tokio::sync::Notify>,
     pub throttle: Arc<Throttle>,
     pub task: tauri::async_runtime::JoinHandle<()>,
 }
