@@ -95,3 +95,10 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Kısayollar: ⌘T/⌘W/⌘1-9/⌘⇧[ ] (Mac) ve Ctrl+Shift+T/W, Alt+1-9, Ctrl+Tab (Windows/Linux) terminal odaktayken de çalışıyor, terminale karakter yazmıyor
 - [ ] Hızlı bağlan (⌘K / Ctrl+Shift+K ya da araç çubuğu): `kullanıcı@sunucu:port` yazınca sunucu listeye eklenip bağlanıyor, aynı adres tekrar yazılınca yenisi eklenmiyor; geçersiz adreste hata, Esc kapatıyor; yapıştırılan `ssh -p 2200 user@host` komutu da çözülüyor
 - [ ] Sunucu ekle/düzenle: Klasör alanı mevcut klasörleri listeden seçtiriyor ("Yeni klasör…" ad alanı açıyor, "Klasörsüz" klasörü kaldırıyor); hiç klasör yokken düz metin alanı görünüyor
+- [ ] ⋯ menüsü (Sunucular sekmesi): tıklayınca üç öğeli menü açılıyor ve açık kalıyor; dışarı tıklayınca ya da Esc ile kapanıyor
+- [ ] Terminal sağ üstündeki 🔔: aç, uzun bir komut çalıştır (`sleep 8; echo bitti`), başka bir uygulamaya geç; çıktı ~6 sn kesilince masaüstü bildirimi geliyor (ilk kullanımda izin soruyor); pencereye bakarken bildirim gelmiyor
+- [ ] Sekmeyi başka sekmenin üstüne sürükleyince sıra değişiyor; uygulamayı kapatıp açınca "Önceki oturumdaki N sekme geri açılsın mı?" soruluyor
+- [ ] Sunucular sekmesinde klasör başlığına tıklayınca klasör kapanıyor/açılıyor, kapalı kalanlar yeniden açılışta hatırlanıyor
+- [ ] Dosyalar: filtre kutusuna yazıp 🔎 ya da Enter → alt klasörlerde arama; sonuca çift tık klasörüne gidip dosyayı seçiyor
+- [ ] Metrik çubuğunda bir değerin üstüne gelince ayrıntı ipucu çıkıyor; değerler saniyede bir yenileniyor
+- [ ] Terminalde `cd /var/log` + Enter: Dosyalar paneli ~1 sn içinde o klasöre geçiyor

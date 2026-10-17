@@ -23,14 +23,15 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - Copy/paste, zoom, search, clickable links (Cmd/Ctrl + click, http/https only)
 - MultiExec (type once, send to several tabs), macros you can write or record
 - Live metrics bar: CPU, memory, disk, load, uptime, network (Linux servers)
-- Record a session to a plain-text log file
+- Record a session to a plain-text log file; get a desktop notification when a long command goes quiet (bell button)
+- Reopen the previous session's tabs, drag tabs to reorder, collapsible server folders
 - Color schemes: Dracula, Nord, Solarized Dark, Tokyo Night, Gruvbox
 
 **Files**
 - SFTP panel that follows the shell's working directory
 - Copy, cut, paste, drag-and-drop move/copy, inline rename, upload/download with progress and cancel, drag files in from the OS
 - Built-in text editor for remote files (Ctrl/Cmd+S saves), or open a file in your default editor and have it uploaded back on every save
-- Change permissions (rwx boxes or octal), filter the listing by name
+- Change permissions (rwx boxes or octal), filter the listing by name, search subfolders
 
 **Tunnels**
 - Local (`-L`), SOCKS5 dynamic (`-D`) and remote (`-R`) port forwarding, saved per server

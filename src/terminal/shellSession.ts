@@ -30,6 +30,8 @@ export interface ShellApi {
   /** Kayıt dosyasını sorar; iptal edilirse `null`, aksi halde günlüğün yazıldığı yol. */
   logStart?(tabId: string, suggestedName: string): Promise<string | null>;
   logStop?(tabId: string): Promise<void>;
+  /** Masaüstü bildirimi gönderir (izin gerekiyorsa ister). */
+  notify?(title: string, body: string): Promise<void>;
 }
 
 export class ShellSession {
@@ -82,7 +84,11 @@ export class ShellSession {
     if (this.status === "connecting") this.setStatus("open");
   }
 
+  /** Sunucudan her çıktı geldiğinde çağrılır. */
+  onActivity?: () => void;
+
   handleData(bytes: Uint8Array): void {
+    this.onActivity?.();
     this.term.write(bytes, () => {
       if (this.tabId) void this.api.shellAck(this.tabId, bytes.length);
       else this.pendingAck += bytes.length;

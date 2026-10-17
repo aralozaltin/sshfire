@@ -58,6 +58,9 @@ export const tr = {
     exitCode: (code: number) => `Çıkış kodu ${code}`,
     failed: "Bağlantı kurulamadı",
     startLog: "Oturumu kaydet",
+    notifyOn: "Bitince bildir",
+    notifyOff: "Bildirimi kapat",
+    quietBody: (secs: number) => `Çıktı ${secs} saniyedir sessiz, komut bitmiş olabilir.`,
     stopLog: "Kaydı durdur",
   },
   hostKey: {

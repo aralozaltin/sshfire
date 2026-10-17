@@ -272,3 +272,79 @@ describe("automatic reconnect", () => {
     expect(onReconnect).not.toHaveBeenCalled();
   });
 });
+
+describe("notify when the output goes quiet", () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] }));
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  const ready = async (props: Partial<React.ComponentProps<typeof TerminalTab>> = {}) => {
+    const h = setup();
+    const notify = vi.fn(async () => {});
+    const api = { ...h.api, notify };
+    render(<TerminalTab sessionId="s1" name="api-prod" api={api} createTerm={() => h.term} {...props} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const output = () => act(() => { (h.api.connect as ReturnType<typeof vi.fn>).mock.calls[0][3](new TextEncoder().encode("building...\r\n")); });
+    const toggle = () => screen.getByRole("button", { name: /Bitince bildir|Bildirimi kapat/ });
+    return { notify, output, toggle };
+  };
+  const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+
+  test("after output stops for a few seconds a notification names the server and the toggle switches off", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { notify, output, toggle } = await ready();
+    await act(async () => { toggle().click(); });
+    expect(toggle()).toHaveAttribute("aria-pressed", "true");
+    output();
+    await wait(3000);
+    expect(notify).not.toHaveBeenCalled();
+    await wait(4000);
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith("api-prod", expect.stringContaining("sessiz"));
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+    await wait(30000);
+    expect(notify).toHaveBeenCalledTimes(1);
+  });
+
+  test("steady output keeps postponing the notification", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { notify, output, toggle } = await ready();
+    await act(async () => { toggle().click(); });
+    for (let i = 0; i < 6; i++) { output(); await wait(4000); }
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  test("nothing is announced if there was no output after switching it on", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { notify, toggle } = await ready();
+    await act(async () => { toggle().click(); });
+    await wait(60000);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  test("switching it off cancels the watch", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    const { notify, output, toggle } = await ready();
+    await act(async () => { toggle().click(); });
+    output();
+    await act(async () => { toggle().click(); });
+    await wait(30000);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  test("if you are looking at the terminal anyway no notification is sent", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const { notify, output, toggle } = await ready();
+    await act(async () => { toggle().click(); });
+    output();
+    await wait(10000);
+    expect(notify).not.toHaveBeenCalled();
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("no toggle is offered when the api cannot notify", async () => {
+    const h = setup();
+    render(<TerminalTab sessionId="s1" api={h.api} createTerm={() => h.term} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.queryByRole("button", { name: "Bitince bildir" })).not.toBeInTheDocument();
+  });
+});

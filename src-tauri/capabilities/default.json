@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "dialog:default",
+    "notification:default",
     {
       "identifier": "opener:allow-open-url",
       "allow": [

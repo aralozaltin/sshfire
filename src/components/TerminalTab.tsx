@@ -13,6 +13,8 @@ function closeReasonText(t: Messages, reason: string): string {
 }
 
 export const MAX_RETRIES = 5;
+/** Çıktı bu kadar süre kesilirse komut bitmiş sayılır. */
+export const QUIET_MS = 6000;
 const retryDelayMs = (attempt: number) => Math.min(30000, 3000 * 2 ** attempt);
 
 export interface TerminalTabProps {
@@ -43,6 +45,8 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const [findOpen, setFindOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [retryCancelled, setRetryCancelled] = useState(false);
+  const [watching, setWatching] = useState(false);
+  const lastOutput = useRef<number | null>(null);
   const wasOpen = useRef(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -58,6 +62,9 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       rerender();
     });
     sessionRef.current = session;
+    session.onActivity = () => {
+      lastOutput.current = Date.now();
+    };
     const unregister = hub && tabKey ? hub.register(tabKey, (text) => session.send(text)) : undefined;
     if (hub && tabKey) session.userInput = (text) => hub.userTyped(tabKey, text);
     let alive = true;
@@ -96,6 +103,25 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       termRef.current?.focus();
     }
   }, [visible]);
+
+  function toggleWatching() {
+    lastOutput.current = null;
+    setWatching((v) => !v);
+  }
+
+  useEffect(() => {
+    if (!watching) return;
+    const timer = setInterval(() => {
+      const last = lastOutput.current;
+      if (last === null || Date.now() - last < QUIET_MS) return;
+      lastOutput.current = null;
+      setWatching(false);
+      const present = visible && document.hasFocus();
+      if (!present) void api.notify?.(name ?? "SSHFire", t.terminal.quietBody(Math.round(QUIET_MS / 1000)));
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watching]);
 
   async function toggleRecording() {
     const tabId = sessionRef.current?.tabId;
@@ -140,16 +166,32 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
           }}
         />
       )}
-      {api.logStart && status === "open" && (
-        <button
-          type="button"
-          className={`terminal__rec${recording ? " terminal__rec--on" : ""}`}
-          title={recording ? t.terminal.stopLog : t.terminal.startLog}
-          aria-label={recording ? t.terminal.stopLog : t.terminal.startLog}
-          onClick={() => void toggleRecording()}
-        >
-          ●{recording && <span> REC</span>}
-        </button>
+      {(api.logStart || api.notify) && status === "open" && (
+        <div className="terminal__tools">
+          {api.notify && (
+            <button
+              type="button"
+              className={`terminal__rec${watching ? " terminal__rec--on" : ""}`}
+              title={watching ? t.terminal.notifyOff : t.terminal.notifyOn}
+              aria-label={watching ? t.terminal.notifyOff : t.terminal.notifyOn}
+              aria-pressed={watching}
+              onClick={toggleWatching}
+            >
+              🔔{watching && <span> …</span>}
+            </button>
+          )}
+          {api.logStart && (
+            <button
+              type="button"
+              className={`terminal__rec${recording ? " terminal__rec--on" : ""}`}
+              title={recording ? t.terminal.stopLog : t.terminal.startLog}
+              aria-label={recording ? t.terminal.stopLog : t.terminal.startLog}
+              onClick={() => void toggleRecording()}
+            >
+              ●{recording && <span> REC</span>}
+            </button>
+          )}
+        </div>
       )}
       <div ref={hostRef} data-testid="terminal-host" className="terminal__host" />
       {status !== "closed" && (

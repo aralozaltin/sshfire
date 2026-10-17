@@ -5,6 +5,7 @@ import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialo
 import { getVersion } from "@tauri-apps/api/app";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import type { TransferEvent } from "./files/transfers";
 import type { FileEntry } from "./files/types";
 import type { Metrics } from "./metrics/types";
@@ -111,6 +112,12 @@ export async function logStart(tabId: string, suggestedName: string): Promise<st
   return path;
 }
 export const logStop = (tabId: string) => invoke<void>("log_stop", { tabId });
+
+export async function notify(title: string, body: string): Promise<void> {
+  let granted = await isPermissionGranted();
+  if (!granted) granted = (await requestPermission()) === "granted";
+  if (granted) sendNotification({ title, body });
+}
 
 export const knownHostsList = () => invoke<{ host: string; port: number; fingerprint: string }[]>("known_hosts_list");
 export const knownHostsRemove = (host: string, port: number) => invoke<boolean>("known_hosts_remove", { host, port });
@@ -247,6 +254,7 @@ export const realApi = {
   sshConfigHosts,
   exportSessions,
   importSessions,
+  notify,
   knownHostsList,
   knownHostsRemove,
   tunnelStart,
