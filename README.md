@@ -19,7 +19,7 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - Optional command to run on connect, color labels for servers (shown in the list and on tabs), local terminal tab
 
 **Terminal**
-- Tabs plus side-by-side, stacked and grid layouts
+- Tabs plus side-by-side, stacked and grid layouts, with keyboard shortcuts (macOS: ⌘T new local terminal, ⌘W close, ⌘1-9 jump, ⌘⇧[ ⌘⇧] cycle; Windows/Linux: Ctrl+Shift+T / Ctrl+Shift+W, Alt+1-9, Ctrl+Tab)
 - Copy/paste, zoom, search, clickable links (Cmd/Ctrl + click, http/https only)
 - MultiExec (type once, send to several tabs), macros you can write or record
 - Live metrics bar: CPU, memory, disk, load, uptime, network (Linux servers)

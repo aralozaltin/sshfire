@@ -92,3 +92,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Dosya sağ tık → Harici düzenleyicide aç: dosya varsayılan uygulamada açılıyor, kaydedince panelde "yüklendi" bildirimi çıkıyor ve sunucudaki içerik değişiyor; sekmeyi kapatınca geçici dosya siliniyor
 - [ ] Bağlı sunucunun satırında yeşil nokta (Sunucular sekmesinde); bağlantı kapanınca kayboluyor
 - [ ] Güncelleme: Ayarlar → Güncellemeleri denetle yeni sürümü buluyor, indirip kuruyor ve yeniden başlatıyor
+- [ ] Kısayollar: ⌘T/⌘W/⌘1-9/⌘⇧[ ] (Mac) ve Ctrl+Shift+T/W, Alt+1-9, Ctrl+Tab (Windows/Linux) terminal odaktayken de çalışıyor, terminale karakter yazmıyor

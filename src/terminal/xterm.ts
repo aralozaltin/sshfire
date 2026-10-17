@@ -8,6 +8,7 @@ import { isSafeUrl } from "./links";
 import "@xterm/xterm/css/xterm.css";
 import type { TermLike } from "./shellSession";
 import { classifyKey } from "./shortcuts";
+import { classifyAppKey } from "./appShortcuts";
 import { loadFontSize, saveFontSize, stepFontSize } from "./fontSize";
 
 import { loadScheme, SCHEME_EVENT, terminalTheme } from "./schemes";
@@ -55,6 +56,8 @@ export function createXterm(el: HTMLElement): TermLike {
 
   term.attachCustomKeyEventHandler((e) => {
     if (e.type !== "keydown") return true;
+    // Sekme kısayollarını terminal yutmasın; olay pencereye kadar yükselir.
+    if (classifyAppKey(e, isMac)) return false;
     const action = classifyKey(e, term.hasSelection(), isMac);
     if (!action) return true;
     // macOS'ta ⌘C/⌘V'yi tarayıcı kendi yönetir; elle işlersek çift yapıştırma olur.

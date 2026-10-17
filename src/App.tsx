@@ -35,6 +35,7 @@ import { UpdateDialog } from "./components/UpdateDialog";
 import { UpdateSettings } from "./components/UpdateSettings";
 import { loadAutoUpdate, loadLastCheck, saveAutoUpdate, saveLastCheck, shouldCheckNow } from "./updates/updates";
 import { Splitter } from "./components/Splitter";
+import { classifyAppKey } from "./terminal/appShortcuts";
 import { loadSidebarWidth, saveSidebarWidth } from "./layout/sidebarWidth";
 import "./App.css";
 
@@ -225,6 +226,33 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   }
 
   tabsRef.current = tabs;
+
+  const shortcutRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  shortcutRef.current = (e) => {
+    const action = classifyAppKey(e, /Mac|iPhone|iPad/.test(navigator.platform));
+    if (!action) return;
+    const list = tabsRef.current;
+    const at = list.findIndex((x) => x.key === activeKey);
+    if (action.type === "newLocal") openLocal();
+    else if (action.type === "close") {
+      if (!activeKey) return;
+      closeTab(activeKey);
+    } else if (action.type === "goto") {
+      const target = list[action.index];
+      if (!target) return;
+      setActiveKey(target.key);
+    } else {
+      if (list.length === 0) return;
+      const step = action.type === "next" ? 1 : -1;
+      setActiveKey(list[(Math.max(at, 0) + step + list.length) % list.length].key);
+    }
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => shortcutRef.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function setStatus(key: string, status: TabInfo["status"]) {
     if (status === "open" && !autoOpened.current.has(key)) {

@@ -692,3 +692,19 @@ test("a server shows a green online dot while its tab is connected and loses it 
   await userEvent.click(screen.getByRole("button", { name: /Test 3.81 kapat/ }));
   await vi.waitFor(() => expect(screen.queryByRole("img", { name: "Bağlı" })).not.toBeInTheDocument());
 });
+
+test("tab shortcuts open a local terminal, switch tabs and close the active one", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await screen.findByRole("tab", { name: /Test 3.81/ });
+  await userEvent.keyboard("{Control>}{Shift>}t{/Shift}{/Control}");
+  expect(await screen.findByRole("tab", { name: /Yerel/ })).toHaveAttribute("aria-selected", "true");
+  await userEvent.keyboard("{Alt>}1{/Alt}");
+  expect(screen.getByRole("tab", { name: /Test 3.81/ })).toHaveAttribute("aria-selected", "true");
+  await userEvent.keyboard("{Control>}{Tab}{/Control}");
+  expect(screen.getByRole("tab", { name: /Yerel/ })).toHaveAttribute("aria-selected", "true");
+  await userEvent.keyboard("{Control>}{Shift>}w{/Shift}{/Control}");
+  await vi.waitFor(() => expect(screen.queryByRole("tab", { name: /Yerel/ })).not.toBeInTheDocument());
+  expect(screen.getByRole("tab", { name: /Test 3.81/ })).toBeInTheDocument();
+});
