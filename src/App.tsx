@@ -29,6 +29,7 @@ import { LOCAL_SESSION_ID, type NewSession, type RunningTunnel, type Session, ty
 import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSetting, useT, type LocaleSetting } from "./i18n";
 import { LanguageSelect } from "./components/LanguageSelect";
 import { SettingsMenu } from "./components/SettingsMenu";
+import { KnownHostsDialog } from "./components/KnownHostsDialog";
 import { TerminalSchemeSelect } from "./components/TerminalSchemeSelect";
 import { loadScheme, saveScheme } from "./terminal/schemes";
 import { UpdateDialog } from "./components/UpdateDialog";
@@ -96,6 +97,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [appVer, setAppVer] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
+  const [showHosts, setShowHosts] = useState(false);
   const [termScheme, setTermScheme] = useState(loadScheme);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState<string | null>(null);
@@ -563,6 +565,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 saveScheme(id);
               }}
             />
+            <button type="button" onClick={() => setShowHosts(true)}>{t.knownHosts.open}</button>
             <UpdateSettings
               version={appVer}
               auto={autoUpdate}
@@ -681,6 +684,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
       {importCandidates && (
         <div className="overlay">
           <ImportDialog candidates={importCandidates} onImport={(c) => void runImport(c)} onCancel={() => setImportCandidates(null)} />
+        </div>
+      )}
+      {showHosts && (
+        <div className="overlay">
+          <KnownHostsDialog load={api.knownHostsList} onRemove={api.knownHostsRemove} onClose={() => setShowHosts(false)} />
         </div>
       )}
       {update && (

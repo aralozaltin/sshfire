@@ -86,6 +86,8 @@ pub fn run() {
             commands::local_connect,
             commands::log_start,
             commands::log_stop,
+            commands::known_hosts_list,
+            commands::known_hosts_remove,
             commands::hostkey_answer,
             commands::password_answer,
             commands::auth_answer,

@@ -532,3 +532,13 @@ pub fn log_stop(state: State<'_, AppState>, tab_id: String) {
         log.stop();
     }
 }
+
+#[tauri::command]
+pub fn known_hosts_list(state: State<'_, AppState>) -> Vec<vcore::known_hosts::KnownHostEntry> {
+    state.hosts.lock().unwrap().list()
+}
+
+#[tauri::command]
+pub fn known_hosts_remove(state: State<'_, AppState>, host: String, port: u16) -> Result<bool, AppError> {
+    state.hosts.lock().unwrap().remove(&host, port).map_err(|e| AppError::with_detail("store_error", e.to_string()))
+}

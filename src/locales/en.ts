@@ -246,6 +246,16 @@ export const en: Messages = {
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
   localTerminal: { button: "Local terminal", title: "Local" },
+  knownHosts: {
+    open: "Trusted servers…",
+    title: "Trusted servers",
+    hint: "If a server's key really changed (for example after a reinstall) you can forget it here and connect again. Do not delete it without verifying the fingerprint.",
+    empty: "No trusted servers yet.",
+    forget: "Forget",
+    cancel: "Cancel",
+    confirmTitle: "Forget this server?",
+    confirmBody: (h: string) => `The saved fingerprint for ${h} will be removed; you will be asked again on the next connection.`,
+  },
   chrome: { settings: "Settings", more: "More actions", add: "Add server" },
   updates: {
     check: "Check for updates",
@@ -266,7 +276,7 @@ export const en: Messages = {
   errors: {
     hostKeyRejected: "Server key rejected.",
     hostKeyChanged: (previous: string, current: string) =>
-      `The server key has changed! Saved: ${previous} — Received: ${current}. Connection refused.`,
+      `The server key has changed! Saved: ${previous} — Received: ${current}. Connection refused. If the key was changed on purpose, forget it under Settings > Trusted servers.`,
     authFailed: "Authentication failed.",
     unreachable: (detail: string) => `Could not reach the server: ${detail}`,
     secretDenied: "Access to the key store was denied.",

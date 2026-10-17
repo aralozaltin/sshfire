@@ -179,6 +179,8 @@ function sftpApi() {
     onFilesDropped: vi.fn(async () => () => {}),
     sftpChmod: vi.fn(async () => {}),
     pickFolder: vi.fn(async () => null),
+    knownHostsList: vi.fn(async () => [{ host: "10.0.0.5", port: 22, fingerprint: "SHA256:zzzz" }]),
+    knownHostsRemove: vi.fn(async () => true),
     sftpEditExternal: vi.fn(async () => ""),
     onExternalEditSync: vi.fn(async () => () => {}),
     onTransferProgress: vi.fn(async () => () => {}),
@@ -707,4 +709,16 @@ test("tab shortcuts open a local terminal, switch tabs and close the active one"
   await userEvent.keyboard("{Control>}{Shift>}w{/Shift}{/Control}");
   await vi.waitFor(() => expect(screen.queryByRole("tab", { name: /Yerel/ })).not.toBeInTheDocument());
   expect(screen.getByRole("tab", { name: /Test 3.81/ })).toBeInTheDocument();
+});
+
+test("settings opens the trusted servers dialog and forgets a server", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Ayarlar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Güvenilen sunucular…" }));
+  expect(await screen.findByText("10.0.0.5")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "10.0.0.5 unut" }));
+  await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Unut" }));
+  expect(api.knownHostsRemove).toHaveBeenCalledWith("10.0.0.5", 22);
 });

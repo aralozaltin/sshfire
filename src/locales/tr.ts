@@ -244,6 +244,16 @@ export const tr = {
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
   localTerminal: { button: "Yerel terminal", title: "Yerel" },
+  knownHosts: {
+    open: "Güvenilen sunucular…",
+    title: "Güvenilen sunucular",
+    hint: "Bir sunucunun anahtarı gerçekten değiştiyse (yeniden kurulum gibi) kaydı buradan unutup yeniden bağlanabilirsin. Parmak izini doğrulamadan silme.",
+    empty: "Henüz güvenilen sunucu yok.",
+    forget: "Unut",
+    cancel: "Vazgeç",
+    confirmTitle: "Sunucu unutulsun mu?",
+    confirmBody: (h: string) => `${h} için kayıtlı parmak izi silinecek; bir sonraki bağlantıda yeniden sorulur.`,
+  },
   chrome: { settings: "Ayarlar", more: "Diğer işlemler", add: "Sunucu ekle" },
   updates: {
     check: "Güncellemeleri denetle",
@@ -264,7 +274,7 @@ export const tr = {
   errors: {
     hostKeyRejected: "Sunucu anahtarı reddedildi.",
     hostKeyChanged: (previous: string, current: string) =>
-      `Sunucu anahtarı değişmiş! Kayıtlı: ${previous} — Gelen: ${current}. Bağlantı reddedildi.`,
+      `Sunucu anahtarı değişmiş! Kayıtlı: ${previous} — Gelen: ${current}. Bağlantı reddedildi. Anahtarın bilerek değiştiğinden eminsen Ayarlar > Güvenilen sunucular'dan kaydı unutabilirsin.`,
     authFailed: "Kimlik doğrulama başarısız.",
     unreachable: (detail: string) => `Sunucuya ulaşılamadı: ${detail}`,
     secretDenied: "Anahtar deposuna erişim reddedildi.",

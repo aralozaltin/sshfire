@@ -111,6 +111,9 @@ export async function logStart(tabId: string, suggestedName: string): Promise<st
 }
 export const logStop = (tabId: string) => invoke<void>("log_stop", { tabId });
 
+export const knownHostsList = () => invoke<{ host: string; port: number; fingerprint: string }[]>("known_hosts_list");
+export const knownHostsRemove = (host: string, port: number) => invoke<boolean>("known_hosts_remove", { host, port });
+
 export const tunnelStart = (tabId: string, spec: TunnelSpec) => invoke<RunningTunnel>("tunnel_start", { tabId, spec });
 export const tunnelStop = (tabId: string, id: string) => invoke<void>("tunnel_stop", { tabId, id });
 export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_list", { tabId });
@@ -242,6 +245,8 @@ export const realApi = {
   sshConfigHosts,
   exportSessions,
   importSessions,
+  knownHostsList,
+  knownHostsRemove,
   tunnelStart,
   tunnelStop,
   tunnelList,

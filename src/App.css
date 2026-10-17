@@ -284,3 +284,10 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .code-editor .cm-editor { height: 100%; outline: none; }
 .editor__status { display: flex; justify-content: space-between; gap: 12px; padding: 2px 8px; border-top: 1px solid var(--line); background: var(--chrome); color: var(--muted); }
 .editor__status label { display: inline-flex; flex-direction: row; grid-template-columns: none; gap: 6px; align-items: center; white-space: nowrap; }
+
+.known-hosts { min-width: 460px; max-width: 90vw; }
+.known-hosts p { margin: 0 10px 6px; color: var(--muted); }
+.known-hosts__list { list-style: none; margin: 0 10px; padding: 0; max-height: 280px; overflow: auto; border: 1px solid var(--line); background: var(--surface); }
+.known-hosts__list li { display: flex; gap: 8px; align-items: center; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+.known-hosts__host { font-weight: 600; flex: none; }
+.known-hosts__fp { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; }
