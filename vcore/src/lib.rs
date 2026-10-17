@@ -3,6 +3,7 @@ pub mod fsutil;
 pub mod known_hosts;
 pub mod metrics;
 pub mod secrets;
+pub mod search;
 pub mod sftp;
 pub mod text;
 pub mod shellquote;

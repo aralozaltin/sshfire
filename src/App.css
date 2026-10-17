@@ -69,7 +69,10 @@ input:focus, select:focus, button:focus-visible { outline: 1px solid var(--accen
 .server-list__bar { display: flex; gap: 4px; padding: 4px; background: var(--chrome); border-bottom: 1px solid var(--line); position: sticky; top: 0; }
 .server-list__bar button { white-space: nowrap; }
 .server-list__group h3 { margin: 0; padding: 2px 6px; font-size: 12px; font-weight: 600; background: var(--chrome); border-bottom: 1px solid var(--chrome-dark); }
-.server-list__group h3::before { content: "▾ "; color: var(--muted); }
+.server-list__folder { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 6px; width: 100%; cursor: pointer; }
+.server-list__folder:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.server-list__chevron { color: var(--muted); width: 10px; }
+.server-list__count { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 11px; }
 .server-list ul { list-style: none; margin: 0; padding: 0; }
 .server-list li { display: flex; align-items: center; }
 .server-list li:hover, .server-list li.is-selected { background: var(--select); }
@@ -294,3 +297,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .tabs__item.is-drop-target { box-shadow: inset 2px 0 0 var(--accent); }
 .tabs__item[draggable="true"] { cursor: grab; }
+
+.files__where { display: block; color: var(--muted); font-size: 11px; margin-left: 20px; overflow: hidden; text-overflow: ellipsis; }
+.files__search button { margin-left: 6px; }

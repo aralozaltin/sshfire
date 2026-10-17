@@ -268,3 +268,21 @@ async fn chmod_changes_the_permission_bits() {
     assert_eq!(e.sftp.chmod(&format!("{}/yok", e.base), 0o644).await.unwrap_err(), SftpError::NotFound);
     e.cleanup().await;
 }
+
+#[tokio::test]
+async fn search_finds_files_in_subfolders_ignoring_case_and_glob_characters() {
+    if !server_up() { return; }
+    let e = env().await;
+    e.conn.exec(&format!("cd {} && mkdir -p a/deep && touch a/Rapor.txt a/deep/rapor-2.TXT a/deep/other.md 'a/we*ird.txt'", shell_quote(&e.base))).await.unwrap();
+    let found = |q: &str| {
+        let cmd = vcore::search::find_command(&e.base, q, 100);
+        let conn = &e.conn;
+        async move { vcore::search::parse_paths(&conn.exec(&cmd).await.unwrap()) }
+    };
+    let mut hits = found("rapor").await;
+    hits.sort();
+    assert_eq!(hits, vec![format!("{}/a/Rapor.txt", e.base), format!("{}/a/deep/rapor-2.TXT", e.base)]);
+    assert_eq!(found("we*ird").await, vec![format!("{}/a/we*ird.txt", e.base)], "a star in the query is literal");
+    assert!(found("nothing-like-this").await.is_empty());
+    e.cleanup().await;
+}

@@ -43,6 +43,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [info, setInfo] = useState<FileEntry | null>(null);
   const [chmodTarget, setChmodTarget] = useState<FileEntry | null>(null);
   const [filter, setFilter] = useState("");
+  const [search, setSearch] = useState<{ query: string; hits: FileEntry[] | null } | null>(null);
   const [follow, setFollow] = useState(true);
   const lastFollowed = useRef<string | null>(followPath ?? null);
   const [editing, setEditing] = useState<{ entry: FileEntry; content: string } | null>(null);
@@ -68,6 +69,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         setSelected([]);
         setAnchor(null);
         setFilter("");
+        setSearch(null);
         onPathChange?.(dir);
       } catch (e) {
         if (id === requestId.current) setError(e);
@@ -193,9 +195,10 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
 
   if (!tabId) return <p className="files__hint">{f.noConnection}</p>;
 
-  const selectedEntries = entries.filter((e) => selected.includes(e.path));
+  const listed = search ? search.hits ?? [] : entries;
+  const selectedEntries = listed.filter((e) => selected.includes(e.path));
   const needle = filter.trim().toLowerCase();
-  const shown = needle ? entries.filter((e) => e.name.toLowerCase().includes(needle)) : entries;
+  const shown = search ? listed : needle ? entries.filter((e) => e.name.toLowerCase().includes(needle)) : entries;
 
   async function run(action: () => Promise<void>) {
     try {
@@ -334,7 +337,30 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     }
   }
 
+  async function runSearch() {
+    const query = filter.trim();
+    if (!tabId || !path || !query) return;
+    setSearch({ query, hits: null });
+    setSelected([]);
+    try {
+      setSearch({ query, hits: await api.sftpSearch(tabId, path, query) });
+    } catch (e) {
+      setSearch(null);
+      setError(e);
+    }
+  }
+
+  async function openHit(entry: FileEntry) {
+    const target = entry.isDir ? entry.path : parentPath(entry.path);
+    await load(target);
+    if (!entry.isDir) {
+      setSelected([entry.path]);
+      setAnchor(entry.path);
+    }
+  }
+
   function open(entry: FileEntry) {
+    if (search) return void openHit(entry);
     if (entry.isDir) void load(entry.path);
     else void edit(entry);
   }
@@ -401,8 +427,10 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
           onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setFilter("");
+            if (e.key === "Enter") void runSearch();
           }}
         />
+        <button type="button" className="icon-button" aria-label={f.searchBelow} title={f.searchBelow} disabled={!filter.trim() || !path} onClick={() => void runSearch()}>🔎</button>
         <label className="files__follow" title={f.followTerminal}>
           <input
             type="checkbox"
@@ -435,6 +463,12 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
             </button>
           ))}
         </nav>
+      )}
+      {search && (
+        <div role="status" className="banner banner--info files__search">
+          {search.hits === null ? f.searching : search.hits.length === 0 ? f.noResults : f.results(search.hits.length)}{" "}
+          <button type="button" onClick={() => { setSearch(null); setFilter(""); }}>{f.closeSearch}</button>
+        </div>
       )}
       {error != null && <div role="alert" className="banner banner--error">{errorText(t, error)}</div>}
       {notice && <div role="status" className="banner banner--warn">{notice}</div>}
@@ -503,6 +537,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
                 ) : (
                   entry.name
                 )}
+                {search && <span className="files__where">{parentPath(entry.path)}</span>}
               </td>
               <td>{entry.isDir ? "" : formatSize(entry.size)}</td>
               <td>{formatModified(entry.modified, f.dateLocale)}</td>
@@ -511,8 +546,8 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
           ))}
         </tbody>
       </table>
-      {!loading && error == null && entries.length === 0 && path && <p className="files__hint">{f.emptyDir}</p>}
-      {!loading && error == null && entries.length > 0 && shown.length === 0 && <p className="files__hint">{f.noMatch}</p>}
+      {!search && !loading && error == null && entries.length === 0 && path && <p className="files__hint">{f.emptyDir}</p>}
+      {!search && !loading && error == null && entries.length > 0 && shown.length === 0 && <p className="files__hint">{f.noMatch}</p>}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />}
       {prompt && (
         <div className="overlay">

@@ -108,6 +108,7 @@ pub fn run() {
             sftp_commands::sftp_mkdir,
             sftp_commands::sftp_rename,
             sftp_commands::sftp_chmod,
+            sftp_commands::sftp_search,
             sftp_commands::sftp_edit_external,
             sftp_commands::sftp_remove,
             sftp_commands::sftp_copy,

@@ -395,7 +395,7 @@ pub fn metrics_start(state: State<'_, AppState>, tab_id: String, on_metrics: Cha
             if on_metrics.send(metrics).is_err() {
                 return;
             }
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            tokio::time::sleep(crate::metrics_task::METRICS_INTERVAL).await;
         }
     }));
     Ok(())

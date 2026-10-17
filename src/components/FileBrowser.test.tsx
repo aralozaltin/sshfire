@@ -29,6 +29,7 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpRename: vi.fn(async () => {}),
     sftpRemove: vi.fn(async () => {}),
     sftpChmod: vi.fn(async () => {}),
+    sftpSearch: vi.fn(async (_t: string, _root: string, _q: string) => [] as FileEntry[]),
     sftpEditExternal: vi.fn(async () => "/tmp/x/rapor.txt"),
     onExternalEditSync: vi.fn(async (cb: (e: { path: string; ok: boolean }) => void) => { hooks.sync = cb; return () => {}; }),
     sftpCopy: vi.fn(async () => {}),
@@ -603,4 +604,52 @@ test("cancelling the folder picker downloads nothing", async () => {
   await userEvent.click(screen.getByRole("menuitem", { name: "Şuraya indir…" }));
   await vi.waitFor(() => expect(api.pickFolder).toHaveBeenCalled());
   expect(api.sftpDownload).not.toHaveBeenCalled();
+});
+
+describe("search in subfolders", () => {
+  const hit = (name: string, dir: string) => file(name, dir);
+
+  test("the search button looks below the current folder and lists the hits with their folders", async () => {
+    const api = fakeApi();
+    api.sftpSearch = vi.fn(async () => [hit("rapor-2.txt", "/home/u/docs/arsiv"), hit("rapor.txt", "/home/u")]);
+    setup({ api });
+    await screen.findByText("notlar.md");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Dosyaları filtrele" }), "rapor");
+    await userEvent.click(screen.getByRole("button", { name: "Alt klasörlerde ara" }));
+    expect(api.sftpSearch).toHaveBeenCalledWith("t1", "/home/u", "rapor");
+    expect(await screen.findByText("2 sonuç")).toBeInTheDocument();
+    expect(screen.getByText("/home/u/docs/arsiv")).toBeInTheDocument();
+    expect(screen.queryByText("notlar.md")).not.toBeInTheDocument();
+  });
+
+  test("opening a hit goes to its folder and selects it; closing the search restores the listing", async () => {
+    const api = fakeApi({ "/home/u/docs": [file("a.txt", "/home/u/docs"), file("hedef.txt", "/home/u/docs")] });
+    api.sftpSearch = vi.fn(async () => [hit("hedef.txt", "/home/u/docs")]);
+    setup({ api });
+    await screen.findByText("notlar.md");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Dosyaları filtrele" }), "hedef");
+    await userEvent.click(screen.getByRole("button", { name: "Alt klasörlerde ara" }));
+    await userEvent.dblClick(await screen.findByText("hedef.txt"));
+    await vi.waitFor(() => expect(api.sftpList).toHaveBeenCalledWith("t1", "/home/u/docs"));
+    expect(await screen.findByText("a.txt")).toBeInTheDocument();
+    expect(screen.queryByText(/sonuç/)).not.toBeInTheDocument();
+    expect(row("hedef.txt")).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("no hits says so, and the close button brings the folder back", async () => {
+    setup();
+    await screen.findByText("notlar.md");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Dosyaları filtrele" }), "yok-boyle-bir-sey");
+    await userEvent.click(screen.getByRole("button", { name: "Alt klasörlerde ara" }));
+    expect(await screen.findByText("Sonuç bulunamadı")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Aramayı kapat" }));
+    expect(await screen.findByText("notlar.md")).toBeInTheDocument();
+  });
+
+  test("an empty query does not search", async () => {
+    const { api } = setup();
+    await screen.findByText("notlar.md");
+    expect(screen.getByRole("button", { name: "Alt klasörlerde ara" })).toBeDisabled();
+    expect(api.sftpSearch).not.toHaveBeenCalled();
+  });
 });

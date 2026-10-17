@@ -131,3 +131,46 @@ test("no server shows the online dot when nothing is connected", () => {
   render(<ServerList sessions={sessions} {...props} />);
   expect(screen.queryByRole("img", { name: "Bağlı" })).not.toBeInTheDocument();
 });
+
+describe("collapsing folders", () => {
+  beforeEach(() => localStorage.clear());
+
+  test("clicking a folder header hides its servers and clicking again shows them", async () => {
+    render(<ServerList sessions={sessions} {...props} />);
+    const header = screen.getByRole("button", { name: "Test" });
+    expect(header).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Test 3.81")).not.toBeInTheDocument();
+    expect(screen.getByText("Prod API")).toBeInTheDocument();
+    await userEvent.click(header);
+    expect(screen.getByText("Test 3.81")).toBeInTheDocument();
+  });
+
+  test("the folders you closed stay closed the next time the list is shown", async () => {
+    const { unmount } = render(<ServerList sessions={sessions} {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Prod" }));
+    unmount();
+    render(<ServerList sessions={sessions} {...props} />);
+    expect(screen.getByRole("button", { name: "Prod" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Prod API")).not.toBeInTheDocument();
+  });
+
+  test("searching shows matching servers even inside a closed folder", async () => {
+    render(<ServerList sessions={sessions} {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Prod" }));
+    await userEvent.type(screen.getByRole("searchbox"), "Prod API");
+    expect(screen.getByText("Prod API")).toBeInTheDocument();
+  });
+
+  test("the header shows how many servers are inside", () => {
+    render(<ServerList sessions={sessions} {...props} />);
+    expect(screen.getByRole("button", { name: "Prod" })).toHaveTextContent("1");
+  });
+
+  test("a connected server stays visible as a dot on its closed folder", async () => {
+    render(<ServerList sessions={sessions} connectedIds={["2"]} {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Prod" }));
+    expect(within(screen.getByRole("button", { name: "Prod" })).getByRole("img", { name: "Bağlı" })).toBeInTheDocument();
+  });
+});

@@ -18,6 +18,8 @@ export interface FilesApi {
   sftpMkdir(tabId: string, path: string): Promise<void>;
   sftpRename(tabId: string, from: string, to: string): Promise<void>;
   sftpRemove(tabId: string, path: string, recursive: boolean): Promise<void>;
+  /** `root` altında (alt klasörler dahil) adı `query` içeren dosya ve klasörleri bulur. */
+  sftpSearch(tabId: string, root: string, query: string): Promise<FileEntry[]>;
   sftpChmod(tabId: string, path: string, mode: number): Promise<void>;
   sftpCopy(tabId: string, from: string, to: string): Promise<void>;
   sftpReadText(tabId: string, path: string): Promise<string>;

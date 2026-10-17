@@ -178,6 +178,7 @@ function sftpApi() {
     pickFiles: vi.fn(async () => []),
     onFilesDropped: vi.fn(async () => () => {}),
     sftpChmod: vi.fn(async () => {}),
+    sftpSearch: vi.fn(async () => []),
     pickFolder: vi.fn(async () => null),
     knownHostsList: vi.fn(async () => [{ host: "10.0.0.5", port: 22, fingerprint: "SHA256:zzzz" }]),
     knownHostsRemove: vi.fn(async () => true),

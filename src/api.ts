@@ -44,6 +44,7 @@ export const sftpMkdir = (tabId: string, path: string) => invoke<void>("sftp_mkd
 export const sftpRename = (tabId: string, from: string, to: string) => invoke<void>("sftp_rename", { tabId, from, to });
 export const sftpRemove = (tabId: string, path: string, recursive: boolean) =>
   invoke<void>("sftp_remove", { tabId, path, recursive });
+export const sftpSearch = (tabId: string, root: string, query: string) => invoke<FileEntry[]>("sftp_search", { tabId, root, query });
 export const sftpChmod = (tabId: string, path: string, mode: number) => invoke<void>("sftp_chmod", { tabId, path, mode });
 export const sftpEditExternal = (tabId: string, path: string) => invoke<string>("sftp_edit_external", { tabId, path });
 export const onExternalEditSync = (cb: (e: { path: string; ok: boolean }) => void) =>
@@ -222,6 +223,7 @@ export const realApi = {
   sftpRename,
   sftpRemove,
   sftpChmod,
+  sftpSearch,
   sftpEditExternal,
   onExternalEditSync: async (cb: (e: { path: string; ok: boolean }) => void) => (await onExternalEditSync(cb)) as () => void,
   sftpCopy,

@@ -256,3 +256,27 @@ pub async fn sftp_edit_external(app: AppHandle, state: State<'_, AppState>, tab_
     });
     Ok(local.to_string_lossy().into_owned())
 }
+
+const SEARCH_LIMIT: usize = 200;
+
+/// `root` altında adı `query` içeren dosya ve klasörleri (alt klasörler dahil) bulur.
+#[tauri::command]
+pub async fn sftp_search(state: State<'_, AppState>, tab_id: String, root: String, query: String) -> Result<Vec<FileEntry>, AppError> {
+    let query = query.trim().to_string();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    let conn = {
+        let tabs = state.tabs.lock().unwrap();
+        tabs.get(&tab_id).ok_or_else(|| AppError::code("tab_not_found"))?.conn.clone()
+    };
+    let sftp = client(&state, &tab_id).await?;
+    let output = conn.exec(&vcore::search::find_command(&root, &query, SEARCH_LIMIT)).await.map_err(|e| AppError::from(&e))?;
+    let mut found = Vec::new();
+    for path in vcore::search::parse_paths(&output) {
+        if let Ok(entry) = sftp.stat(&path).await {
+            found.push(entry);
+        }
+    }
+    Ok(found)
+}

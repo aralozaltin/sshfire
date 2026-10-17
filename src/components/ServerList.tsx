@@ -21,12 +21,41 @@ function matches(s: Session, q: string): boolean {
   return [s.name, s.host, s.folder ?? ""].some((v) => v.toLowerCase().includes(q));
 }
 
+const COLLAPSED_KEY = "ssh-istemci.collapsedFolders";
+
+function loadCollapsed(): Set<string> {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+    return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCollapsed(set: Set<string>): void {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
+  } catch {
+    // Depolama kapalıysa kapalı klasörler yalnızca bu oturumda hatırlanır.
+  }
+}
+
 export function ServerList({ sessions, connectedIds = [], onConnect, onEdit, onDelete, onAdd, onImport, onExport, onImportFile }: ServerListProps) {
   const t = useT();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
   const q = query.trim().toLowerCase();
+
+  function toggleFolder(folder: string) {
+    setCollapsed((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(folder)) next.add(folder);
+      saveCollapsed(next);
+      return next;
+    });
+  }
 
   const groups = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -89,10 +118,19 @@ export function ServerList({ sessions, connectedIds = [], onConnect, onEdit, onD
         />
       )}
       {groups.length === 0 && <p className="server-list__none">{t.noResults}</p>}
-      {groups.map(([folder, items]) => (
+      {groups.map(([folder, items]) => {
+        const open = !!q || !collapsed.has(folder);
+        return (
         <section key={folder} role="group" aria-label={folder} className="server-list__group">
-          <h3>{folder}</h3>
-          <ul>
+          <h3>
+            <button type="button" className="server-list__folder" aria-expanded={open} aria-label={folder} onClick={() => toggleFolder(folder)}>
+              <span className="server-list__chevron" aria-hidden="true">{open ? "▾" : "▸"}</span>
+              <span>{folder}</span>
+              <span className="server-list__count">{items.length}</span>
+              {!open && items.some((s) => connectedIds.includes(s.id)) && <span role="img" aria-label={t.connectedLabel} className="server-list__online" />}
+            </button>
+          </h3>
+          {open && <ul>
             {items.map((s) => (
               <li key={s.id} className={selectedId === s.id ? "is-selected" : undefined}>
                 <button
@@ -117,9 +155,10 @@ export function ServerList({ sessions, connectedIds = [], onConnect, onEdit, onD
                 <button type="button" aria-label={`${s.name} ${t.remove.toLowerCase()}`} onClick={() => onDelete(s.id)}>✕</button>
               </li>
             ))}
-          </ul>
+          </ul>}
         </section>
-      ))}
+        );
+      })}
     </div>
   );
 }
