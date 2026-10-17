@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Writes the Homebrew cask for a published release: scripts/update-cask.sh 0.1.2 path/to/Casks/sshfire.rb
+# Writes the Homebrew cask for a published release: scripts/update-cask.sh 0.1.2 [Casks/sshfire.rb]
 set -euo pipefail
-version="${1:?usage: update-cask.sh VERSION OUTPUT_FILE}"
-out="${2:?usage: update-cask.sh VERSION OUTPUT_FILE}"
+version="${1:?usage: update-cask.sh VERSION [OUTPUT_FILE]}"
+out="${2:-$(cd "$(dirname "$0")/.." && pwd)/Casks/sshfire.rb}"
+mkdir -p "$(dirname "$out")"
 base="https://github.com/aralozaltin/sshfire/releases/download/v${version}"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

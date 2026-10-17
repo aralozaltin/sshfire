@@ -59,7 +59,7 @@ Download the installer for your platform from the [latest release](https://githu
 On macOS you can also use Homebrew, which skips the first-launch confirmation:
 
 ```bash
-brew install --cask aralozaltin/tap/sshfire
+brew tap aralozaltin/sshfire https://github.com/aralozaltin/sshfire && brew install --cask sshfire
 ```
 
 On first launch your system may ask you to confirm an app downloaded from the internet:
