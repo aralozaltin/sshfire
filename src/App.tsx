@@ -652,6 +652,17 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           tabs={tabs.map((t) => ({ id: t.key, title: t.title, status: t.status, color: sessions.find((x) => x.id === t.sessionId)?.color }))}
           activeId={activeKey}
           onSelect={setActiveKey}
+          onReorder={(from, to) =>
+            setTabs((cur) => {
+              const a = cur.findIndex((x) => x.key === from);
+              const b = cur.findIndex((x) => x.key === to);
+              if (a < 0 || b < 0 || a === b) return cur;
+              const next = [...cur];
+              const [moved] = next.splice(a, 1);
+              next.splice(b, 0, moved);
+              return next;
+            })
+          }
           onClose={closeTab}
           onContextMenu={(key, x, y) => setTabMenu({ key, x, y })}
         />

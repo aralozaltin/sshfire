@@ -291,3 +291,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .known-hosts__list li { display: flex; gap: 8px; align-items: center; padding: 3px 6px; border-bottom: 1px solid var(--line); }
 .known-hosts__host { font-weight: 600; flex: none; }
 .known-hosts__fp { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; }
+
+.tabs__item.is-drop-target { box-shadow: inset 2px 0 0 var(--accent); }
+.tabs__item[draggable="true"] { cursor: grab; }

@@ -773,3 +773,20 @@ describe("restoring the previous session's tabs", () => {
     await vi.waitFor(() => expect(JSON.parse(localStorage.getItem("ssh-istemci.openTabs") ?? "[]")).toEqual([{ sessionId: "1", title: "Test 3.81" }]));
   });
 });
+
+test("dragging a tab onto another reorders the tabs", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+  await screen.findByRole("tab", { name: /Test 3.81/ });
+  await userEvent.keyboard("{Control>}{Shift>}t{/Shift}{/Control}");
+  await screen.findByRole("tab", { name: /Yerel/ });
+  const order = () => within(screen.getByRole("tablist", { name: "Açık bağlantılar" })).getAllByRole("tab").map((t) => t.textContent);
+  expect(order()).toEqual(["Test 3.81", "Yerel"]);
+  const dt = { setData: () => {}, getData: () => "", effectAllowed: "", dropEffect: "" };
+  const item = (n: RegExp) => screen.getByRole("tab", { name: n }).closest(".tabs__item") as HTMLElement;
+  fireEvent.dragStart(item(/Yerel/), { dataTransfer: dt });
+  fireEvent.dragOver(item(/Test 3.81/), { dataTransfer: dt });
+  fireEvent.drop(item(/Test 3.81/), { dataTransfer: dt });
+  expect(order()).toEqual(["Yerel", "Test 3.81"]);
+});

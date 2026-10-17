@@ -47,3 +47,44 @@ test("a tab with a color label gets a stripe in that color", () => {
   expect(screen.getByRole("tab", { name: /Prod/ })).toHaveStyle({ borderTopColor: "#ef4444" });
   expect(screen.getByRole("tab", { name: /Dev/ }).style.borderTopColor).toBe("");
 });
+
+describe("reordering by dragging", () => {
+  const three = [
+    { id: "a", title: "Alfa", status: "open" as const },
+    { id: "b", title: "Beta", status: "open" as const },
+    { id: "c", title: "Gama", status: "open" as const },
+  ];
+  const dt = () => ({ setData: () => {}, getData: () => "", effectAllowed: "", dropEffect: "" });
+  const item = (name: string) => screen.getByRole("tab", { name: new RegExp(name) }).closest(".tabs__item") as HTMLElement;
+
+  test("dropping a tab on another asks to move it to that position", () => {
+    const onReorder = vi.fn();
+    render(<Tabs tabs={three} activeId="a" onSelect={() => {}} onClose={() => {}} onReorder={onReorder} />);
+    fireEvent.dragStart(item("Alfa"), { dataTransfer: dt() });
+    fireEvent.dragOver(item("Gama"), { dataTransfer: dt() });
+    fireEvent.drop(item("Gama"), { dataTransfer: dt() });
+    expect(onReorder).toHaveBeenCalledWith("a", "c");
+  });
+
+  test("dropping a tab on itself does nothing", () => {
+    const onReorder = vi.fn();
+    render(<Tabs tabs={three} activeId="a" onSelect={() => {}} onClose={() => {}} onReorder={onReorder} />);
+    fireEvent.dragStart(item("Beta"), { dataTransfer: dt() });
+    fireEvent.drop(item("Beta"), { dataTransfer: dt() });
+    expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  test("the tab under the pointer is highlighted while dragging and cleared afterwards", () => {
+    render(<Tabs tabs={three} activeId="a" onSelect={() => {}} onClose={() => {}} onReorder={() => {}} />);
+    fireEvent.dragStart(item("Alfa"), { dataTransfer: dt() });
+    fireEvent.dragOver(item("Beta"), { dataTransfer: dt() });
+    expect(item("Beta")).toHaveClass("is-drop-target");
+    fireEvent.dragEnd(item("Alfa"));
+    expect(item("Beta")).not.toHaveClass("is-drop-target");
+  });
+
+  test("tabs are not draggable when nothing handles the reorder", () => {
+    render(<Tabs tabs={three} activeId="a" onSelect={() => {}} onClose={() => {}} />);
+    expect(item("Alfa")).not.toHaveAttribute("draggable", "true");
+  });
+});
