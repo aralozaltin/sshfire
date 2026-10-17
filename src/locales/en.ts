@@ -248,6 +248,7 @@ export const en: Messages = {
     exported: (path: string) => `Server list saved: ${path}`,
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
+  restoreTabs: { question: (n: number) => `Reopen the ${n} tab${n === 1 ? "" : "s"} from your last session?`, yes: "Reopen", no: "No" },
   quickConnect: {
     button: "Quick connect",
     title: "Quick connect",

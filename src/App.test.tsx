@@ -739,3 +739,37 @@ test("quick connect saves a new server and opens a tab for it, and reuses an exi
   await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
   expect(api.addSession).not.toHaveBeenCalled();
 });
+
+describe("restoring the previous session's tabs", () => {
+  beforeEach(() => localStorage.setItem("ssh-istemci.openTabs", JSON.stringify([{ sessionId: "1", title: "Test 3.81" }, { sessionId: "gone", title: "Silinmiş" }, { sessionId: "__local__", title: "Yerel" }])));
+
+  test("offers to reopen tabs whose servers still exist and reopens them on request", async () => {
+    const { api } = fakeApi();
+    render(<App api={api} createTerm={fakeTerm} />);
+    expect(await screen.findByText("Önceki oturumdaki 2 sekme geri açılsın mı?")).toBeInTheDocument();
+    expect(api.connect).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Geri aç" }));
+    expect(await screen.findByRole("tab", { name: /Test 3.81/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Yerel/ })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Silinmiş/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/geri açılsın mı/)).not.toBeInTheDocument();
+  });
+
+  test("dismissing the offer forgets the old tabs", async () => {
+    const { api } = fakeApi();
+    render(<App api={api} createTerm={fakeTerm} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Hayır" }));
+    expect(screen.queryByRole("tablist", { name: "Açık bağlantılar" })).not.toBeInTheDocument();
+    expect(api.connect).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(localStorage.getItem("ssh-istemci.openTabs")).toBe("[]"));
+  });
+
+  test("opening a tab saves the list for the next launch", async () => {
+    localStorage.clear();
+    const { api } = fakeApi();
+    render(<App api={api} createTerm={fakeTerm} />);
+    await userEvent.dblClick(await screen.findByRole("button", { name: /^Test 3\.81 root@/ }));
+    await screen.findByRole("tab", { name: /Test 3.81/ });
+    await vi.waitFor(() => expect(JSON.parse(localStorage.getItem("ssh-istemci.openTabs") ?? "[]")).toEqual([{ sessionId: "1", title: "Test 3.81" }]));
+  });
+});

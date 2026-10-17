@@ -39,6 +39,7 @@ import { UpdateSettings } from "./components/UpdateSettings";
 import { loadAutoUpdate, loadLastCheck, saveAutoUpdate, saveLastCheck, shouldCheckNow } from "./updates/updates";
 import { Splitter } from "./components/Splitter";
 import { classifyAppKey } from "./terminal/appShortcuts";
+import { loadSavedTabs, saveTabs, type SavedTab } from "./tabs/sessionTabs";
 import { loadSidebarWidth, saveSidebarWidth } from "./layout/sidebarWidth";
 import "./App.css";
 
@@ -101,6 +102,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
   const [showHosts, setShowHosts] = useState(false);
   const [quick, setQuick] = useState(false);
+  const [restore, setRestore] = useState<SavedTab[] | null>(null);
+  const [persistReady, setPersistReady] = useState(false);
   const [termScheme, setTermScheme] = useState(loadScheme);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState<string | null>(null);
@@ -169,7 +172,12 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const reload = useCallback(async () => setSessions(await api.listSessions()), [api]);
 
   useEffect(() => {
-    void reload();
+    void api.listSessions().then((list) => {
+      setSessions(list);
+      const saved = loadSavedTabs().filter((s) => s.sessionId === LOCAL_SESSION_ID || list.some((x) => x.id === s.sessionId));
+      setRestore(saved.length > 0 ? saved : null);
+      setPersistReady(saved.length === 0);
+    });
     void api.startupWarning().then((w) => setWarnings(w ?? []));
     const offs: (() => void)[] = [];
     let cancelled = false;
@@ -190,6 +198,29 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     setTabs((t) => [...t, { key, sessionId, title: s.name, status: "connecting" }]);
     setActiveKey(key);
   }
+
+  function restoreTabs() {
+    const saved = restore ?? [];
+    setRestore(null);
+    setPersistReady(true);
+    const reopened = saved.map((s) => ({
+      key: nextKey(),
+      sessionId: s.sessionId,
+      title: s.sessionId === LOCAL_SESSION_ID ? s.title : sessions.find((x) => x.id === s.sessionId)?.name ?? s.title,
+      status: "connecting" as const,
+    }));
+    setTabs((cur) => [...cur, ...reopened]);
+    if (reopened.length > 0) setActiveKey(reopened[reopened.length - 1].key);
+  }
+
+  function dismissRestore() {
+    setRestore(null);
+    setPersistReady(true);
+  }
+
+  useEffect(() => {
+    if (persistReady) saveTabs(tabs.map((x) => ({ sessionId: x.sessionId, title: x.title })));
+  }, [tabs, persistReady]);
 
   async function quickConnect(target: QuickTarget) {
     setQuick(false);
@@ -605,6 +636,13 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           </div>
         ))}
         {error && <div role="alert" className="banner banner--error">{error}</div>}
+        {restore && (
+          <div role="status" className="banner banner--info">
+            {t.restoreTabs.question(restore.length)}{" "}
+            <button type="button" onClick={restoreTabs}>{t.restoreTabs.yes}</button>{" "}
+            <button type="button" onClick={dismissRestore}>{t.restoreTabs.no}</button>
+          </div>
+        )}
         {notice && (
           <div role="status" className="banner banner--info">
             {notice} <button type="button" aria-label={t.files.close} onClick={() => setNotice(null)}>×</button>

@@ -246,6 +246,7 @@ export const tr = {
     exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
+  restoreTabs: { question: (n: number) => `Önceki oturumdaki ${n} sekme geri açılsın mı?`, yes: "Geri aç", no: "Hayır" },
   quickConnect: {
     button: "Hızlı bağlan",
     title: "Hızlı bağlan",
