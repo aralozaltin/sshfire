@@ -140,7 +140,6 @@ export const en: Messages = {
   transfer: {
     upload: "Upload",
     download: "Download",
-    downloadTo: "Download to…",
     cancel: "Cancel",
     uploading: "Uploading",
     downloading: "Downloading",

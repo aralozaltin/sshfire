@@ -102,3 +102,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Dosyalar: filtre kutusuna yazıp 🔎 ya da Enter → alt klasörlerde arama; sonuca çift tık klasörüne gidip dosyayı seçiyor
 - [ ] Metrik çubuğunda bir değerin üstüne gelince ayrıntı ipucu çıkıyor; değerler saniyede bir yenileniyor
 - [ ] Terminalde `cd /var/log` + Enter: Dosyalar paneli ~1 sn içinde o klasöre geçiyor
+- [ ] Dosyalar > İndir (düğme ve sağ tık): önce hedef klasör soruluyor, bir sonrakinde son seçilen klasörde açılıyor; iptal edilirse indirme başlamıyor

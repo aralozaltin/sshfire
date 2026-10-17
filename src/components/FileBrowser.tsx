@@ -11,6 +11,24 @@ import { PermissionsDialog } from "./PermissionsDialog";
 import { InlineRename } from "./InlineRename";
 import { PromptDialog } from "./PromptDialog";
 
+const LAST_DIR_KEY = "ssh-istemci.lastDownloadDir";
+
+function loadLastDownloadDir(): string | null {
+  try {
+    return localStorage.getItem(LAST_DIR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveLastDownloadDir(dir: string): void {
+  try {
+    localStorage.setItem(LAST_DIR_KEY, dir);
+  } catch {
+    // Depolama kapalıysa bir sonraki indirmede yine Downloads'tan başlar.
+  }
+}
+
 export interface FileBrowserProps {
   tabId: string | null;
   connectionKey: string;
@@ -147,14 +165,13 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     }
   }
 
-  async function downloadSelection(items: FileEntry[], chooseFolder = false) {
+  async function downloadSelection(items: FileEntry[]) {
     if (!tabId || items.length === 0) return;
     try {
-      const dir = chooseFolder ? await api.pickFolder() : undefined;
-      if (chooseFolder && !dir) return;
-      const paths = items.map((i) => i.path);
-      if (dir) await api.sftpDownload(tabId, paths, dir);
-      else await api.sftpDownload(tabId, paths);
+      const dir = await api.pickFolder(loadLastDownloadDir() ?? undefined);
+      if (!dir) return;
+      saveLastDownloadDir(dir);
+      await api.sftpDownload(tabId, items.map((i) => i.path), dir);
     } catch (e) {
       setError(e);
     }
@@ -394,8 +411,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.copy, onClick: () => copySelection("copy") },
         { label: f.cut, onClick: () => copySelection("cut") },
         { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
-        { label: t.transfer.download, onClick: () => void downloadSelection(selectedEntries) },
-        { label: t.transfer.downloadTo, onClick: () => void downloadSelection(selectedEntries, true) },
+        { label: `${t.transfer.download}…`, onClick: () => void downloadSelection(selectedEntries) },
         { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.editExternal, onClick: () => selectedEntries[0] && void editExternal(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.rename, onClick: () => selectedEntries[0] && setRenaming(selectedEntries[0].path), disabled: selectedEntries.length !== 1 },
@@ -417,7 +433,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         <button type="button" className="icon-button" aria-label={f.newFolder} title={f.newFolder} onClick={() => setPrompt({ kind: "mkdir" })}>＋📁</button>
         <span className="files__sep" aria-hidden="true" />
         <button type="button" className="icon-button" aria-label={t.transfer.upload} title={t.transfer.upload} onClick={() => void pickAndUpload()}>⬆</button>
-        <button type="button" className="icon-button" aria-label={t.transfer.download} title={t.transfer.download} disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>⬇</button>
+        <button type="button" className="icon-button" aria-label={t.transfer.download} title={`${t.transfer.download}…`} disabled={selectedEntries.length === 0} onClick={() => void downloadSelection(selectedEntries)}>⬇</button>
         <input
           type="search"
           className="files__filter"

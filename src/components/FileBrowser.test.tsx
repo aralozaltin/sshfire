@@ -258,15 +258,16 @@ test("the download button downloads the selected items and is disabled without s
   expect(button).toBeDisabled();
   await userEvent.click(row("rapor.txt"));
   await userEvent.click(button);
-  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"]);
+  expect(api.pickFolder).toHaveBeenCalled();
+  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"], "/Users/u/Hedef");
 });
 
 test("the context menu offers download", async () => {
   const { api } = setup();
   await userEvent.click(await screen.findByText("docs"));
   fireEvent.contextMenu(row("docs"));
-  await userEvent.click(screen.getByRole("menuitem", { name: "İndir" }));
-  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/docs"]);
+  await userEvent.click(screen.getByRole("menuitem", { name: "İndir…" }));
+  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/docs"], "/Users/u/Hedef");
 });
 
 test("a finished upload refreshes the listing", async () => {
@@ -586,24 +587,27 @@ test("folder rows and breadcrumbs announce themselves as drop targets", async ()
   expect(screen.getByRole("button", { name: "home" })).toHaveAttribute("data-drop-dir", "/home");
 });
 
-test("download to… asks for a folder and downloads the selection there", async () => {
-  const { api } = setup();
-  await userEvent.click(await screen.findByText("rapor.txt"));
-  fireEvent.contextMenu(row("rapor.txt"));
-  await userEvent.click(screen.getByRole("menuitem", { name: "Şuraya indir…" }));
-  expect(api.pickFolder).toHaveBeenCalled();
-  expect(api.sftpDownload).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"], "/Users/u/Hedef");
-});
-
-test("cancelling the folder picker downloads nothing", async () => {
+test("downloading asks for a folder first and cancelling downloads nothing", async () => {
   const api = fakeApi();
   api.pickFolder = vi.fn(async () => null);
   setup({ api });
   await userEvent.click(await screen.findByText("rapor.txt"));
-  fireEvent.contextMenu(row("rapor.txt"));
-  await userEvent.click(screen.getByRole("menuitem", { name: "Şuraya indir…" }));
+  await userEvent.click(screen.getByRole("button", { name: "İndir" }));
   await vi.waitFor(() => expect(api.pickFolder).toHaveBeenCalled());
   expect(api.sftpDownload).not.toHaveBeenCalled();
+});
+
+test("the folder picker starts in the folder used last time", async () => {
+  localStorage.clear();
+  const api = fakeApi();
+  setup({ api });
+  await userEvent.click(await screen.findByText("rapor.txt"));
+  await userEvent.click(screen.getByRole("button", { name: "İndir" }));
+  await vi.waitFor(() => expect(api.sftpDownload).toHaveBeenCalledTimes(1));
+  expect(api.pickFolder).toHaveBeenLastCalledWith(undefined);
+  await userEvent.click(screen.getByRole("button", { name: "İndir" }));
+  await vi.waitFor(() => expect(api.sftpDownload).toHaveBeenCalledTimes(2));
+  expect(api.pickFolder).toHaveBeenLastCalledWith("/Users/u/Hedef");
 });
 
 describe("search in subfolders", () => {

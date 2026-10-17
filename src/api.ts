@@ -58,8 +58,8 @@ export const sftpUpload = (tabId: string, items: { local: string; remote: string
   invoke<string[]>("sftp_upload", { tabId, items });
 export const sftpDownload = (tabId: string, remotePaths: string[], localDir?: string) =>
   invoke<string[]>("sftp_download", { tabId, remotePaths, localDir: localDir ?? null });
-export async function pickFolder(): Promise<string | null> {
-  const picked = await openDialog({ multiple: false, directory: true });
+export async function pickFolder(startIn?: string): Promise<string | null> {
+  const picked = await openDialog({ multiple: false, directory: true, defaultPath: startIn });
   return typeof picked === "string" ? picked : null;
 }
 export const transferCancel = (transferId: string) => invoke<boolean>("transfer_cancel", { transferId });
