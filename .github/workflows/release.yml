@@ -6,9 +6,16 @@ on:
   push:
     tags:
       - "v*"
+  # Re-run the stable download names for an existing release.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.3"
+        required: true
 
 jobs:
   build:
+    if: github.event_name == 'push'
     permissions:
       contents: write
     strategy:
@@ -59,16 +66,50 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "SSHFire ${{ github.ref_name }}"
           releaseBody: |
-            ## Install
+            ## Which file do I need?
 
-            Download the installer for your platform below.
+            | Your system | Download |
+            |---|---|
+            | **macOS**, Apple Silicon (M1 or newer) | [SSHFire-macOS-AppleSilicon.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-AppleSilicon.dmg) |
+            | **macOS**, Intel | [SSHFire-macOS-Intel.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-Intel.dmg) |
+            | **Windows** 10/11 | [SSHFire-Windows-x64-setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Windows-x64-setup.exe) |
+            | **Linux**, any distribution | [SSHFire-Linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.AppImage) |
+            | **Ubuntu / Debian** | [SSHFire-Linux-x64.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.deb) |
+            | **Fedora / RHEL** | [SSHFire-Linux-x64.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.rpm) |
 
-            - **macOS:** `.dmg` (Apple Silicon: `aarch64`, Intel: `x64`). If macOS asks you to confirm the app, open *System Settings → Privacy & Security → Open Anyway*.
-            - **Windows:** `.exe` or `.msi`. In the SmartScreen dialog choose *More info → Run anyway*.
-            - **Linux:** `.AppImage`, `.deb` or `.rpm`.
+            Everything else in the list below (`.sig`, `.tar.gz`, `.json`, `.msi`) is used by the in-app updater or by IT deployment. You do not need it.
 
-            Installed copies update themselves.
+            On first launch your system may ask you to confirm the app: on macOS open *System Settings → Privacy & Security → Open Anyway*; on Windows choose *More info → Run anyway* in SmartScreen. Installed copies update themselves.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+  stable-names:
+    name: Stable download names
+    needs: build
+    if: always() && (needs.build.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - name: Copy the installers to names without a version
+        run: |
+          set -euo pipefail
+          ver="${TAG#v}"
+          mkdir dl
+          copy() {
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$1" --dir dl
+            mv "dl/$1" "dl/$2"
+          }
+          copy "SSHFire_${ver}_aarch64.dmg" SSHFire-macOS-AppleSilicon.dmg
+          copy "SSHFire_${ver}_x64.dmg" SSHFire-macOS-Intel.dmg
+          copy "SSHFire_${ver}_x64-setup.exe" SSHFire-Windows-x64-setup.exe
+          copy "SSHFire_${ver}_x64_en-US.msi" SSHFire-Windows-x64.msi
+          copy "SSHFire_${ver}_amd64.AppImage" SSHFire-Linux-x64.AppImage
+          copy "SSHFire_${ver}_amd64.deb" SSHFire-Linux-x64.deb
+          copy "SSHFire-${ver}-1.x86_64.rpm" SSHFire-Linux-x64.rpm
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dl/*
