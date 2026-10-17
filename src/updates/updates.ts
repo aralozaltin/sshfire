@@ -1,6 +1,6 @@
 const AUTO_KEY = "ssh-istemci.autoUpdate";
 const LAST_KEY = "ssh-istemci.lastUpdateCheck";
-const CHECK_INTERVAL_MS = 3600 * 1000;
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 export function loadAutoUpdate(): boolean {
   try {
@@ -36,7 +36,7 @@ export function saveLastCheck(ms: number): void {
   }
 }
 
-/** Otomatik denetim açıksa ve son denetimden bir saat geçtiyse (ya da saat geriye alındıysa) true. */
+/** Otomatik denetim açıksa ve son denetimden beş dakika geçtiyse (ya da saat geriye alındıysa) true. */
 export function shouldCheckNow(auto: boolean, last: number | null, now: number, intervalMs = CHECK_INTERVAL_MS): boolean {
   if (!auto) return false;
   if (last == null || last > now) return true;

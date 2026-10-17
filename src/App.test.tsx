@@ -594,7 +594,7 @@ test("on startup a newer version opens the update dialog and records the check t
   expect(localStorage.getItem("ssh-istemci.lastUpdateCheck")).not.toBeNull();
 });
 
-test("no automatic check happens when it is switched off or was done within the last hour", async () => {
+test("no automatic check happens when it is switched off or was done within the last five minutes", async () => {
   localStorage.setItem("ssh-istemci.autoUpdate", "false");
   const first = fakeApi();
   const { unmount } = render(<App api={first.api} createTerm={fakeTerm} />);
@@ -602,7 +602,7 @@ test("no automatic check happens when it is switched off or was done within the 
   expect(first.api.checkForUpdate).not.toHaveBeenCalled();
   unmount();
   localStorage.setItem("ssh-istemci.autoUpdate", "true");
-  localStorage.setItem("ssh-istemci.lastUpdateCheck", String(Date.now() - 600_000));
+  localStorage.setItem("ssh-istemci.lastUpdateCheck", String(Date.now() - 60_000));
   const second = fakeApi();
   render(<App api={second.api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
