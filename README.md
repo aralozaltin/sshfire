@@ -54,7 +54,25 @@ macOS, Windows and Linux. Release builds for all three are produced by GitHub Ac
 
 ## Install
 
-Download the installer for your platform from the [latest release](https://github.com/aralozaltin/sshfire/releases/latest).
+Pick the line that matches your computer. These links always point to the newest version.
+
+| Your system | Download |
+|---|---|
+| **macOS**, Apple Silicon (M1 or newer) | [SSHFire-macOS-AppleSilicon.dmg](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-macOS-AppleSilicon.dmg) |
+| **macOS**, Intel | [SSHFire-macOS-Intel.dmg](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-macOS-Intel.dmg) |
+| **Windows** 10/11 | [SSHFire-Windows-x64-setup.exe](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Windows-x64-setup.exe) |
+| **Linux** | [SSHFire-Linux-x64.AppImage](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Linux-x64.AppImage) (runs on any distribution) |
+
+<details>
+<summary>Other formats</summary>
+
+- Ubuntu / Debian package: [SSHFire-Linux-x64.deb](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Linux-x64.deb) (`sudo apt install ./SSHFire-Linux-x64.deb`)
+- Fedora / RHEL package: [SSHFire-Linux-x64.rpm](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Linux-x64.rpm)
+- Windows MSI for IT deployment: [SSHFire-Windows-x64.msi](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Windows-x64.msi)
+
+</details>
+
+Not sure which Mac you have? Apple menu → *About This Mac*: a chip named M1, M2 or similar means Apple Silicon, otherwise Intel. Everything else on the [releases page](https://github.com/aralozaltin/sshfire/releases/latest) (`.sig`, `.tar.gz`, `.json`) is used by the in-app updater; you do not need it.
 
 On macOS you can also use Homebrew, which skips the first-launch confirmation:
 
