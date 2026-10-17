@@ -24,6 +24,7 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - MultiExec (type once, send to several tabs), macros you can write or record
 - Live metrics bar: CPU, memory, disk, load, uptime, network (Linux servers)
 - Record a session to a plain-text log file; get a desktop notification when a long command goes quiet (bell button)
+- Optional idle timeout (disconnect after 15 minutes to 2 hours without typing); press R in a disconnected tab to reconnect
 - Reopen the previous session's tabs, drag tabs to reorder, collapsible server folders
 - Color schemes: Dracula, Nord, Solarized Dark, Tokyo Night, Gruvbox
 

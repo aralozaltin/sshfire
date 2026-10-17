@@ -44,6 +44,9 @@ export class ShellSession {
   private encoder = new TextEncoder();
   private disposed = false;
   userInput: ((text: string) => void) | null = null;
+  /** Son yazılan (ya da makroyla gönderilen) girdinin zamanı; boşta kalma süresi buradan hesaplanır. */
+  lastActivity = Date.now();
+  private stopped = false;
 
   constructor(
     private api: ShellApi,
@@ -97,6 +100,7 @@ export class ShellSession {
 
   send(text: string): void {
     if (!this.tabId || this.status !== "open") return;
+    this.lastActivity = Date.now();
     void this.api.shellWrite(this.tabId, this.encoder.encode(text));
   }
 
@@ -105,10 +109,19 @@ export class ShellSession {
     void this.api.shellResize(this.tabId, cols, rows);
   }
 
+  /** Bağlantıyı bilerek keser (örn. boşta kalınca); terminal içeriği ekranda kalır. */
+  async stop(reason: string): Promise<void> {
+    if (this.status !== "open" || !this.tabId) return;
+    this.stopped = true;
+    this.closeReason = reason;
+    this.setStatus("closed");
+    await this.api.shellClose(this.tabId);
+  }
+
   async close(): Promise<void> {
     this.disposed = true;
     this.unlisten?.();
-    if (this.tabId) await this.api.shellClose(this.tabId);
+    if (this.tabId && !this.stopped) await this.api.shellClose(this.tabId);
     this.term.dispose();
   }
 

@@ -30,6 +30,8 @@ import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSe
 import { LanguageSelect } from "./components/LanguageSelect";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { KnownHostsDialog } from "./components/KnownHostsDialog";
+import { IdleSelect } from "./components/IdleSelect";
+import { loadIdleMinutes, saveIdleMinutes } from "./idle/idle";
 import { QuickConnectDialog } from "./components/QuickConnectDialog";
 import type { QuickTarget } from "./sessions/quickConnect";
 import { TerminalSchemeSelect } from "./components/TerminalSchemeSelect";
@@ -101,6 +103,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [appVer, setAppVer] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
   const [showHosts, setShowHosts] = useState(false);
+  const [idleMinutes, setIdleMinutes] = useState(loadIdleMinutes);
   const [quick, setQuick] = useState(false);
   const [restore, setRestore] = useState<SavedTab[] | null>(null);
   const [persistReady, setPersistReady] = useState(false);
@@ -608,6 +611,13 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
           <SettingsMenu>
             <ThemeToggle mode={themeMode} onChange={changeTheme} />
             <LanguageSelect setting={localeSetting} onChange={onLocaleChange} />
+            <IdleSelect
+              minutes={idleMinutes}
+              onChange={(m) => {
+                setIdleMinutes(m);
+                saveIdleMinutes(m);
+              }}
+            />
             <TerminalSchemeSelect
               scheme={termScheme}
               onChange={(id) => {
@@ -696,6 +706,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
               dark={resolvedTheme === "dark"}
               onStatusChange={(st) => setStatus(t.key, st)}
               retryAttempt={t.retry ?? 0}
+              idleMinutes={idleMinutes}
               onReconnect={(auto) => reconnect(t.key, auto === true)}
               onTabId={(id) => setBackendIds((cur) => ({ ...cur, [t.key]: id }))}
               onCwd={(cwd) => setCwds((cur) => ({ ...cur, [t.key]: cwd }))}

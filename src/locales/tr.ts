@@ -53,6 +53,8 @@ export const tr = {
     connected: "Bağlandı",
     disconnected: "Bağlantı kesildi",
     reconnect: "Yeniden bağlan",
+    pressR: "R tuşuna basarak da yeniden bağlanabilirsin.",
+    idleClosed: (n: number) => `${n} dakika işlem yapılmadığı için bağlantı kesildi.`,
     retrying: (n: number, max: number) => `Yeniden bağlanılıyor (${n}/${max})…`,
     cancelRetry: "Vazgeç",
     exitCode: (code: number) => `Çıkış kodu ${code}`,
@@ -264,6 +266,7 @@ export const tr = {
     exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
+  idle: { label: "Boşta kalınca bağlantıyı kes", never: "Hiçbir zaman", minutes: (n: number) => `${n} dakika`, hours: (n: number) => `${n} saat` },
   restoreTabs: { question: (n: number) => `Önceki oturumdaki ${n} sekme geri açılsın mı?`, yes: "Geri aç", no: "Hayır" },
   quickConnect: {
     button: "Hızlı bağlan",

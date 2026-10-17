@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TerminalTab } from "./TerminalTab";
 import type { ShellApi, TermLike } from "../terminal/shellSession";
@@ -346,5 +346,74 @@ describe("notify when the output goes quiet", () => {
     render(<TerminalTab sessionId="s1" api={h.api} createTerm={() => h.term} />);
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(screen.queryByRole("button", { name: "Bitince bildir" })).not.toBeInTheDocument();
+  });
+});
+
+describe("coming back to a disconnected tab", () => {
+  test("pressing R reconnects, other keys do not, and the banner says so", async () => {
+    const { term, api, emitClosed } = setup();
+    const onReconnect = vi.fn();
+    render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} onReconnect={onReconnect} />);
+    await screen.findByText(/.*/, { selector: "[data-status='open']" });
+    emitClosed("exit:0");
+    expect(await screen.findByText(/R tuşuna bas/)).toBeInTheDocument();
+    const pane = document.querySelector(".shell-pane") as HTMLElement;
+    fireEvent.keyDown(pane, { key: "x" });
+    fireEvent.keyDown(pane, { key: "r", ctrlKey: true });
+    expect(onReconnect).not.toHaveBeenCalled();
+    fireEvent.keyDown(pane, { key: "R" });
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test("R does nothing while the connection is open", async () => {
+    const { term, api } = setup();
+    const onReconnect = vi.fn();
+    render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} onReconnect={onReconnect} />);
+    await screen.findByText(/.*/, { selector: "[data-status='open']" });
+    fireEvent.keyDown(document.querySelector(".shell-pane") as HTMLElement, { key: "r" });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+});
+
+describe("disconnecting after being idle", () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] }));
+  afterEach(() => vi.useRealTimers());
+
+  const opened = async (idleMinutes: number, extra: Partial<React.ComponentProps<typeof TerminalTab>> = {}) => {
+    const h = setup();
+    const onReconnect = vi.fn();
+    let typed: (s: string) => void = () => {};
+    h.term.onData = (cb) => { typed = cb; };
+    render(<TerminalTab sessionId="s1" api={h.api} createTerm={() => h.term} idleMinutes={idleMinutes} onReconnect={onReconnect} {...extra} />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    return { ...h, onReconnect, type: (text: string) => act(() => typed(text)) };
+  };
+  const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+
+  test("after the chosen idle time the connection is closed and the tab explains why", async () => {
+    const { api, onReconnect } = await opened(15);
+    await wait(14 * 60_000);
+    expect(api.shellClose).not.toHaveBeenCalled();
+    await wait(2 * 60_000);
+    expect(api.shellClose).toHaveBeenCalledWith("t1");
+    expect(screen.getByText(/15 dakika/)).toBeInTheDocument();
+    await wait(10 * 60_000);
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
+  test("typing keeps the session alive and restarts the clock", async () => {
+    const { api, type } = await opened(15);
+    await wait(10 * 60_000);
+    type("ls\r");
+    await wait(10 * 60_000);
+    expect(api.shellClose).not.toHaveBeenCalled();
+    await wait(6 * 60_000);
+    expect(api.shellClose).toHaveBeenCalledWith("t1");
+  });
+
+  test("never means never", async () => {
+    const { api } = await opened(0);
+    await wait(6 * 60 * 60_000);
+    expect(api.shellClose).not.toHaveBeenCalled();
   });
 });

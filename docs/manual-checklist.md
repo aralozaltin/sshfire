@@ -103,3 +103,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Metrik çubuğunda bir değerin üstüne gelince ayrıntı ipucu çıkıyor; değerler saniyede bir yenileniyor
 - [ ] Terminalde `cd /var/log` + Enter: Dosyalar paneli ~1 sn içinde o klasöre geçiyor
 - [ ] Dosyalar > İndir (düğme ve sağ tık): önce hedef klasör soruluyor, bir sonrakinde son seçilen klasörde açılıyor; iptal edilirse indirme başlamıyor
+- [ ] Kopan bir sekmede R tuşu yeniden bağlıyor ("R tuşuna basarak da yeniden bağlanabilirsin" yazısı var); Ayarlar > Boşta kalınca bağlantıyı kes: 15 dk seçip bekleyince bağlantı kesiliyor ve otomatik yeniden bağlanmıyor, yazarken süre sıfırlanıyor

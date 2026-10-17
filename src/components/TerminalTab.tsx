@@ -8,6 +8,8 @@ import { FindBar } from "./FindBar";
 import type { MultiExecHub } from "../terminal/multiExec";
 
 function closeReasonText(t: Messages, reason: string): string {
+  const idle = /^idle:(\d+)$/.exec(reason);
+  if (idle) return t.terminal.idleClosed(Number(idle[1]));
   const m = /^exit:(\d+)$/.exec(reason);
   return m ? t.terminal.exitCode(Number(m[1])) : reason;
 }
@@ -27,6 +29,8 @@ export interface TerminalTabProps {
   onReconnect?: (auto?: boolean) => void;
   /** Kopma sonrası kaçıncı otomatik yeniden bağlanma serisinde olduğumuz (0 = seri yok). */
   retryAttempt?: number;
+  /** Bu kadar dakika işlem yapılmazsa bağlantı kesilir; 0 = hiçbir zaman. */
+  idleMinutes?: number;
   onTabId?: (tabId: string) => void;
   onCwd?: (cwd: string) => void;
   hub?: MultiExecHub;
@@ -38,7 +42,7 @@ export interface TerminalTabProps {
   name?: string;
 }
 
-export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand, name, retryAttempt = 0 }: TerminalTabProps) {
+export function TerminalTab({ sessionId, api, createTerm, visible = true, dark = true, onStatusChange, onReconnect, onTabId, onCwd, hub, tabKey, active = true, onFocusPane, local = false, startupCommand, name, retryAttempt = 0, idleMinutes = 0 }: TerminalTabProps) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<TermLike | null>(null);
@@ -123,6 +127,24 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watching]);
 
+  useEffect(() => {
+    if (!idleMinutes) return;
+    const timer = setInterval(() => {
+      const session = sessionRef.current;
+      if (session && session.status === "open" && Date.now() - session.lastActivity >= idleMinutes * 60_000) {
+        void session.stop(`idle:${idleMinutes}`);
+      }
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [idleMinutes]);
+
+  function onPaneKey(e: React.KeyboardEvent) {
+    if (status !== "closed" || !onReconnect) return;
+    if (e.key.toLowerCase() !== "r" || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    onReconnect();
+  }
+
   async function toggleRecording() {
     const tabId = sessionRef.current?.tabId;
     if (!tabId) return;
@@ -139,7 +161,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
   const s = sessionRef.current;
   const status = s?.status ?? "connecting";
   const errorCode = (s?.error as { code?: string } | null | undefined)?.code;
-  const dropped = !!s && !s.error && !/^exit:/.test(s.closeReason ?? "exit:");
+  const dropped = !!s && !s.error && !/^(exit|idle):/.test(s.closeReason ?? "exit:");
   const retrying =
     status === "closed" &&
     !local &&
@@ -155,7 +177,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retrying]);
   return (
-    <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane}>
+    <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane} onKeyDown={onPaneKey}>
       {findOpen && (
         <FindBar
           onFind={(q, forward) => termRef.current?.find?.(q, forward)}
@@ -210,7 +232,12 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
               <button type="button" onClick={() => setRetryCancelled(true)}>{t.terminal.cancelRetry}</button>
             </>
           ) : (
-            onReconnect && <button type="button" onClick={() => onReconnect()}>{t.terminal.reconnect}</button>
+            onReconnect && (
+              <>
+                <button type="button" onClick={() => onReconnect()}>{t.terminal.reconnect}</button>
+                <span className="terminal__hint">{t.terminal.pressR}</span>
+              </>
+            )
           )}
         </div>
       )}

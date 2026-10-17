@@ -54,6 +54,8 @@ export const en: Messages = {
     connecting: "Connecting…",
     connected: "Connected",
     disconnected: "Disconnected",
+    pressR: "You can also press R to reconnect.",
+    idleClosed: (n: number) => `Disconnected after ${n} minutes without activity.`,
     retrying: (n: number, max: number) => `Reconnecting (${n}/${max})…`,
     cancelRetry: "Cancel",
     reconnect: "Reconnect",
@@ -266,6 +268,7 @@ export const en: Messages = {
     exported: (path: string) => `Server list saved: ${path}`,
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
+  idle: { label: "Disconnect when idle", never: "Never", minutes: (n: number) => `${n} minutes`, hours: (n: number) => `${n} hour${n === 1 ? "" : "s"}` },
   restoreTabs: { question: (n: number) => `Reopen the ${n} tab${n === 1 ? "" : "s"} from your last session?`, yes: "Reopen", no: "No" },
   quickConnect: {
     button: "Quick connect",

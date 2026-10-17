@@ -301,3 +301,5 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 
 .files__where { display: block; color: var(--muted); font-size: 11px; margin-left: 20px; overflow: hidden; text-overflow: ellipsis; }
 .files__search button { margin-left: 6px; }
+
+.terminal__hint { margin-left: 6px; opacity: 0.8; }
