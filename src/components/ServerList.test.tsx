@@ -174,3 +174,17 @@ describe("collapsing folders", () => {
     expect(within(screen.getByRole("button", { name: "Prod" })).getByRole("img", { name: "Bağlı" })).toBeInTheDocument();
   });
 });
+
+describe("the ⋯ menu in a real browser event order", () => {
+  test("the click that opens the menu must not close it again", async () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      render(<ServerList sessions={sessions} onConnect={() => {}} onEdit={() => {}} onDelete={() => {}} onAdd={() => {}} onImport={() => {}} onExport={() => {}} onImportFile={() => {}} />);
+      (screen.getByRole("button", { name: "Diğer işlemler" }) as HTMLButtonElement).click();
+      await new Promise((r) => setTimeout(r, 50));
+      expect(screen.getByRole("menu")).toBeInTheDocument();
+    } finally {
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    }
+  });
+});

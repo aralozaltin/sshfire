@@ -17,9 +17,12 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   useEffect(() => {
     const close = () => onClose();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("click", close);
+    // Menüyü açan tıklama hâlâ pencereye doğru yükselirken dinleyici eklenirse menü açılır açılmaz kapanır
+    // (WebKit'te React etkileri olay bitmeden çalıştırır); bu yüzden dinleyici olaydan sonra eklenir.
+    const arm = setTimeout(() => window.addEventListener("click", close), 0);
     window.addEventListener("keydown", onKey);
     return () => {
+      clearTimeout(arm);
       window.removeEventListener("click", close);
       window.removeEventListener("keydown", onKey);
     };
