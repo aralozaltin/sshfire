@@ -26,6 +26,15 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) when a ve
    ```
 
 3. Watch the *Release* workflow. When it finishes, installed copies find the new version on their next check.
+4. Update the Homebrew cask in the `aralozaltin/homebrew-tap` repository:
+
+   ```bash
+   git clone git@github.com:aralozaltin/homebrew-tap.git /tmp/homebrew-tap
+   scripts/update-cask.sh 0.2.0 /tmp/homebrew-tap/Casks/sshfire.rb
+   cd /tmp/homebrew-tap && git commit -am "Update SSHFire to 0.2.0" && git push
+   ```
+
+   Do this only after the release has all its files (the script downloads both macOS disk images to compute their checksums).
 
 Local test build with signing:
 

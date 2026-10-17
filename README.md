@@ -56,6 +56,12 @@ macOS, Windows and Linux. Release builds for all three are produced by GitHub Ac
 
 Download the installer for your platform from the [latest release](https://github.com/aralozaltin/sshfire/releases/latest).
 
+On macOS you can also use Homebrew, which skips the first-launch confirmation:
+
+```bash
+brew install --cask aralozaltin/tap/sshfire
+```
+
 On first launch your system may ask you to confirm an app downloaded from the internet:
 
 - **macOS:** open *System Settings → Privacy & Security* and choose *Open Anyway*, or run `xattr -dr com.apple.quarantine /Applications/SSHFire.app` once.
