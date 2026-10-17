@@ -61,6 +61,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   const [info, setInfo] = useState<FileEntry | null>(null);
   const [chmodTarget, setChmodTarget] = useState<FileEntry | null>(null);
   const [filter, setFilter] = useState("");
+  const externalAtCopy = useRef("");
   const [search, setSearch] = useState<{ query: string; hits: FileEntry[] | null } | null>(null);
   const [follow, setFollow] = useState(true);
   const lastFollowed = useRef<string | null>(followPath ?? null);
@@ -246,10 +247,31 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
   function copySelection(mode: "copy" | "cut") {
     if (selectedEntries.length === 0) return;
     onClipboardChange({ mode, connectionKey, entries: selectedEntries.map((e) => ({ path: e.path, isDir: e.isDir })) });
+    if (mode === "copy" && tabId) void copyToSystem(tabId, selectedEntries.map((e) => e.path));
+  }
+
+  /** Paneldeki kopyayı Finder/Gezgin'de de yapıştırılabilsin diye sistem panosuna da koyar. */
+  async function copyToSystem(id: string, paths: string[]) {
+    try {
+      externalAtCopy.current = (await api.clipboardFiles()).join("\n");
+      setNotice(f.clipboardPreparing);
+      await api.copyToClipboard(id, paths);
+      setNotice(f.clipboardReady);
+    } catch (e) {
+      const code = (e as { code?: string } | null)?.code;
+      if (code === "file_too_large") setNotice(f.clipboardTooBig);
+      else setNotice(null);
+    }
   }
 
   async function paste() {
-    if (!clipboard || !path || !tabId) return;
+    if (!path || !tabId) return;
+    const outside = await api.clipboardFiles();
+    if (outside.length > 0 && outside.join("\n") !== externalAtCopy.current) {
+      externalAtCopy.current = outside.join("\n");
+      return uploadPaths(outside);
+    }
+    if (!clipboard) return;
     const steps = planPaste(clipboard, path, new Set(entries.map((e) => e.name)), clipboard.connectionKey === connectionKey, f.copySuffix);
     if (steps.some((s) => s.op === "unsupported")) return setNotice(f.unsupported);
     await run(async () => {
@@ -410,7 +432,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
     ? [
         { label: f.copy, onClick: () => copySelection("copy") },
         { label: f.cut, onClick: () => copySelection("cut") },
-        { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
+        { label: f.paste, onClick: () => void paste() },
         { label: `${t.transfer.download}…`, onClick: () => void downloadSelection(selectedEntries) },
         { label: f.edit, onClick: () => selectedEntries[0] && void edit(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
         { label: f.editExternal, onClick: () => selectedEntries[0] && void editExternal(selectedEntries[0]), disabled: selectedEntries.length !== 1 || selectedEntries[0]?.isDir },
@@ -420,7 +442,7 @@ export function FileBrowser({ tabId, connectionKey, api, clipboard, onClipboardC
         { label: f.info, onClick: () => selectedEntries[0] && setInfo(selectedEntries[0]), disabled: selectedEntries.length !== 1 },
       ]
     : [
-        { label: f.paste, onClick: () => void paste(), disabled: !clipboard },
+        { label: f.paste, onClick: () => void paste() },
         { label: f.newFolder, onClick: () => setPrompt({ kind: "mkdir" }) },
         { label: f.refresh, onClick: () => void load(path) },
       ];

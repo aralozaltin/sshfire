@@ -286,3 +286,25 @@ async fn search_finds_files_in_subfolders_ignoring_case_and_glob_characters() {
     assert!(found("nothing-like-this").await.is_empty());
     e.cleanup().await;
 }
+
+#[tokio::test]
+async fn download_to_dir_fetches_files_and_folders_and_refuses_oversized_selections() {
+    if !server_up() { return; }
+    let e = env().await;
+    e.conn.exec(&format!("cd {} && printf hello > a.txt && printf 'world!!' > 'b c.txt' && mkdir -p folder/sub && printf deep > folder/sub/d.txt", shell_quote(&e.base))).await.unwrap();
+    let a = format!("{}/a.txt", e.base);
+    let b = format!("{}/b c.txt", e.base);
+    let folder = format!("{}/folder", e.base);
+    let tmp = tempfile::tempdir().unwrap();
+
+    let got = e.sftp.download_to_dir(&[a.clone(), b.clone(), folder], tmp.path(), 1024).await.unwrap();
+    assert_eq!(got.len(), 3);
+    assert_eq!(std::fs::read_to_string(&got[0]).unwrap(), "hello");
+    assert_eq!(std::fs::read_to_string(&got[1]).unwrap(), "world!!");
+    assert!(got[1].file_name().unwrap() == "b c.txt");
+    assert_eq!(std::fs::read_to_string(got[2].join("sub/d.txt")).unwrap(), "deep");
+
+    let big_err = e.sftp.download_to_dir(&[a, b], tmp.path(), 8).await.unwrap_err();
+    assert_eq!(big_err, SftpError::TooLarge);
+    e.cleanup().await;
+}

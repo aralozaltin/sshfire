@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 use vcore::sftp::{copy_remote, FileEntry, SftpClient, SftpError};
 
-async fn client(state: &AppState, tab_id: &str) -> Result<Arc<SftpClient>, AppError> {
+pub(crate) async fn client(state: &AppState, tab_id: &str) -> Result<Arc<SftpClient>, AppError> {
     let (conn, cell) = {
         let tabs = state.tabs.lock().unwrap();
         let tab = tabs.get(tab_id).ok_or_else(|| AppError::code("tab_not_found"))?;

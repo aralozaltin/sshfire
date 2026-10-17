@@ -32,6 +32,7 @@ tauri-plugin-opener = "2.7.2"
 tauri-plugin-updater = "2.14.0"
 tauri-plugin-process = "2.4.0"
 tauri-plugin-notification = "2.7.0"
+clipboard-rs = "0.3.5"
 
 [dev-dependencies]
 tempfile = "3.27.0"

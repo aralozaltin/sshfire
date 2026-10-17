@@ -58,6 +58,8 @@ export const sftpUpload = (tabId: string, items: { local: string; remote: string
   invoke<string[]>("sftp_upload", { tabId, items });
 export const sftpDownload = (tabId: string, remotePaths: string[], localDir?: string) =>
   invoke<string[]>("sftp_download", { tabId, remotePaths, localDir: localDir ?? null });
+export const clipboardFiles = () => invoke<string[]>("clipboard_files");
+export const copyToClipboard = (tabId: string, paths: string[]) => invoke<number>("sftp_copy_to_clipboard", { tabId, remotePaths: paths });
 export async function pickFolder(startIn?: string): Promise<string | null> {
   const picked = await openDialog({ multiple: false, directory: true, defaultPath: startIn });
   return typeof picked === "string" ? picked : null;
@@ -241,6 +243,8 @@ export const realApi = {
   transferCancel,
   pickFiles,
   pickFolder,
+  clipboardFiles,
+  copyToClipboard,
   onFilesDropped,
   onTransferProgress,
   metricsStart,

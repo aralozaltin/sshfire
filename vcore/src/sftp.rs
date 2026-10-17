@@ -289,6 +289,30 @@ impl SftpClient {
         Ok(())
     }
 
+    /// Seçilen dosya/klasörleri `dir` altına indirir (sistem panosuna koymak için); toplam boyut `max_total`'ı
+    /// aşarsa hiçbir şey indirmeden `TooLarge` döner. İndirilen yerel yolları verilen sırayla döndürür.
+    pub async fn download_to_dir(&self, remotes: &[String], dir: &Path, max_total: u64) -> Result<Vec<PathBuf>, SftpError> {
+        let mut targets = Vec::new();
+        let mut total = 0u64;
+        for remote in remotes {
+            let local = dir.join(base_name(remote));
+            let mut plan = Vec::new();
+            self.plan_remote(remote.clone(), local.clone(), &mut plan).await?;
+            total += plan.iter().map(|p| p.size).sum::<u64>();
+            if total > max_total {
+                return Err(SftpError::TooLarge);
+            }
+            targets.push((remote.clone(), local));
+        }
+        std::fs::create_dir_all(dir).map_err(|e| SftpError::Other(e.to_string()))?;
+        let mut done = Vec::new();
+        for (remote, local) in targets {
+            self.download(&remote, &local, &mut |_, _| {}, &CancelToken::new()).await?;
+            done.push(local);
+        }
+        Ok(done)
+    }
+
     pub async fn download(&self, remote: &str, local: &Path, progress: Progress<'_>, cancel: &CancelToken) -> Result<(), SftpError> {
         let mut plan = Vec::new();
         self.plan_remote(remote.to_string(), local.to_path_buf(), &mut plan).await?;

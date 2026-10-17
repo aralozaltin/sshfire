@@ -39,6 +39,8 @@ function fakeApi(listing: Record<string, FileEntry[]> = {}) {
     sftpDownload: vi.fn(async () => ["y"]),
     pickFiles: vi.fn(async () => [] as string[]),
     pickFolder: vi.fn(async () => "/Users/u/Hedef" as string | null),
+    clipboardFiles: vi.fn(async () => [] as string[]),
+    copyToClipboard: vi.fn(async (_t: string, _p: string[]) => 1),
     onFilesDropped: vi.fn(async (cb: (p: string[], into?: string | null) => void) => { hooks.drop = cb; return () => {}; }),
     onTransferProgress: vi.fn(async (cb: (e: TransferEvent) => void) => { hooks.transfer = cb; return () => {}; }),
   } satisfies FilesApi;
@@ -655,5 +657,69 @@ describe("search in subfolders", () => {
     await screen.findByText("notlar.md");
     expect(screen.getByRole("button", { name: "Alt klasörlerde ara" })).toBeDisabled();
     expect(api.sftpSearch).not.toHaveBeenCalled();
+  });
+});
+
+describe("system clipboard", () => {
+  test("files copied in Finder are uploaded into the current folder on paste", async () => {
+    const api = fakeApi();
+    api.clipboardFiles = vi.fn(async () => ["/Users/u/foto.png", "/Users/u/belge.pdf"]);
+    setup({ api });
+    await screen.findByText("rapor.txt");
+    await userEvent.click(row("rapor.txt"));
+    await userEvent.keyboard("{Control>}v{/Control}");
+    await vi.waitFor(() => expect(api.sftpUpload).toHaveBeenCalled());
+    expect(api.sftpUpload).toHaveBeenCalledWith("t1", [
+      { local: "/Users/u/foto.png", remote: "/home/u/foto.png" },
+      { local: "/Users/u/belge.pdf", remote: "/home/u/belge.pdf" },
+    ]);
+  });
+
+  test("the Paste menu item works for Finder files even when nothing was copied in the panel", async () => {
+    const api = fakeApi();
+    api.clipboardFiles = vi.fn(async () => ["/Users/u/x.txt"]);
+    setup({ api });
+    await screen.findByText("rapor.txt");
+    fireEvent.contextMenu(screen.getByRole("table", { name: "Dosyalar" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Yapıştır" }));
+    await vi.waitFor(() => expect(api.sftpUpload).toHaveBeenCalledWith("t1", [{ local: "/Users/u/x.txt", remote: "/home/u/x.txt" }]));
+  });
+
+  test("copying in the panel also puts the files on the system clipboard so Finder can paste them", async () => {
+    const { api } = setup();
+    await userEvent.click(await screen.findByText("rapor.txt"));
+    await userEvent.keyboard("{Control>}c{/Control}");
+    await vi.waitFor(() => expect(api.copyToClipboard).toHaveBeenCalledWith("t1", ["/home/u/rapor.txt"]));
+    expect(await screen.findByText(/Mac.*yapıştırabilirsin|panoya kopyalandı/)).toBeInTheDocument();
+  });
+
+  test("cut stays inside the panel and does not touch the system clipboard", async () => {
+    const { api } = setup();
+    await userEvent.click(await screen.findByText("rapor.txt"));
+    await userEvent.keyboard("{Control>}x{/Control}");
+    expect(api.copyToClipboard).not.toHaveBeenCalled();
+  });
+
+  test("a selection that is too big for the system clipboard says so but still pastes inside the panel", async () => {
+    const api = fakeApi();
+    api.copyToClipboard = vi.fn(async () => { throw { code: "file_too_large" }; });
+    const { onClipboardChange } = setup({ api });
+    await userEvent.click(await screen.findByText("rapor.txt"));
+    await userEvent.keyboard("{Control>}c{/Control}");
+    expect(onClipboardChange).toHaveBeenCalledWith(expect.objectContaining({ mode: "copy" }));
+    expect(await screen.findByText(/çok büyük/)).toBeInTheDocument();
+  });
+
+  test("when the panel copy is newer than the Finder files still on the clipboard, paste copies inside the panel", async () => {
+    const api = fakeApi();
+    api.clipboardFiles = vi.fn(async () => ["/Users/u/eski.txt"]);
+    const clip = { mode: "copy" as const, connectionKey: "c1", entries: [{ path: "/home/u/rapor.txt", isDir: false }] };
+    setup({ api, clipboard: clip });
+    await userEvent.click(await screen.findByText("rapor.txt"));
+    await userEvent.keyboard("{Control>}c{/Control}");
+    await vi.waitFor(() => expect(api.copyToClipboard).toHaveBeenCalled());
+    await userEvent.keyboard("{Control>}v{/Control}");
+    await vi.waitFor(() => expect(api.sftpCopy).toHaveBeenCalled());
+    expect(api.sftpUpload).not.toHaveBeenCalled();
   });
 });

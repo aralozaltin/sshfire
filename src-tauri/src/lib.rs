@@ -10,6 +10,7 @@ mod overlay_secrets;
 mod session_log;
 mod state;
 mod stream;
+mod system_clipboard;
 mod transfers;
 
 use state::{AppState, StartupWarning};
@@ -110,6 +111,8 @@ pub fn run() {
             sftp_commands::sftp_rename,
             sftp_commands::sftp_chmod,
             sftp_commands::sftp_search,
+            system_clipboard::clipboard_files,
+            system_clipboard::sftp_copy_to_clipboard,
             sftp_commands::sftp_edit_external,
             sftp_commands::sftp_remove,
             sftp_commands::sftp_copy,

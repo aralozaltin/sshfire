@@ -104,3 +104,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Terminalde `cd /var/log` + Enter: Dosyalar paneli ~1 sn içinde o klasöre geçiyor
 - [ ] Dosyalar > İndir (düğme ve sağ tık): önce hedef klasör soruluyor, bir sonrakinde son seçilen klasörde açılıyor; iptal edilirse indirme başlamıyor
 - [ ] Kopan bir sekmede R tuşu yeniden bağlıyor ("R tuşuna basarak da yeniden bağlanabilirsin" yazısı var); Ayarlar > Boşta kalınca bağlantıyı kes: 15 dk seçip bekleyince bağlantı kesiliyor ve otomatik yeniden bağlanmıyor, yazarken süre sıfırlanıyor
+- [ ] Pano: Finder'da dosya kopyala (⌘C) → Dosyalar panelinde ⌘V (ya da sağ tık Yapıştır) yüklüyor; panelde bir dosya kopyala (⌘C, "panoya kopyalandı" bildirimi) → Finder'da ⌘V indiriyor; 100 MB üstü seçimde uyarı çıkıyor ve yalnızca panelde yapıştırılıyor; kesme (⌘X) Finder panosuna dokunmuyor
