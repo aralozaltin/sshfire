@@ -30,6 +30,8 @@ import { errorText, I18nProvider, loadLocaleSetting, resolveLocale, saveLocaleSe
 import { LanguageSelect } from "./components/LanguageSelect";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { KnownHostsDialog } from "./components/KnownHostsDialog";
+import { QuickConnectDialog } from "./components/QuickConnectDialog";
+import type { QuickTarget } from "./sessions/quickConnect";
 import { TerminalSchemeSelect } from "./components/TerminalSchemeSelect";
 import { loadScheme, saveScheme } from "./terminal/schemes";
 import { UpdateDialog } from "./components/UpdateDialog";
@@ -98,6 +100,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [appVer, setAppVer] = useState<string | null>(null);
   const [autoUpdate, setAutoUpdate] = useState(loadAutoUpdate);
   const [showHosts, setShowHosts] = useState(false);
+  const [quick, setQuick] = useState(false);
   const [termScheme, setTermScheme] = useState(loadScheme);
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState<string | null>(null);
@@ -188,6 +191,21 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     setActiveKey(key);
   }
 
+  async function quickConnect(target: QuickTarget) {
+    setQuick(false);
+    const known = sessions.find((s) => s.host.toLowerCase() === target.host.toLowerCase() && s.port === target.port && s.user === target.user);
+    if (known) return openTab(known.id);
+    try {
+      const added = await api.addSession({ name: `${target.user}@${target.host}`, host: target.host, port: target.port, user: target.user, folder: null, auth: { type: "password" } }, undefined);
+      await reload();
+      const key = nextKey();
+      setTabs((cur) => [...cur, { key, sessionId: added.id, title: added.name, status: "connecting" }]);
+      setActiveKey(key);
+    } catch (e) {
+      setError(errorText(t, e));
+    }
+  }
+
   function openLocal() {
     const key = nextKey();
     setTabs((cur) => [...cur, { key, sessionId: LOCAL_SESSION_ID, title: t.localTerminal.title, status: "connecting" }]);
@@ -235,7 +253,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     if (!action) return;
     const list = tabsRef.current;
     const at = list.findIndex((x) => x.key === activeKey);
-    if (action.type === "newLocal") openLocal();
+    if (action.type === "quickConnect") setQuick(true);
+    else if (action.type === "newLocal") openLocal();
     else if (action.type === "close") {
       if (!activeKey) return;
       closeTab(activeKey);
@@ -600,6 +619,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
         />
         <div className="toolbar">
           <button type="button" className="toolbar__local" onClick={openLocal}>{t.localTerminal.button}</button>
+          <button type="button" className="toolbar__local" onClick={() => setQuick(true)}>{t.quickConnect.button}</button>
           <LayoutSwitch tabCount={tabs.length} layout={layout} onChange={setLayout} />
         <MultiExecBar
           tabs={tabs.map((x) => ({ id: x.key, title: x.title }))}
@@ -684,6 +704,11 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
       {importCandidates && (
         <div className="overlay">
           <ImportDialog candidates={importCandidates} onImport={(c) => void runImport(c)} onCancel={() => setImportCandidates(null)} />
+        </div>
+      )}
+      {quick && (
+        <div className="overlay">
+          <QuickConnectDialog onConnect={(target) => void quickConnect(target)} onClose={() => setQuick(false)} />
         </div>
       )}
       {showHosts && (

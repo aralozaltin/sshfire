@@ -722,3 +722,20 @@ test("settings opens the trusted servers dialog and forgets a server", async () 
   await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Unut" }));
   expect(api.knownHostsRemove).toHaveBeenCalledWith("10.0.0.5", 22);
 });
+
+test("quick connect saves a new server and opens a tab for it, and reuses an existing one", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Hızlı bağlan" }));
+  await userEvent.type(screen.getByLabelText("Adres"), "deploy@10.9.9.9:2200{Enter}");
+  await vi.waitFor(() => expect(api.addSession).toHaveBeenCalled());
+  expect(api.addSession).toHaveBeenCalledWith(expect.objectContaining({ host: "10.9.9.9", port: 2200, user: "deploy", auth: { type: "password" } }), undefined);
+  expect(await screen.findByRole("tab", { name: /deploy@10.9.9.9/ })).toBeInTheDocument();
+  expect(api.connect).toHaveBeenCalledWith("2", 80, 24, expect.any(Function));
+  vi.mocked(api.addSession).mockClear();
+  await userEvent.keyboard("{Control>}{Shift>}k{/Shift}{/Control}");
+  await userEvent.type(screen.getByLabelText("Adres"), "root@192.168.3.81{Enter}");
+  await vi.waitFor(() => expect(api.connect).toHaveBeenCalledTimes(2));
+  expect(api.addSession).not.toHaveBeenCalled();
+});

@@ -93,3 +93,4 @@ Test sunucusu: `vcore/tests/docker/up.sh`. Otomatik testler yeşil olsa da aşa�
 - [ ] Bağlı sunucunun satırında yeşil nokta (Sunucular sekmesinde); bağlantı kapanınca kayboluyor
 - [ ] Güncelleme: Ayarlar → Güncellemeleri denetle yeni sürümü buluyor, indirip kuruyor ve yeniden başlatıyor
 - [ ] Kısayollar: ⌘T/⌘W/⌘1-9/⌘⇧[ ] (Mac) ve Ctrl+Shift+T/W, Alt+1-9, Ctrl+Tab (Windows/Linux) terminal odaktayken de çalışıyor, terminale karakter yazmıyor
+- [ ] Hızlı bağlan (⌘K / Ctrl+Shift+K ya da araç çubuğu): `kullanıcı@sunucu:port` yazınca sunucu listeye eklenip bağlanıyor, aynı adres tekrar yazılınca yenisi eklenmiyor; geçersiz adreste hata, Esc kapatıyor; yapıştırılan `ssh -p 2200 user@host` komutu da çözülüyor

@@ -243,6 +243,15 @@ export const tr = {
     exported: (path: string) => `Sunucu listesi kaydedildi: ${path}`,
   },
   tabMenu: { duplicate: "Çoğalt", rename: "Yeniden adlandır", closeOthers: "Diğerlerini kapat", close: "Kapat", renameTitle: "Sekmeyi yeniden adlandır", nameLabel: "Sekme adı" },
+  quickConnect: {
+    button: "Hızlı bağlan",
+    title: "Hızlı bağlan",
+    address: "Adres",
+    invalid: "Şu biçimde yaz: kullanıcı@sunucu veya kullanıcı@sunucu:port",
+    hint: "Sunucu listeye kaydedilir; parolayı bağlanırken sorarız.",
+    connect: "Bağlan",
+    cancel: "Vazgeç",
+  },
   localTerminal: { button: "Yerel terminal", title: "Yerel" },
   knownHosts: {
     open: "Güvenilen sunucular…",

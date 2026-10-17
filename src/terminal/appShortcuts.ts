@@ -1,4 +1,4 @@
-export type AppKeyAction = { type: "newLocal" } | { type: "close" } | { type: "next" } | { type: "prev" } | { type: "goto"; index: number };
+export type AppKeyAction = { type: "quickConnect" } | { type: "newLocal" } | { type: "close" } | { type: "next" } | { type: "prev" } | { type: "goto"; index: number };
 
 interface KeyLike {
   key: string;
@@ -16,6 +16,7 @@ export function classifyAppKey(e: KeyLike, isMac: boolean): AppKeyAction | null 
   const digit = /^[1-9]$/.test(key) ? Number(key) - 1 : null;
   if (isMac) {
     if (!e.metaKey || e.ctrlKey || e.altKey) return null;
+    if (!e.shiftKey && key === "k") return { type: "quickConnect" };
     if (!e.shiftKey && key === "t") return { type: "newLocal" };
     if (!e.shiftKey && key === "w") return { type: "close" };
     if (!e.shiftKey && digit !== null) return { type: "goto", index: digit };
@@ -25,6 +26,7 @@ export function classifyAppKey(e: KeyLike, isMac: boolean): AppKeyAction | null 
   }
   if (e.metaKey) return null;
   if (e.ctrlKey && !e.altKey) {
+    if (e.shiftKey && key === "k") return { type: "quickConnect" };
     if (e.shiftKey && key === "t") return { type: "newLocal" };
     if (e.shiftKey && key === "w") return { type: "close" };
     if (key === "tab") return { type: e.shiftKey ? "prev" : "next" };

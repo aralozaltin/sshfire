@@ -245,6 +245,15 @@ export const en: Messages = {
     exported: (path: string) => `Server list saved: ${path}`,
   },
   tabMenu: { duplicate: "Duplicate", rename: "Rename", closeOthers: "Close others", close: "Close", renameTitle: "Rename tab", nameLabel: "Tab name" },
+  quickConnect: {
+    button: "Quick connect",
+    title: "Quick connect",
+    address: "Address",
+    invalid: "Use the form user@host or user@host:port",
+    hint: "The server is saved to your list; the password is asked when connecting.",
+    connect: "Connect",
+    cancel: "Cancel",
+  },
   localTerminal: { button: "Local terminal", title: "Local" },
   knownHosts: {
     open: "Trusted servers…",

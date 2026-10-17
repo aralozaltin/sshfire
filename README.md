@@ -11,7 +11,7 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 ## Features
 
 **Connections**
-- Saved server list with folders and search; double-click to connect
+- Saved server list with folders and search; double-click to connect, or type `user@host:port` in Quick connect (⌘K, Ctrl+Shift+K)
 - Password, key file (including passphrase-protected keys), SSH agent and keyboard-interactive (two-factor) authentication
 - Jump hosts (bastions), host key verification (trust on first use, refuses changed keys)
 - Passwords and key passphrases live in the OS key store (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in files
