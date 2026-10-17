@@ -1,9 +1,9 @@
 cask "sshfire" do
   arch arm: "aarch64", intel: "x64"
 
-  version "0.1.3"
-  sha256 arm:   "f0fed61c2901aab5c669b068d23e4b113bc958988ef203f2c5b5375c8ae8b541",
-         intel: "081007a6437d90707004d8e4fa45dd1929d08c2055c8669ebb7d2ea450d49811"
+  version "0.1.4"
+  sha256 arm:   "19e2b477b6764f2867730ecd6b107f08de064805c9f8a49884fcb3c1aa427849",
+         intel: "416e34d9cfb5de7f79367a97d344c9dede9fa22ff1091fad4261e0d8cda43996"
 
   url "https://github.com/aralozaltin/sshfire/releases/download/v#{version}/SSHFire_#{version}_#{arch}.dmg"
   name "SSHFire"
