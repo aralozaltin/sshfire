@@ -73,11 +73,11 @@ jobs:
             | **macOS**, Apple Silicon (M1 or newer) | [SSHFire-macOS-AppleSilicon.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-AppleSilicon.dmg) |
             | **macOS**, Intel | [SSHFire-macOS-Intel.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-Intel.dmg) |
             | **Windows** 10/11 | [SSHFire-Windows-x64-setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Windows-x64-setup.exe) |
-            | **Linux**, any distribution | [SSHFire-Linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.AppImage) |
-            | **Ubuntu / Debian** | [SSHFire-Linux-x64.deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.deb) |
-            | **Fedora / RHEL** | [SSHFire-Linux-x64.rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.rpm) |
+            | **Linux** | [SSHFire-Linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.AppImage) (runs on any distribution) |
 
-            Everything else in the list below (`.sig`, `.tar.gz`, `.json`, `.msi`) is used by the in-app updater or by IT deployment. You do not need it.
+            Other formats: [Ubuntu / Debian .deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.deb), [Fedora / RHEL .rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.rpm), [Windows .msi for IT deployment](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Windows-x64.msi).
+
+            The remaining files in the list below (`.sig`, `.tar.gz`, `.json`) are used by the in-app updater. You do not need them.
 
             On first launch your system may ask you to confirm the app: on macOS open *System Settings → Privacy & Security → Open Anyway*; on Windows choose *More info → Run anyway* in SmartScreen. Installed copies update themselves.
           releaseDraft: false
