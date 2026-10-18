@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/aralozaltin/sshfire/releases/latest"><img src="https://img.shields.io/github/v/release/aralozaltin/sshfire" alt="Latest release"></a>
-  <a href="https://github.com/aralozaltin/sshfire/releases"><img src="https://img.shields.io/github/downloads/aralozaltin/sshfire/total" alt="Downloads"></a>
+  <a href="https://github.com/aralozaltin/sshfire/releases"><img src="https://img.shields.io/github/downloads/aralozaltin/sshfire/total?style=flat&label=downloads" alt="Downloads"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/aralozaltin/sshfire" alt="MIT license"></a>
 </p>
 
