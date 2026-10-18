@@ -1,6 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { homeDir, join } from "@tauri-apps/api/path";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { getVersion } from "@tauri-apps/api/app";
 import { check } from "@tauri-apps/plugin-updater";
@@ -62,6 +63,16 @@ export const clipboardFiles = () => invoke<string[]>("clipboard_files");
 export const copyToClipboard = (tabId: string, paths: string[]) => invoke<number>("sftp_copy_to_clipboard", { tabId, remotePaths: paths });
 export async function pickFolder(startIn?: string): Promise<string | null> {
   const picked = await openDialog({ multiple: false, directory: true, defaultPath: startIn });
+  return typeof picked === "string" ? picked : null;
+}
+export async function pickKeyFile(): Promise<string | null> {
+  let startIn: string | undefined;
+  try {
+    startIn = await join(await homeDir(), ".ssh");
+  } catch {
+    startIn = undefined;
+  }
+  const picked = await openDialog({ multiple: false, directory: false, defaultPath: startIn });
   return typeof picked === "string" ? picked : null;
 }
 export const transferCancel = (transferId: string) => invoke<boolean>("transfer_cancel", { transferId });

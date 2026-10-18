@@ -2,6 +2,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ServerDialog } from "./ServerDialog";
 import type { Session } from "../types";
+import { pickKeyFile } from "../api";
+
+vi.mock("../api", () => ({ pickKeyFile: vi.fn() }));
 
 const existing: Session = {
   id: "9", name: "Prod API", host: "10.0.0.1", port: 2200, user: "deploy", folder: "Prod", auth: { type: "password" },
@@ -240,4 +243,21 @@ describe("folder picker", () => {
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ folder: "Yeni" }), undefined);
   });
+});
+
+test("the browse button fills the key file path from the file picker", async () => {
+  vi.mocked(pickKeyFile).mockResolvedValue("/Users/u/.ssh/id_ed25519");
+  render(<ServerDialog onSave={() => {}} onCancel={() => {}} />);
+  await userEvent.selectOptions(screen.getByLabelText("Kimlik doğrulama"), "key_file");
+  await userEvent.click(screen.getByRole("button", { name: "Gözat…" }));
+  expect(screen.getByLabelText("Anahtar dosyası yolu")).toHaveValue("/Users/u/.ssh/id_ed25519");
+});
+
+test("cancelling the file picker keeps the typed key path", async () => {
+  vi.mocked(pickKeyFile).mockResolvedValue(null);
+  render(<ServerDialog onSave={() => {}} onCancel={() => {}} />);
+  await userEvent.selectOptions(screen.getByLabelText("Kimlik doğrulama"), "key_file");
+  await userEvent.type(screen.getByLabelText("Anahtar dosyası yolu"), "/tmp/k");
+  await userEvent.click(screen.getByRole("button", { name: "Gözat…" }));
+  expect(screen.getByLabelText("Anahtar dosyası yolu")).toHaveValue("/tmp/k");
 });

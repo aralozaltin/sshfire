@@ -28,6 +28,7 @@ export const en: Messages = {
     authAgent: "SSH agent",
     authInteractive: "Prompted (two-factor)",
     keyPath: "Key file path",
+    browse: "Browse…",
     password: "Password",
     passwordKeepHint: "Type a new password to change it",
     save: "Save",

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { Auth, NewSession, Session } from "../types";
 import { useT } from "../i18n";
+import { pickKeyFile } from "../api";
 
 export interface ServerDialogProps {
   initial?: Session;
@@ -155,7 +156,18 @@ export function ServerDialog({ initial, others = [], onSave, onCancel }: ServerD
         </label>
       ) : authType === "key_file" ? (
         <>
-          <label>{d.keyPath}<input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} /></label>
+          <div className="server-dialog__keyrow">
+            <label>{d.keyPath}<input value={keyPath} onChange={(e) => setKeyPath(e.target.value)} /></label>
+            <button
+              type="button"
+              onClick={async () => {
+                const picked = await pickKeyFile();
+                if (picked) setKeyPath(picked);
+              }}
+            >
+              {d.browse}
+            </button>
+          </div>
           {errors.keyPath && <p role="alert">{errors.keyPath}</p>}
         </>
       ) : null}

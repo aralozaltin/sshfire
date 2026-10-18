@@ -26,6 +26,7 @@ export const tr = {
     authAgent: "SSH ajanı",
     authInteractive: "Soru-cevap (iki aşamalı doğrulama)",
     keyPath: "Anahtar dosyası yolu",
+    browse: "Gözat…",
     password: "Parola",
     passwordKeepHint: "Değiştirmek için yeni parola yaz",
     save: "Kaydet",
