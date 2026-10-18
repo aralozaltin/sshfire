@@ -11,6 +11,18 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+/// How long to wait for the TCP connection itself. The host-key and password
+/// prompts that follow are not covered, since they wait on the user.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
+
+async fn tcp_connect(host: &str, port: u16, timeout: Duration) -> Result<tokio::net::TcpStream, SshError> {
+    match tokio::time::timeout(timeout, tokio::net::TcpStream::connect((host, port))).await {
+        Ok(Ok(stream)) => Ok(stream),
+        Ok(Err(e)) => Err(SshError::Unreachable(e.to_string())),
+        Err(_) => Err(SshError::Unreachable(format!("timed out after {}s", timeout.as_secs()))),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HostKeyDecision {
     Trust,
@@ -252,7 +264,8 @@ impl SshConnection {
             keepalive_max: 3,
             ..Default::default()
         });
-        let connected = client::connect(config, (session.host.as_str(), session.port), handler).await;
+        let tcp = tcp_connect(&session.host, session.port, CONNECT_TIMEOUT).await?;
+        let connected = client::connect_stream(config, tcp, handler).await;
         let mut handle = match connected {
             Ok(h) => h,
             Err(e) => {
@@ -612,5 +625,27 @@ impl SshConnection {
             let _ = ev_tx.send(ShellEvent::Closed { reason }).await;
         });
         Ok(ShellChannel { writer: ShellWriter { cmds: cmd_tx }, events: ev_rx })
+    }
+}
+
+#[cfg(test)]
+mod connect_timeout_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn tcp_connect_gives_up_after_the_timeout() {
+        let started = std::time::Instant::now();
+        let result = tcp_connect("10.255.255.1", 22, Duration::from_millis(300)).await;
+        assert!(matches!(result, Err(SshError::Unreachable(_))));
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
+    #[tokio::test]
+    async fn tcp_connect_reports_a_refused_port() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let result = tcp_connect("127.0.0.1", port, Duration::from_secs(2)).await;
+        assert!(matches!(result, Err(SshError::Unreachable(_))));
     }
 }
