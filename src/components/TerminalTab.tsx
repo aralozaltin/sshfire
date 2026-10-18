@@ -138,13 +138,6 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     return () => clearInterval(timer);
   }, [idleMinutes]);
 
-  function onPaneKey(e: React.KeyboardEvent) {
-    if (status !== "closed" || !onReconnect) return;
-    if (e.key.toLowerCase() !== "r" || e.ctrlKey || e.metaKey || e.altKey) return;
-    e.preventDefault();
-    onReconnect();
-  }
-
   async function toggleRecording() {
     const tabId = sessionRef.current?.tabId;
     if (!tabId) return;
@@ -170,6 +163,23 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     retryAttempt < MAX_RETRIES &&
     (dropped ? wasOpen.current || retryAttempt > 0 : retryAttempt > 0 && errorCode === "unreachable");
 
+  const canReconnectByKey = status === "closed" && !!onReconnect && visible && active;
+  useEffect(() => {
+    if (!canReconnectByKey) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.toLowerCase() !== "r" && e.code !== "KeyR") return;
+      const el = e.target as HTMLElement | null;
+      const typing = el?.closest?.("input, select, [contenteditable='true'], textarea:not(.xterm-helper-textarea)");
+      if (typing) return;
+      e.preventDefault();
+      onReconnect?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canReconnectByKey]);
+
   useEffect(() => {
     if (!retrying) return;
     const timer = setTimeout(() => onReconnect?.(true), retryDelayMs(retryAttempt));
@@ -177,7 +187,7 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retrying]);
   return (
-    <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane} onKeyDown={onPaneKey}>
+    <div className={`shell-pane${active ? " shell-pane--active" : ""}`} hidden={!visible} onMouseDown={onFocusPane}>
       {findOpen && (
         <FindBar
           onFind={(q, forward) => termRef.current?.find?.(q, forward)}

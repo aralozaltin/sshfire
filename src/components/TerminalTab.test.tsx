@@ -365,6 +365,28 @@ describe("coming back to a disconnected tab", () => {
     expect(onReconnect).toHaveBeenCalledTimes(1);
   });
 
+  test("a plain lowercase r reconnects even when focus is outside the pane", async () => {
+    const { term, api, emitClosed } = setup();
+    const onReconnect = vi.fn();
+    render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} onReconnect={onReconnect} />);
+    await screen.findByText(/.*/, { selector: "[data-status='open']" });
+    emitClosed("exit:0");
+    await screen.findByText(/R tuşuna bas/);
+    fireEvent.keyDown(document.body, { key: "r", code: "KeyR" });
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+  });
+
+  test("typing r into a text field does not reconnect", async () => {
+    const { term, api, emitClosed } = setup();
+    const onReconnect = vi.fn();
+    render(<><input aria-label="x" /><TerminalTab sessionId="s1" api={api} createTerm={() => term} onReconnect={onReconnect} /></>);
+    await screen.findByText(/.*/, { selector: "[data-status='open']" });
+    emitClosed("exit:0");
+    await screen.findByText(/R tuşuna bas/);
+    fireEvent.keyDown(screen.getByLabelText("x"), { key: "r", code: "KeyR" });
+    expect(onReconnect).not.toHaveBeenCalled();
+  });
+
   test("R does nothing while the connection is open", async () => {
     const { term, api } = setup();
     const onReconnect = vi.fn();
