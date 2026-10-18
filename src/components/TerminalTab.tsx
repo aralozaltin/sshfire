@@ -175,8 +175,9 @@ export function TerminalTab({ sessionId, api, createTerm, visible = true, dark =
       e.preventDefault();
       onReconnect?.();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Yakalama aşamasında: xterm düz harf tuşlarının olayını yutar, kabarcık aşamasında yalnızca Shift'li R gelirdi.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canReconnectByKey]);
 

@@ -376,6 +376,22 @@ describe("coming back to a disconnected tab", () => {
     expect(onReconnect).toHaveBeenCalledTimes(1);
   });
 
+  test("r still reconnects when the terminal swallows plain key presses like xterm does", async () => {
+    const { term, api, emitClosed } = setup();
+    const onReconnect = vi.fn();
+    render(<TerminalTab sessionId="s1" api={api} createTerm={() => term} onReconnect={onReconnect} />);
+    await screen.findByText(/.*/, { selector: "[data-status='open']" });
+    emitClosed("exit:0");
+    await screen.findByText(/R tuşuna bas/);
+    const swallower = document.createElement("textarea");
+    swallower.className = "xterm-helper-textarea";
+    swallower.addEventListener("keydown", (e) => e.stopPropagation());
+    document.body.appendChild(swallower);
+    fireEvent.keyDown(swallower, { key: "r", code: "KeyR" });
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+    swallower.remove();
+  });
+
   test("typing r into a text field does not reconnect", async () => {
     const { term, api, emitClosed } = setup();
     const onReconnect = vi.fn();
