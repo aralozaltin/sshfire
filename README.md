@@ -2,6 +2,12 @@
 
 <h1 align="center">SSHFire</h1>
 
+<p align="center">
+  <a href="https://github.com/aralozaltin/sshfire/releases/latest"><img src="https://img.shields.io/github/v/release/aralozaltin/sshfire" alt="Latest release"></a>
+  <a href="https://github.com/aralozaltin/sshfire/releases"><img src="https://img.shields.io/github/downloads/aralozaltin/sshfire/total" alt="Downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/aralozaltin/sshfire" alt="MIT license"></a>
+</p>
+
 A fast, lightweight desktop SSH client in the spirit of MobaXterm: saved servers, tabbed terminals, an SFTP file panel that follows your shell, and live server metrics, all in one small app.
 
 Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://github.com/Eugeny/russh)).
