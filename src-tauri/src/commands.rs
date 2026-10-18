@@ -245,10 +245,10 @@ pub async fn connect(
         previous = Some(Arc::new(connected.map_err(|e| AppError::from(&e))?));
     }
     let conn = previous.ok_or_else(|| AppError::code("session_not_found"))?;
-    let ptys_before = conn.list_ptys().await.ok();
+    let ptys_before = conn.list_ttys().await.ok();
     let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
     let tty = match ptys_before {
-        Some(before) => conn.detect_shell_pty(&before).await,
+        Some(before) => conn.detect_shell_tty(&before).await,
         None => None,
     };
 
@@ -419,7 +419,7 @@ pub fn metrics_stop(state: State<'_, AppState>, tab_id: String) {
 pub fn cwd_start(state: State<'_, AppState>, tab_id: String, on_cwd: Channel<String>) -> Result<(), AppError> {
     let mut tabs = state.tabs.lock().unwrap();
     let tab = tabs.get_mut(&tab_id).ok_or_else(|| AppError::code("tab_not_found"))?;
-    let Some(tty) = tab.tty else { return Ok(()) };
+    let Some(tty) = tab.tty.clone() else { return Ok(()) };
     if let Some(old) = tab.cwd_task.take() {
         old.abort();
     }
@@ -428,7 +428,7 @@ pub fn cwd_start(state: State<'_, AppState>, tab_id: String, on_cwd: Channel<Str
     tab.cwd_task = Some(tauri::async_runtime::spawn(async move {
         let mut last: Option<String> = None;
         loop {
-            let now = conn.shell_cwd(tty).await.ok().flatten();
+            let now = conn.tty_cwd(&tty).await.ok().flatten();
             if let Some(changed) = crate::cwd_task::cwd_changed(&mut last, now) {
                 if on_cwd.send(changed).is_err() {
                     return;

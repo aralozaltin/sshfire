@@ -76,3 +76,30 @@ async fn a_pty_that_does_not_exist_has_no_cwd() {
     let (_dir, conn) = connected().await;
     assert_eq!(conn.shell_cwd(9999).await.unwrap(), None);
 }
+
+#[tokio::test]
+async fn the_generic_tty_api_follows_cd_on_linux() {
+    if !server_up() { return; }
+    let (_dir, conn) = connected().await;
+    let mut found = None;
+    for _ in 0..8 {
+        let before = conn.list_ttys().await.unwrap();
+        let shell = conn.open_shell(80, 24).await.unwrap();
+        if let Some(tty) = conn.detect_shell_tty(&before).await {
+            assert!(matches!(tty, vcore::cwd::ShellTty::Pts(_)));
+            found = Some((shell, tty));
+            break;
+        }
+        drop(shell);
+        tokio::time::sleep(Duration::from_millis(300)).await;
+    }
+    let (shell, tty) = found.expect("the new terminal should be detected");
+    shell.write(b"cd /tmp\n").await.unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let cwd = conn.tty_cwd(&tty).await.unwrap();
+        if cwd.as_deref() == Some("/tmp") { break; }
+        assert!(std::time::Instant::now() < deadline, "cwd never became /tmp, last: {cwd:?}");
+        tokio::time::sleep(Duration::from_millis(150)).await;
+    }
+}

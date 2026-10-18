@@ -25,7 +25,7 @@ pub struct Tab {
     pub sftp: Arc<tokio::sync::OnceCell<Arc<SftpClient>>>,
     pub writer: ShellWriter,
     pub metrics_task: Option<tauri::async_runtime::JoinHandle<()>>,
-    pub tty: Option<u32>,
+    pub tty: Option<vcore::cwd::ShellTty>,
     pub tunnels: std::collections::HashMap<String, (vcore::tunnel::TunnelSpec, vcore::tunnel::TunnelHandle)>,
     pub cwd_task: Option<tauri::async_runtime::JoinHandle<()>>,
     /// Enter'a basılınca terminal dizini yoklamasını erkene çeker.

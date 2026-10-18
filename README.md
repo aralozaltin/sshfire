@@ -35,7 +35,7 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - Color schemes: Dracula, Nord, Solarized Dark, Tokyo Night, Gruvbox
 
 **Files**
-- SFTP panel that follows the shell's working directory
+- SFTP panel that follows the shell's working directory (Linux and macOS servers)
 - Copy files in Finder or Explorer and paste them into the panel to upload; copy in the panel (up to 100 MB) and paste in Finder or Explorer to download
 - Copy, cut, paste, drag-and-drop move/copy, inline rename, upload/download with progress and cancel, drag files in from the OS
 - Built-in text editor for remote files (Ctrl/Cmd+S saves), or open a file in your default editor and have it uploaded back on every save

@@ -450,6 +450,45 @@ impl SshConnection {
         Ok(if cwd.is_empty() { None } else { Some(cwd.to_string()) })
     }
 
+    /// Sunucudaki terminaller: Linux'ta `/dev/pts`, macOS/BSD'de `ps` çıktısı.
+    pub async fn list_ttys(&self) -> Result<Vec<crate::cwd::ShellTty>, SshError> {
+        use crate::cwd::ShellTty;
+        if let Ok(ptys) = self.list_ptys().await {
+            return Ok(ptys.into_iter().map(ShellTty::Pts).collect());
+        }
+        let out = self.exec("ps -axo tty=").await?;
+        Ok(crate::cwd::parse_ps_ttys(&out).into_iter().map(ShellTty::Named).collect())
+    }
+
+    /// Kabuk açıldıktan sonra yeni ortaya çıkan terminal; aday birden fazlaysa `None`.
+    pub async fn detect_shell_tty(&self, before: &[crate::cwd::ShellTty]) -> Option<crate::cwd::ShellTty> {
+        for _ in 0..8 {
+            if let Ok(after) = self.list_ttys().await {
+                let fresh = crate::cwd::new_ttys(before, &after);
+                match fresh.as_slice() {
+                    [one] => return Some(one.clone()),
+                    [] => {}
+                    _ => return None,
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+        None
+    }
+
+    /// Verilen terminaldeki kabuğun çalışma dizini; bulunamazsa `None`.
+    pub async fn tty_cwd(&self, tty: &crate::cwd::ShellTty) -> Result<Option<String>, SshError> {
+        use crate::cwd::ShellTty;
+        match tty {
+            ShellTty::Pts(n) => self.shell_cwd(*n).await,
+            ShellTty::Named(name) => {
+                let Some(cmd) = crate::cwd::bsd_cwd_command(name) else { return Ok(None) };
+                // `lsof` bulamazsa komut sıfırdan farklı döner; bu hata değil, "dizin yok" demek.
+                Ok(self.exec(&cmd).await.ok().and_then(|o| crate::cwd::parse_lsof_cwd(&o)))
+            }
+        }
+    }
+
     pub async fn start_tunnel(self: &Arc<Self>, spec: &crate::tunnel::TunnelSpec) -> Result<crate::tunnel::TunnelHandle, crate::tunnel::TunnelError> {
         use crate::tunnel::{TunnelError, TunnelHandle};
         if let crate::tunnel::TunnelSpec::Remote { listen_port, dest_host, dest_port } = spec {

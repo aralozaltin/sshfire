@@ -22,6 +22,48 @@ pub fn cwd_command(index: u32) -> String {
     )
 }
 
+/// Sunucudaki bir terminal: Linux'ta `/dev/pts/N`, macOS/BSD'de `ps`'in verdiği ad (`ttys003`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ShellTty {
+    Pts(u32),
+    Named(String),
+}
+
+/// `ps -axo tty=` çıktısındaki gerçek terminal adları (`??` ve `-` gibi terminalsizleri atar), tekrarsız.
+pub fn parse_ps_ttys(output: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for line in output.lines().map(str::trim) {
+        if line.is_empty() || !line.chars().any(|c| c.is_ascii_alphanumeric()) || line.starts_with('?') {
+            continue;
+        }
+        if !out.iter().any(|x| x == line) {
+            out.push(line.to_string());
+        }
+    }
+    out
+}
+
+/// `after` içinde olup `before` içinde olmayan terminaller.
+pub fn new_ttys(before: &[ShellTty], after: &[ShellTty]) -> Vec<ShellTty> {
+    after.iter().filter(|t| !before.contains(t)).cloned().collect()
+}
+
+/// macOS/BSD: terminaldeki en eski süreç (giriş kabuğu) ve onun çalışma dizini (`lsof`). Terminal adı
+/// yalnızca harf, rakam ve `/` içeriyorsa komuta girer.
+pub fn bsd_cwd_command(tty: &str) -> Option<String> {
+    if tty.is_empty() || !tty.chars().all(|c| c.is_ascii_alphanumeric() || c == '/') {
+        return None;
+    }
+    Some(format!(
+        "p=$(ps -t {tty} -o pid= 2>/dev/null | sort -n | head -n1); [ -n \"$p\" ] && lsof -a -d cwd -p $p -Fn 2>/dev/null"
+    ))
+}
+
+/// `lsof -Fn` çıktısındaki `n` alanı (dizin yolu).
+pub fn parse_lsof_cwd(output: &str) -> Option<String> {
+    output.lines().find_map(|l| l.strip_prefix('n')).filter(|p| !p.is_empty()).map(str::to_string)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,5 +98,28 @@ mod tests {
         assert!(c.contains("34819"), "{c}");
         assert!(c.contains("/proc/"), "{c}");
         assert!(!c.contains(';') || c.contains("for "), "{c}");
+    }
+
+    #[test]
+    fn ps_output_lists_each_real_terminal_once() {
+        assert_eq!(parse_ps_ttys("??\nttys000\n ttys001 \nttys000\n-\n\n"), vec!["ttys000", "ttys001"]);
+        assert_eq!(parse_ps_ttys("pts/3\n?\n"), vec!["pts/3"]);
+        assert_eq!(parse_ps_ttys(""), Vec::<String>::new());
+    }
+
+    #[test]
+    fn the_bsd_command_names_the_terminal_and_refuses_anything_odd() {
+        let c = bsd_cwd_command("ttys003").unwrap();
+        assert!(c.contains("ttys003") && c.contains("lsof"), "{c}");
+        assert!(bsd_cwd_command("ttys003; rm -rf /").is_none());
+        assert!(bsd_cwd_command("").is_none());
+        assert!(bsd_cwd_command("$(id)").is_none());
+    }
+
+    #[test]
+    fn lsof_field_output_yields_the_directory() {
+        assert_eq!(parse_lsof_cwd("p123\nfcwd\nn/Users/me/my dir\n"), Some("/Users/me/my dir".to_string()));
+        assert_eq!(parse_lsof_cwd("p123\n"), None);
+        assert_eq!(parse_lsof_cwd(""), None);
     }
 }
