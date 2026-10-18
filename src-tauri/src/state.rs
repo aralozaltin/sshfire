@@ -53,4 +53,6 @@ pub struct AppState {
     pub pending_passwords: Arc<Mutex<HashMap<String, oneshot::Sender<Option<PasswordReply>>>>>,
     pub startup_warnings: Vec<StartupWarning>,
     pub transfers: Arc<crate::transfers::Registry>,
+    /// Aynı anda tek kabuk açılır: yeni terminali bulmak "önce/sonra" farkına dayanır, paralel açılış bunu bozar.
+    pub shell_open: tokio::sync::Mutex<()>,
 }

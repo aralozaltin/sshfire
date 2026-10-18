@@ -16,6 +16,9 @@ impl HostKeyPrompt for Trust {
     }
 }
 
+// Testler aynı sunucuda yeni terminal arar; paralel çalışırlarsa birbirlerinin terminalini aday sayıp şaşarlar.
+static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn server_up() -> bool {
     let up = std::net::TcpStream::connect_timeout(&"127.0.0.1:2222".parse().unwrap(), Duration::from_millis(500)).is_ok();
     if !up {
@@ -36,6 +39,7 @@ async fn connected() -> (tempfile::TempDir, SshConnection) {
 
 #[tokio::test]
 async fn finds_the_new_pty_and_follows_cd() {
+    let _serial = SERIAL.lock().await;
     if !server_up() { return; }
     let (_dir, conn) = connected().await;
     // Diğer testler aynı sunucuda paralel pty açtığı için aday belirsiz kalabilir; birkaç kez dene.
@@ -72,6 +76,7 @@ async fn finds_the_new_pty_and_follows_cd() {
 
 #[tokio::test]
 async fn a_pty_that_does_not_exist_has_no_cwd() {
+    let _serial = SERIAL.lock().await;
     if !server_up() { return; }
     let (_dir, conn) = connected().await;
     assert_eq!(conn.shell_cwd(9999).await.unwrap(), None);
@@ -79,6 +84,7 @@ async fn a_pty_that_does_not_exist_has_no_cwd() {
 
 #[tokio::test]
 async fn the_generic_tty_api_follows_cd_on_linux() {
+    let _serial = SERIAL.lock().await;
     if !server_up() { return; }
     let (_dir, conn) = connected().await;
     let mut found = None;

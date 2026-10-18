@@ -59,6 +59,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         pending_auth: Arc::new(Mutex::new(HashMap::new())),
         startup_warnings: warnings,
         transfers: Arc::new(transfers::Registry::default()),
+        shell_open: tokio::sync::Mutex::new(()),
     })
 }
 

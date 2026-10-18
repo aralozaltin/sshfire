@@ -245,6 +245,7 @@ pub async fn connect(
         previous = Some(Arc::new(connected.map_err(|e| AppError::from(&e))?));
     }
     let conn = previous.ok_or_else(|| AppError::code("session_not_found"))?;
+    let _opening = state.shell_open.lock().await;
     let ptys_before = conn.list_ttys().await.ok();
     let mut shell = conn.open_shell(cols, rows).await.map_err(|e| AppError::from(&e))?;
     let tty = match ptys_before {
@@ -252,6 +253,7 @@ pub async fn connect(
         None => None,
     };
 
+    drop(_opening);
     let tab_id = uuid::Uuid::new_v4().to_string();
     let throttle = Arc::new(Throttle::new(HIGH_WATER, LOW_WATER));
     let log = Arc::new(crate::session_log::LogSink::default());
