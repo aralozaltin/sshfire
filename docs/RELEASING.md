@@ -26,7 +26,7 @@ Releases are built by GitHub Actions (`.github/workflows/release.yml`) when a ve
    ```
 
 3. Watch the *Release* workflow. When it finishes, installed copies find the new version on their next check.
-4. Update the Homebrew cask (it lives in this repository under `Casks/`):
+4. The Homebrew cask is updated automatically by the last job of the release workflow. If that job fails (for example because the branch is protected), run it by hand:
 
    ```bash
    scripts/update-cask.sh 0.2.0

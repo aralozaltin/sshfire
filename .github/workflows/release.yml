@@ -113,3 +113,31 @@ jobs:
           copy "SSHFire_${ver}_amd64.deb" SSHFire-Linux-x64.deb
           copy "SSHFire-${ver}-1.x86_64.rpm" SSHFire-Linux-x64.rpm
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dl/*
+
+  cask:
+    name: Update the Homebrew cask
+    needs: stable-names
+    if: needs.stable-names.result == 'success'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Write the cask for this release and commit it
+        run: |
+          set -euo pipefail
+          ver="${TAG#v}"
+          scripts/update-cask.sh "$ver"
+          if git diff --quiet Casks/sshfire.rb; then
+            echo "Cask already at $ver"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/sshfire.rb
+          git commit -m "chore: update the Homebrew cask to $ver"
+          git push origin HEAD:main
