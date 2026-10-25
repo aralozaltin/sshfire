@@ -73,7 +73,7 @@ jobs:
             | **macOS**, Apple Silicon (M1 or newer) | [SSHFire-macOS-AppleSilicon.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-AppleSilicon.dmg) |
             | **macOS**, Intel | [SSHFire-macOS-Intel.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-macOS-Intel.dmg) |
             | **Windows** 10/11 | [SSHFire-Windows-x64-setup.exe](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Windows-x64-setup.exe) |
-            | **Linux** | [SSHFire-Linux-x64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.AppImage) (runs on any distribution) |
+            | **Linux** | [SSHFire-x86_64.AppImage](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-x86_64.AppImage) (runs on any distribution) |
 
             Other formats: [Ubuntu / Debian .deb](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.deb), [Fedora / RHEL .rpm](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Linux-x64.rpm), [Windows .msi for IT deployment](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/SSHFire-Windows-x64.msi).
 
@@ -100,7 +100,7 @@ jobs:
         run: |
           set -euo pipefail
           ver="${TAG#v}"
-          mkdir dl
+          mkdir dl src
           copy() {
             gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$1" --dir dl
             mv "dl/$1" "dl/$2"
@@ -109,9 +109,20 @@ jobs:
           copy "SSHFire_${ver}_x64.dmg" SSHFire-macOS-Intel.dmg
           copy "SSHFire_${ver}_x64-setup.exe" SSHFire-Windows-x64-setup.exe
           copy "SSHFire_${ver}_x64_en-US.msi" SSHFire-Windows-x64.msi
-          copy "SSHFire_${ver}_amd64.AppImage" SSHFire-Linux-x64.AppImage
           copy "SSHFire_${ver}_amd64.deb" SSHFire-Linux-x64.deb
           copy "SSHFire-${ver}-1.x86_64.rpm" SSHFire-Linux-x64.rpm
+          # The AppImage gets embedded update information and a .zsync file so that
+          # AppImageUpdate can fetch only the changed blocks.
+          sudo apt-get update
+          sudo apt-get install -y zsync
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "SSHFire_${ver}_amd64.AppImage" --dir src
+          chmod +x "src/SSHFire_${ver}_amd64.AppImage"
+          (cd src && "./SSHFire_${ver}_amd64.AppImage" --appimage-extract >/dev/null)
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          (cd dl && ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 ../appimagetool --no-appstream \
+            -u "gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}|latest|SSHFire-x86_64.AppImage.zsync" \
+            ../src/squashfs-root SSHFire-x86_64.AppImage)
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dl/*
 
   cask:

@@ -70,7 +70,7 @@ Pick the line that matches your computer. These links always point to the newest
 | **macOS**, Apple Silicon (M1 or newer) | [SSHFire-macOS-AppleSilicon.dmg](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-macOS-AppleSilicon.dmg) |
 | **macOS**, Intel | [SSHFire-macOS-Intel.dmg](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-macOS-Intel.dmg) |
 | **Windows** 10/11 | [SSHFire-Windows-x64-setup.exe](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Windows-x64-setup.exe) |
-| **Linux** | [SSHFire-Linux-x64.AppImage](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-Linux-x64.AppImage) (runs on any distribution) |
+| **Linux** | [SSHFire-x86_64.AppImage](https://github.com/aralozaltin/sshfire/releases/latest/download/SSHFire-x86_64.AppImage) (runs on any distribution) |
 
 <details>
 <summary>Other formats</summary>
