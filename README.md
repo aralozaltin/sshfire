@@ -21,7 +21,7 @@ Built with Tauri 2, React and xterm.js on top of a Rust core ([`russh`](https://
 - Password, key file (including passphrase-protected keys), SSH agent and keyboard-interactive (two-factor) authentication
 - Jump hosts (bastions), host key verification (trust on first use, refuses changed keys)
 - Passwords and key passphrases live in the OS key store (macOS Keychain, Windows Credential Manager, Linux Secret Service), never in files
-- Import hosts from `~/.ssh/config` (including `ProxyJump`), export and import the server list as JSON (passwords are never exported)
+- Import hosts from `~/.ssh/config` (including `ProxyJump`), export and import the server list as JSON, optionally with passwords and key files in a passphrase-encrypted backup that works across macOS, Windows and Linux
 - Optional command to run on connect, color labels for servers (shown in the list and on tabs), local terminal tab
 
 **Terminal**
