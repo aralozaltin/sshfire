@@ -1,3 +1,5 @@
+import { FONT_EVENT } from "./font";
+
 export const DEFAULT_FONT_SIZE = 13;
 const MIN = 8;
 const MAX = 32;
@@ -28,4 +30,5 @@ export function saveFontSize(n: number): void {
   } catch {
     // Depolama kapalıysa boyut yalnızca bu oturumda geçerli olur.
   }
+  window.dispatchEvent(new Event(FONT_EVENT));
 }

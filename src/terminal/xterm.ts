@@ -10,6 +10,7 @@ import type { TermLike } from "./shellSession";
 import { classifyKey } from "./shortcuts";
 import { classifyAppKey } from "./appShortcuts";
 import { loadFontSize, saveFontSize, stepFontSize } from "./fontSize";
+import { FONT_EVENT, fontStack, loadFontFamily } from "./font";
 
 import { loadScheme, SCHEME_EVENT, terminalTheme } from "./schemes";
 
@@ -17,7 +18,7 @@ export function createXterm(el: HTMLElement): TermLike {
   const term = new Terminal({
     cursorBlink: true,
     scrollback: 10000,
-    fontFamily: 'Menlo, "SF Mono", Consolas, monospace',
+    fontFamily: fontStack(loadFontFamily()),
     fontSize: loadFontSize(),
     allowProposedApi: true,
     theme: terminalTheme(loadScheme(), document.documentElement.dataset.theme !== "light"),
@@ -27,6 +28,13 @@ export function createXterm(el: HTMLElement): TermLike {
     term.options.theme = terminalTheme((e as CustomEvent<string>).detail, darkApp);
   };
   window.addEventListener(SCHEME_EVENT, onScheme);
+  const onFont = () => {
+    term.options.fontFamily = fontStack(loadFontFamily());
+    term.options.fontSize = loadFontSize();
+    // Yeni ölçüler hücre boyutunu değiştirir; satır/sütun sayısını yeniden hesapla.
+    requestAnimationFrame(() => fit.fit());
+  };
+  window.addEventListener(FONT_EVENT, onFont);
   const fit = new FitAddon();
   const search = new SearchAddon();
   term.loadAddon(fit);
@@ -103,6 +111,7 @@ export function createXterm(el: HTMLElement): TermLike {
     },
     dispose: () => {
       window.removeEventListener(SCHEME_EVENT, onScheme);
+      window.removeEventListener(FONT_EVENT, onFont);
       term.dispose();
     },
   };

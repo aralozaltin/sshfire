@@ -238,6 +238,13 @@ export const tr = {
     describeRemote: (listen: number, host: string, port: number) => `sunucu:${listen} → ${host}:${port}`,
     empty: "Bu sunucu için tanımlı tünel yok.",
   },
+  termFont: {
+    family: "Terminal yazı tipi",
+    placeholder: "Varsayılan (Menlo)",
+    size: "Yazı boyutu",
+    hint: "Yazı tipi bu bilgisayarda kurulu olmalı (örn. Nerd Font). Bulunamazsa varsayılan tip kullanılır.",
+    reset: "Yazı tipini sıfırla",
+  },
   termScheme: {
     label: "Terminal renkleri",
     default: "Varsayılan (temaya uyar)",

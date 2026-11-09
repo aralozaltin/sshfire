@@ -240,6 +240,13 @@ export const en: Messages = {
     describeRemote: (listen: number, host: string, port: number) => `server:${listen} → ${host}:${port}`,
     empty: "No tunnels are defined for this server.",
   },
+  termFont: {
+    family: "Terminal font",
+    placeholder: "Default (Menlo)",
+    size: "Font size",
+    hint: "The font must be installed on this computer (e.g. a Nerd Font). If it is not found, the default font is used.",
+    reset: "Reset font",
+  },
   termScheme: {
     label: "Terminal colors",
     default: "Default (follows theme)",

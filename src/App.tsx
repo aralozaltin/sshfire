@@ -37,6 +37,7 @@ import { loadIdleMinutes, saveIdleMinutes } from "./idle/idle";
 import { QuickConnectDialog } from "./components/QuickConnectDialog";
 import type { QuickTarget } from "./sessions/quickConnect";
 import { TerminalSchemeSelect } from "./components/TerminalSchemeSelect";
+import { TerminalFontSettings } from "./components/TerminalFontSettings";
 import { loadScheme, saveScheme } from "./terminal/schemes";
 import { UpdateDialog } from "./components/UpdateDialog";
 import { UpdateSettings } from "./components/UpdateSettings";
@@ -645,6 +646,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 saveScheme(id);
               }}
             />
+            <TerminalFontSettings />
             <button type="button" onClick={() => setShowHosts(true)}>{t.knownHosts.open}</button>
             <UpdateSettings
               version={appVer}
