@@ -1,3 +1,4 @@
+pub mod bundle;
 pub mod cwd;
 pub mod fsutil;
 pub mod known_hosts;

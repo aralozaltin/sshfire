@@ -510,15 +510,63 @@ pub struct ImportSummary {
     pub skipped: usize,
 }
 
+#[derive(Serialize)]
+pub struct ExportSummary {
+    /// Anahtar dosyası okunamadığı için pakete giremeyen sunucular.
+    pub unreadable_keys: Vec<String>,
+}
+
+fn io_err(e: impl std::fmt::Display) -> AppError {
+    AppError::with_detail("store_error", e.to_string())
+}
+
+/// `passphrase` verilirse parolalar ve anahtar dosyaları dahil, o parolayla şifreli paket yazılır;
+/// verilmezse eskisi gibi yalnızca (parolasız) sunucu listesi yazılır.
 #[tauri::command]
-pub fn sessions_export(state: State<'_, AppState>, path: String) -> Result<(), AppError> {
-    let text = state.store.lock().unwrap().export_json();
-    std::fs::write(&path, text).map_err(|e| AppError::with_detail("store_error", e.to_string()))
+pub async fn sessions_export(state: State<'_, AppState>, path: String, passphrase: Option<String>) -> Result<ExportSummary, AppError> {
+    let Some(pass) = passphrase.filter(|p| !p.is_empty()) else {
+        let text = state.store.lock().unwrap().export_json();
+        std::fs::write(&path, text).map_err(io_err)?;
+        return Ok(ExportSummary { unreadable_keys: Vec::new() });
+    };
+    let sessions = state.store.lock().unwrap().list().to_vec();
+    let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
+    let (payload, warnings) = vcore::bundle::build_payload(&sessions, &secrets).map_err(|e| AppError::from(&e))?;
+    let text = tauri::async_runtime::spawn_blocking(move || vcore::bundle::seal(&payload, &pass))
+        .await
+        .map_err(io_err)?
+        .map_err(|e| AppError::from(&e))?;
+    std::fs::write(&path, text).map_err(io_err)?;
+    Ok(ExportSummary { unreadable_keys: warnings.unreadable_keys })
+}
+
+/// Seçilen dosyanın parola isteyen şifreli bir paket olup olmadığını söyler.
+#[tauri::command]
+pub fn sessions_import_inspect(path: String) -> Result<bool, AppError> {
+    let text = std::fs::read_to_string(&path).map_err(io_err)?;
+    Ok(vcore::bundle::is_sealed(&text))
 }
 
 #[tauri::command]
-pub fn sessions_import(state: State<'_, AppState>, path: String) -> Result<ImportSummary, AppError> {
-    let text = std::fs::read_to_string(&path).map_err(|e| AppError::with_detail("store_error", e.to_string()))?;
+pub async fn sessions_import(state: State<'_, AppState>, path: String, passphrase: Option<String>) -> Result<ImportSummary, AppError> {
+    let text = std::fs::read_to_string(&path).map_err(io_err)?;
+    if vcore::bundle::is_sealed(&text) {
+        let pass = passphrase.filter(|p| !p.is_empty()).ok_or_else(|| AppError::code("export_passphrase_required"))?;
+        let payload = tauri::async_runtime::spawn_blocking(move || vcore::bundle::open(&text, &pass))
+            .await
+            .map_err(io_err)?
+            .map_err(|e| AppError::from(&e))?;
+        let secrets = OverlaySecrets::new(state.secrets.clone(), state.secret_cache.clone());
+        let report = {
+            let mut store = state.store.lock().unwrap();
+            vcore::bundle::apply_payload(&mut store, &secrets, payload, &state.key_dir).map_err(|e| match e {
+                vcore::bundle::ApplyError::Store(e) => AppError::from(&e),
+                vcore::bundle::ApplyError::Secret(e) => AppError::from(&e),
+                vcore::bundle::ApplyError::Io(e) => io_err(e),
+            })?
+        };
+        return Ok(ImportSummary { added: report.added, skipped: report.skipped });
+    }
     let sessions = vcore::sessions::parse_export(&text).map_err(|e| AppError::from(&e))?;
     let report = state.store.lock().unwrap().import(sessions).map_err(|e| AppError::from(&e))?;
     Ok(ImportSummary { added: report.added, skipped: report.skipped })

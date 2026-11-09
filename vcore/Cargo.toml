@@ -5,7 +5,11 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+argon2 = "0.6.0"
 async-trait = "0.1.92"
+base64 = "0.23.1"
+chacha20poly1305 = "0.11.0"
+getrandom = "0.4.3"
 keyring = "4.2.0"
 russh = "0.64.1"
 russh-sftp = "3.0.1"

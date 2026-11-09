@@ -139,18 +139,27 @@ export const tunnelStart = (tabId: string, spec: TunnelSpec) => invoke<RunningTu
 export const tunnelStop = (tabId: string, id: string) => invoke<void>("tunnel_stop", { tabId, id });
 export const tunnelList = (tabId: string) => invoke<RunningTunnel[]>("tunnel_list", { tabId });
 
-/** Kayıt yerini sorar; iptal edilirse `null`, aksi halde yazılan dosyanın yolu. */
-export async function exportSessions(): Promise<string | null> {
-  const path = await saveDialog({ defaultPath: "sshfire-sunucular.json", filters: [{ name: "JSON", extensions: ["json"] }] });
+/**
+ * Kayıt yerini sorar; iptal edilirse `null`. `passphrase` verilirse parolalar ve anahtar dosyaları da
+ * dahil edilip bu parolayla şifrelenir, verilmezse yalnızca (parolasız) sunucu listesi yazılır.
+ */
+export async function exportSessions(passphrase?: string): Promise<{ path: string; unreadableKeys: string[] } | null> {
+  const path = await saveDialog({ defaultPath: "sshfire-sunucular.json", filters: [{ name: "SSHFire", extensions: ["json"] }] });
   if (!path) return null;
-  await invoke<void>("sessions_export", { path });
-  return path;
+  const r = await invoke<{ unreadable_keys: string[] }>("sessions_export", { path, passphrase: passphrase ?? null });
+  return { path, unreadableKeys: r.unreadable_keys };
 }
 
-export async function importSessions(): Promise<{ added: number; skipped: number } | null> {
-  const picked = await openDialog({ multiple: false, directory: false, filters: [{ name: "JSON", extensions: ["json"] }] });
+/** Dosya seçtirir; `sealed` true ise içe aktarmak için dışa aktarırken verilen parola gerekir. */
+export async function pickImportFile(): Promise<{ path: string; sealed: boolean } | null> {
+  const picked = await openDialog({ multiple: false, directory: false, filters: [{ name: "SSHFire", extensions: ["json"] }] });
   if (!picked || Array.isArray(picked)) return null;
-  return invoke<{ added: number; skipped: number }>("sessions_import", { path: picked });
+  const sealed = await invoke<boolean>("sessions_import_inspect", { path: picked });
+  return { path: picked, sealed };
+}
+
+export function importSessions(path: string, passphrase?: string): Promise<{ added: number; skipped: number }> {
+  return invoke<{ added: number; skipped: number }>("sessions_import", { path, passphrase: passphrase ?? null });
 }
 
 export interface UpdateInfo {
@@ -268,6 +277,7 @@ export const realApi = {
   appVersion,
   sshConfigHosts,
   exportSessions,
+  pickImportFile,
   importSessions,
   notify,
   knownHostsList,

@@ -39,7 +39,8 @@ function fakeApi(over: Partial<AppApi> = {}) {
     checkForUpdate: vi.fn(async () => null),
     appVersion: vi.fn(async () => "0.1.0"),
     sshConfigHosts: vi.fn(async () => ({ hosts: [], defaultUser: "u" })),
-    exportSessions: vi.fn(async () => "/tmp/yedek.json"),
+    exportSessions: vi.fn(async () => ({ path: "/tmp/yedek.json", unreadableKeys: [] })),
+    pickImportFile: vi.fn(async () => ({ path: "/tmp/yedek.json", sealed: false })),
     importSessions: vi.fn(async () => ({ added: 2, skipped: 1 })),
     tunnelStart: vi.fn(async (_t: string, spec: { listen_port: number }) => ({ id: "r1", spec, localPort: spec.listen_port, connections: 0 })),
     tunnelStop: vi.fn(async () => {}),
@@ -442,7 +443,57 @@ test("exporting tells the user where the file was saved and cancelling says noth
   await screen.findByText("Test 3.81");
   await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
   await userEvent.click(screen.getByRole("menuitem", { name: "Dışa aktar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Dosya seç ve kaydet" }));
   expect(await screen.findByText("Sunucu listesi kaydedildi: /tmp/yedek.json")).toBeInTheDocument();
+  expect(api.exportSessions).toHaveBeenCalledWith(undefined);
+});
+
+test("exporting with passwords asks for a matching backup passphrase and passes it on", async () => {
+  const { api } = fakeApi();
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dışa aktar" }));
+  await userEvent.click(screen.getByLabelText("Parolaları ve anahtar dosyalarını da dahil et"));
+  await userEvent.type(screen.getByLabelText("Yedek parolası"), "kisa");
+  await userEvent.type(screen.getByLabelText("Yedek parolası (tekrar)"), "kisa");
+  await userEvent.click(screen.getByRole("button", { name: "Dosya seç ve kaydet" }));
+  expect(await screen.findByText("Yedek parolası en az 8 karakter olmalı.")).toBeInTheDocument();
+  expect(api.exportSessions).not.toHaveBeenCalled();
+  await userEvent.clear(screen.getByLabelText("Yedek parolası"));
+  await userEvent.clear(screen.getByLabelText("Yedek parolası (tekrar)"));
+  await userEvent.type(screen.getByLabelText("Yedek parolası"), "uzun-parola-1");
+  await userEvent.type(screen.getByLabelText("Yedek parolası (tekrar)"), "baska-parola-2");
+  await userEvent.click(screen.getByRole("button", { name: "Dosya seç ve kaydet" }));
+  expect(await screen.findByText("Parolalar aynı değil.")).toBeInTheDocument();
+  await userEvent.clear(screen.getByLabelText("Yedek parolası (tekrar)"));
+  await userEvent.type(screen.getByLabelText("Yedek parolası (tekrar)"), "uzun-parola-1");
+  await userEvent.click(screen.getByRole("button", { name: "Dosya seç ve kaydet" }));
+  expect(await screen.findByText("Parolalarla birlikte şifreli yedek kaydedildi: /tmp/yedek.json")).toBeInTheDocument();
+  expect(api.exportSessions).toHaveBeenCalledWith("uzun-parola-1");
+});
+
+test("importing an encrypted file asks for the passphrase and lets you retry after a wrong one", async () => {
+  const importSessions = vi
+    .fn()
+    .mockRejectedValueOnce({ code: "wrong_export_passphrase" })
+    .mockResolvedValueOnce({ added: 3, skipped: 0 });
+  const { api } = fakeApi({
+    pickImportFile: vi.fn(async () => ({ path: "/tmp/sifreli.json", sealed: true })),
+    importSessions,
+  } as Partial<AppApi>);
+  render(<App api={api} createTerm={fakeTerm} />);
+  await screen.findByText("Test 3.81");
+  await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Dosyadan al" }));
+  await userEvent.type(await screen.findByLabelText("Yedek parolası"), "yanlis-parola");
+  await userEvent.click(screen.getByRole("button", { name: "Aç" }));
+  expect(await screen.findByText("Yedek parolası yanlış ya da dosya bozulmuş.")).toBeInTheDocument();
+  await userEvent.clear(screen.getByLabelText("Yedek parolası"));
+  await userEvent.type(screen.getByLabelText("Yedek parolası"), "dogru-parola");
+  await userEvent.click(screen.getByRole("button", { name: "Aç" }));
+  expect(await screen.findByText("3 sunucu eklendi, 0 tanesi zaten vardı.")).toBeInTheDocument();
+  expect(importSessions).toHaveBeenLastCalledWith("/tmp/sifreli.json", "dogru-parola");
 });
 
 test("importing from a file reloads the list and reports what happened", async () => {
@@ -457,7 +508,7 @@ test("importing from a file reloads the list and reports what happened", async (
 });
 
 test("cancelling the import file dialog changes nothing", async () => {
-  const { api } = fakeApi({ importSessions: vi.fn(async () => null) } as Partial<AppApi>);
+  const { api } = fakeApi({ pickImportFile: vi.fn(async () => null) } as Partial<AppApi>);
   render(<App api={api} createTerm={fakeTerm} />);
   await screen.findByText("Test 3.81");
   await userEvent.click(screen.getByRole("button", { name: "Diğer işlemler" }));

@@ -86,6 +86,8 @@ export function errorText(t: Messages, e: unknown): string {
     case "password_cancelled": return t.errors.passwordCancelled;
     case "wrong_passphrase": return t.errors.wrongPassphrase;
     case "passphrase_required": return t.errors.passphraseRequired;
+    case "wrong_export_passphrase": return t.errors.wrongExportPassphrase;
+    case "export_passphrase_required": return t.errors.exportPassphraseRequired;
     case "agent_unavailable": return t.errors.agentUnavailable(d);
     case "auth_cancelled": return t.errors.authCancelled;
     case "port_in_use": return t.errors.portInUse;

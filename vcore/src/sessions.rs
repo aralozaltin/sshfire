@@ -86,6 +86,8 @@ impl From<std::io::Error> for StoreError {
 pub struct ImportReport {
     pub added: usize,
     pub skipped: usize,
+    /// Eklenen oturumların (dosyadaki eski kimlik, yeni kimlik) çiftleri.
+    pub new_ids: Vec<(String, String)>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -168,7 +170,7 @@ impl SessionStore {
     /// Dışa aktarılmış oturumları ekler: aynı adres/port/kullanıcı olanları atlar, kimlikleri yeniler,
     /// atlama sunucusu bağlantılarını yeni kimliklere taşır (dosya dışına işaret edenleri siler).
     pub fn import(&mut self, incoming: Vec<Session>) -> Result<ImportReport, StoreError> {
-        let mut report = ImportReport { added: 0, skipped: 0 };
+        let mut report = ImportReport { added: 0, skipped: 0, new_ids: Vec::new() };
         let mut remap: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         let mut fresh: Vec<Session> = Vec::new();
         for s in incoming {
@@ -182,6 +184,7 @@ impl SessionStore {
             }
             let new_id = uuid::Uuid::new_v4().to_string();
             remap.insert(s.id.clone(), new_id.clone());
+            report.new_ids.push((s.id.clone(), new_id.clone()));
             fresh.push(Session { id: new_id, ..s });
             report.added += 1;
         }

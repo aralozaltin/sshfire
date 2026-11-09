@@ -82,6 +82,15 @@ impl From<&TunnelError> for AppError {
     }
 }
 
+impl From<&vcore::bundle::BundleError> for AppError {
+    fn from(e: &vcore::bundle::BundleError) -> AppError {
+        match e {
+            vcore::bundle::BundleError::WrongPassphrase => AppError::code("wrong_export_passphrase"),
+            vcore::bundle::BundleError::Invalid(m) => AppError::with_detail("store_error", m.clone()),
+        }
+    }
+}
+
 impl From<&StoreError> for AppError {
     fn from(e: &StoreError) -> AppError {
         match e {

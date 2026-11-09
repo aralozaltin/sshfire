@@ -7,6 +7,8 @@ import { TerminalTab } from "./components/TerminalTab";
 import { HostKeyDialog, type HostKeyRequest } from "./components/HostKeyDialog";
 import { PasswordDialog, type PasswordRequest } from "./components/PasswordDialog";
 import { ImportDialog, type ImportCandidate } from "./components/ImportDialog";
+import { ExportDialog } from "./components/ExportDialog";
+import { ImportPassphraseDialog } from "./components/ImportPassphraseDialog";
 import { AuthPromptDialog, type AuthPromptRequest } from "./components/AuthPromptDialog";
 import { createXterm } from "./terminal/xterm";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -95,6 +97,8 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [hostKey, setHostKey] = useState<HostKeyRequest | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importLocked, setImportLocked] = useState<{ path: string; error: string | null } | null>(null);
   const [importCandidates, setImportCandidates] = useState<ImportCandidate[] | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [updateState, setUpdateState] = useState<"ready" | "installing" | "error">("ready");
@@ -361,21 +365,37 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
     }
   }
 
-  async function exportList() {
+  async function exportList(passphrase?: string) {
+    setExportOpen(false);
     try {
-      const path = await api.exportSessions();
-      if (path) setNotice(t.sessionsIo.exported(path));
+      const r = await api.exportSessions(passphrase);
+      if (!r) return;
+      setNotice(passphrase ? t.sessionsIo.exportedSecure(r.path) : t.sessionsIo.exported(r.path));
+      if (r.unreadableKeys.length > 0) setError(t.sessionsIo.unreadableKeys(r.unreadableKeys.join(", ")));
     } catch (e) {
       setError(errorText(t, e));
     }
   }
 
-  async function importFile() {
+  async function runFileImport(path: string, passphrase?: string) {
     try {
-      const result = await api.importSessions();
-      if (!result) return;
+      const result = await api.importSessions(path, passphrase);
+      setImportLocked(null);
       setNotice(t.sessionsIo.imported(result.added, result.skipped));
       await reload();
+    } catch (e) {
+      // Yanlış parolada diyalog açık kalır, kullanıcı tekrar dener.
+      if (passphrase !== undefined) setImportLocked({ path, error: errorText(t, e) });
+      else setError(errorText(t, e));
+    }
+  }
+
+  async function importFile() {
+    try {
+      const picked = await api.pickImportFile();
+      if (!picked) return;
+      if (picked.sealed) setImportLocked({ path: picked.path, error: null });
+      else await runFileImport(picked.path);
     } catch (e) {
       setError(errorText(t, e));
     }
@@ -564,7 +584,7 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
                 onDelete={setDeleting}
                 onAdd={() => setDialog({ mode: "add" })}
                 onImport={() => void openImport()}
-                onExport={() => void exportList()}
+                onExport={() => setExportOpen(true)}
                 onImportFile={() => void importFile()}
               />
             </nav>
@@ -758,6 +778,20 @@ function AppInner({ api = realApi, createTerm = createXterm, localeSetting, onLo
             initial={tabs.find((x) => x.key === renamingTab)?.title ?? ""}
             onSubmit={(name) => renameTab(renamingTab, name)}
             onCancel={() => setRenamingTab(null)}
+          />
+        </div>
+      )}
+      {exportOpen && (
+        <div className="overlay">
+          <ExportDialog onExport={(p) => void exportList(p)} onCancel={() => setExportOpen(false)} />
+        </div>
+      )}
+      {importLocked && (
+        <div className="overlay">
+          <ImportPassphraseDialog
+            error={importLocked.error}
+            onSubmit={(p) => void runFileImport(importLocked.path, p)}
+            onCancel={() => setImportLocked(null)}
           />
         </div>
       )}

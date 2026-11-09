@@ -44,6 +44,7 @@ fn build_state(dir: &std::path::Path) -> Result<AppState, Box<dyn std::error::Er
         Err(e) => return Err(e.to_string().into()),
     };
     Ok(AppState {
+        key_dir: dir.join("imported-keys"),
         store: Mutex::new(store),
         // Tüm parolalar tek Keychain kaydında; eski sunucu-başına kayıtlar ilk kullanımda taşınır.
         secrets: Arc::new(VaultSecrets::new(
@@ -85,6 +86,7 @@ pub fn run() {
             commands::session_remove,
             commands::sessions_export,
             commands::sessions_import,
+            commands::sessions_import_inspect,
             commands::connect,
             commands::local_connect,
             commands::log_start,
