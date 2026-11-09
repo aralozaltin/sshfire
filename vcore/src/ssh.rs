@@ -114,6 +114,14 @@ impl ShellWriter {
     }
 }
 
+/// Uzak tarafa bildirilecek locale: yerel `LANG` UTF-8 ise o, değilse (Windows, `C`, boş) `en_US.UTF-8`.
+pub fn utf8_locale(local: Option<&str>) -> String {
+    match local {
+        Some(l) if l.to_ascii_lowercase().replace('-', "").contains("utf8") => l.to_string(),
+        _ => "en_US.UTF-8".to_string(),
+    }
+}
+
 /// Anahtar dosyasının parola (passphrase) ile korunup korunmadığını söyler.
 pub fn key_needs_passphrase(path: &str) -> Result<bool, SshError> {
     match russh::keys::load_secret_key(path, None) {
@@ -624,8 +632,14 @@ impl SshConnection {
     pub async fn open_shell(&self, cols: u16, rows: u16) -> Result<ShellChannel, SshError> {
         let other = |e: russh::Error| SshError::Other(e.to_string());
         let mut channel = self.handle.channel_open_session().await.map_err(other)?;
+        // OpenSSH istemcisi gibi UTF-8 locale bildirir; yoksa uzak kabuk C locale'inde kalır ve
+        // `•`, `◊` gibi karakterleri `\342\200\242` diye kaçırır. Sunucu reddederse (AcceptEnv) sorun değil.
+        let locale = utf8_locale(std::env::var("LANG").ok().as_deref());
+        for name in ["LANG", "LC_CTYPE"] {
+            let _ = channel.set_env(false, name, locale.clone()).await;
+        }
         channel
-            .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
+            .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[(russh::Pty::IUTF8, 1)])
             .await
             .map_err(other)?;
         channel.request_shell(false).await.map_err(other)?;
@@ -670,6 +684,15 @@ impl SshConnection {
 #[cfg(test)]
 mod connect_timeout_tests {
     use super::*;
+
+    #[test]
+    fn locale_is_utf8_even_when_the_local_one_is_not() {
+        assert_eq!(utf8_locale(Some("tr_TR.UTF-8")), "tr_TR.UTF-8");
+        assert_eq!(utf8_locale(Some("de_DE.utf8")), "de_DE.utf8");
+        assert_eq!(utf8_locale(Some("C")), "en_US.UTF-8");
+        assert_eq!(utf8_locale(Some("tr_TR.ISO8859-9")), "en_US.UTF-8");
+        assert_eq!(utf8_locale(None), "en_US.UTF-8");
+    }
 
     #[tokio::test]
     async fn tcp_connect_gives_up_after_the_timeout() {
